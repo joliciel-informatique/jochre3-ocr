@@ -3,14 +3,24 @@ package com.joliciel.jochre.ocr.core
 import enumeratum.{Enum, EnumEntry}
 
 package object segmentation {
-  sealed trait Block extends EnumEntry
+  sealed trait BlockType extends EnumEntry {
+    def isText: Boolean
+  }
 
-  object Block extends Enum[Block] {
-    val values: IndexedSeq[Block] = findValues
+  object BlockType extends Enum[BlockType] {
+    val values: IndexedSeq[BlockType] = findValues
 
-    case object Paragraph extends Block
-    case object TextBox extends Block
-    case object Illustration extends Block
-    case object Table extends Block
+    case object Paragraph extends BlockType {
+      val isText: Boolean = true
+    }
+    case object TextBox extends BlockType {
+      val isText: Boolean = true
+    }
+    case object Illustration extends BlockType {
+      val isText: Boolean = false
+    }
+    case object Table extends BlockType {
+      val isText: Boolean = false
+    }
   }
 }
