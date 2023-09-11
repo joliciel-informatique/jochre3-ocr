@@ -15,15 +15,15 @@ import java.awt.Color
 import java.io.File
 import java.nio.file.{Path, Paths}
 
-case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) extends ImageTransformer with OpenCvUtils {
+case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) extends ImageTransformer[SkewAngle] with OpenCvUtils {
   private val log = LoggerFactory.getLogger(getClass)
-  private val config = ConfigFactory.load().getConfig("jochre.deskewer")
+  private val config = ConfigFactory.load().getConfig("jochre.ocr.deskewer")
   private val maxContours = config.getInt("max-contours-for-calculation")
 
-  override def transform(path: String, mat: Mat): Mat = {
+  override def transform(path: String, mat: Mat): (Mat, SkewAngle) = {
     val angle = this.getSkewAngle(mat, Some(path))
 
-    deskew(path, mat, angle)
+    deskew(path, mat, angle) -> SkewAngle(angle.getOrElse(0.0))
   }
 
   def deskew(path: String, mat: Mat, angle: Option[Double]): Mat = {
@@ -182,12 +182,12 @@ object Deskewer {
     val debugDir = options.debugDir.toOption.map(Path.of(_))
     debugDir.foreach(_.toFile.mkdirs())
 
-    val files = recursiveListImages(inputDir.toFile)
+    val files = FileUtils.recursiveListImages(inputDir.toFile)
 
     val deskewer = Deskewer(Some(outDir), debugDir)
     val rotationTransfomer = new RotationTransformer()
 
-    val transforms = List[ImageTransformer](
+    val transforms = List[ImageTransformer[_]](
       new ResizeImageAndKeepAspectRatio(options.longSide()))
 
     files.map { file =>
@@ -196,7 +196,7 @@ object Deskewer {
 
       val transformed: Mat = transforms.foldLeft(mat) {
         case (mat, transformer) =>
-          transformer.transform(file.getPath, mat)
+          transformer.transform(file.getPath, mat)._1
       }
 
       val calculated = deskewer.getSkewAngle(transformed, Some(file.getPath))

@@ -4,8 +4,8 @@ import org.bytedeco.opencv.global.opencv_core
 import org.bytedeco.opencv.global.opencv_imgproc.{INTER_LINEAR, getRotationMatrix2D, warpAffine}
 import org.bytedeco.opencv.opencv_core.{Mat, Point2f, Scalar}
 
-trait ImageTransformer {
-  def transform(path: String, mat: Mat): Mat
+trait ImageTransformer[D] {
+  def transform(path: String, mat: Mat): (Mat, D)
 
   def rotate(angle: Double, mat: Mat): Mat = {
     val cy = mat.rows.toFloat / 2f

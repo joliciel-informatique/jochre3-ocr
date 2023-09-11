@@ -36,6 +36,9 @@ object ImageLabel {
     import scala.math.Ordered.orderingToOrdered
 
     def compare(that: Rectangle): Int = (this.top, this.left, this.width, this.height, this.label) compare (that.top, that.left, that.width, that.height, that.label)
+
+    def rescale(scale: Double): Rectangle =
+      Rectangle(label, (left.toDouble * scale).toInt, (top.toDouble * scale).toInt, (width.toDouble * scale).toInt, (height.toDouble * scale).toInt)
   }
 
   object Rectangle {
@@ -60,5 +63,8 @@ object ImageLabel {
     import scala.math.Ordered.orderingToOrdered
 
     def compare(that: Line): Int = (this.y1, this.x1, this.y2, this.x2, this.label) compare (that.y1, that.x1, that.y2, that.x2, that.label)
+
+    def rescale(scale: Double): Line =
+      Line(label, (x1.toDouble * scale).toInt, (y1.toDouble * scale).toInt, (x2.toDouble * scale).toInt, (y2.toDouble * scale).toInt)
   }
 }

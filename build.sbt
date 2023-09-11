@@ -61,7 +61,7 @@ lazy val core = project
     libraryDependencies ++= commonDeps ++ httpClientDeps ++ Seq(
       "org.rogach" %% "scallop" % scallopVersion,
       "org.bytedeco" % "javacv-platform" % javaCVVersion,
-      "org.scala-lang.modules" %% "scala-xml" % scalaXmlVersion
+      "org.scala-lang.modules" %% "scala-xml" % scalaXmlVersion,
     ),
     Compile / packageDoc / mappings := Seq(),
     fork := true,

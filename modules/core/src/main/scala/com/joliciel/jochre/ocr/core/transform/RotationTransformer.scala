@@ -7,12 +7,12 @@ import org.w3c.dom.{Attr, NodeList}
 import javax.xml.parsers.DocumentBuilderFactory
 import javax.xml.xpath.{XPathConstants, XPathFactory}
 
-class RotationTransformer(val defaultAngle: Double = 0.0) extends ImageTransformer {
+class RotationTransformer(val defaultAngle: Double = 0.0) extends ImageTransformer[Double] {
   private val log = LoggerFactory.getLogger(getClass)
 
-  override def transform(path: String, mat: Mat): Mat = {
+  override def transform(path: String, mat: Mat): (Mat, Double) = {
     val angle = this.getRotation(path)
-    this.rotate(angle, mat)
+    this.rotate(angle, mat) -> angle
   }
 
   def getRotation(path: String): Double = {
