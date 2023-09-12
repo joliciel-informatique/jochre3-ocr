@@ -27,4 +27,6 @@ object BuildHelper {
     publishArtifact := false,
     publish / skip  := true
   )
+
+  testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
 }

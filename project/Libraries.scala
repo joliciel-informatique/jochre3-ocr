@@ -16,6 +16,7 @@ object Libraries {
   val logbackVersion = "1.4.8"
   val flywayVersion = "9.21.1"
   val catsVersion = "2.9.0"
+  val sttpVersion = "3.9.0"
 
   val typeDeps = Seq(
     "com.beachape" %% "enumeratum" % enumeratumVersion
@@ -54,14 +55,13 @@ object Libraries {
   )
 
   val httpClientDeps = Seq(
-    "com.softwaremill.sttp.client3" %% "core" % "3.9.0",
-    "org.http4s" %% "http4s-dsl" % http4sVersion,
-    "org.http4s" %% "http4s-circe" % http4sVersion,
-    "org.http4s" %% "http4s-client" % http4sVersion,
-    "org.http4s" %% "http4s-blaze-client" % http4sBlazeVersion,
+    "com.softwaremill.sttp.client3" %% "core" % sttpVersion,
+    "com.softwaremill.sttp.client3" %% "zio" % sttpVersion,
   )
 
   val apiDeps = Seq(
+    "org.http4s" %% "http4s-dsl" % http4sVersion,
+    "org.http4s" %% "http4s-circe" % http4sVersion,
     "org.http4s" %% "http4s-server" % http4sVersion,
     "org.http4s" %% "http4s-ember-server" % http4sVersion,
     "org.http4s" %% "http4s-blaze-server" % http4sBlazeVersion,

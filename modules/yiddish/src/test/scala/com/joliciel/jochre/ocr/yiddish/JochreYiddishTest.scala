@@ -1,18 +1,31 @@
 package com.joliciel.jochre.ocr.yiddish
 
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
+import com.joliciel.jochre.ocr.core.Jochre
+import com.joliciel.jochre.ocr.core.segmentation.BlockPredictorService
+import sttp.client3.httpclient.zio.HttpClientZioBackend
+import zio._
+import zio.test.junit.JUnitRunnableSpec
+import zio.test.{Spec, TestAspect, TestEnvironment, assertTrue}
 
 import javax.imageio.ImageIO
 
-class JochreYiddishTest extends AnyFlatSpec with Matchers {
-  "A JochreYiddish" should "analyze an image" in {
-    val inputStream = getClass.getClassLoader.getResourceAsStream("yiddish_sample.jpg")
-    val image = ImageIO.read(inputStream)
-    val jochreYiddish = JochreYiddish()
-    val alto = jochreYiddish.processImage(image, "yiddish_sample.jpg")
-    val content = (alto \\ "String").map(node => node \@ "CONTENT").mkString(" ")
+object JochreYiddishTest extends JUnitRunnableSpec {
+  val blockPredictorServiceLayer = HttpClientZioBackend.layer() >>>
+    BlockPredictorService.live
+  val jochreYiddishLayer = blockPredictorServiceLayer >>>
+    JochreYiddish.jochreYiddishLayer
 
-    content shouldEqual "מאַמע-לשון"
-  }
+  override def spec: Spec[TestEnvironment with Scope, Any] = suite("JochreYiddishTest")(
+    test("analyze an image") {
+      val inputStream = getClass.getClassLoader.getResourceAsStream("yiddish_sample.jpg")
+      val image = ImageIO.read(inputStream)
+      for {
+        jochreYiddish <- ZIO.service[Jochre]
+        alto <- jochreYiddish.processImage(image, None, "yiddish_sample.jpg")
+      } yield {
+        val content = (alto \\ "String").map(node => node \@ "CONTENT").mkString(" ")
+        assertTrue(content == "מאַמע-לשון")
+      }
+    }
+  ).provideLayer(blockPredictorServiceLayer ++ jochreYiddishLayer) @@ TestAspect.sequential
 }
