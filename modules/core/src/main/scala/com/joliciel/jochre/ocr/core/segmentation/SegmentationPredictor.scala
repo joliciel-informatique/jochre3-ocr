@@ -41,7 +41,7 @@ trait SegmentationPredictor[T <: ImageLabel] extends OpenCvUtils {
     imageLabels.zipWithIndex.foreach { case (imageLabel, i) => log.debug(s"Label $i: ${imageLabel}") }
 
     outputLocation.foreach { outputLocation =>
-      val newMat: Mat = greyscaleToColor(mat.clone())
+      val newMat: Mat = toRGB(mat.clone())
 
       imageLabels.foreach {
         case ImageLabel.Rectangle(label, left, top, width, height) =>

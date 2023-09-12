@@ -2,6 +2,9 @@ package com.joliciel.jochre.ocr.core.model
 
 import org.bytedeco.opencv.opencv_core.RotatedRect
 
+import java.awt
+import scala.xml.Node
+
 sealed trait ImageLabel {
   val label: String
 }
@@ -39,11 +42,24 @@ object ImageLabel {
 
     def rescale(scale: Double): Rectangle =
       Rectangle(label, (left.toDouble * scale).toInt, (top.toDouble * scale).toInt, (width.toDouble * scale).toInt, (height.toDouble * scale).toInt)
+
+    def translate(xDiff: Int, yDiff: Int): Rectangle =
+      Rectangle(label, left + xDiff, top + yDiff, width, height)
+
+    def rotate(imageInfo: ImageInfo): Rectangle = {
+      val (x1r, y1r) = imageInfo.rotate(left, top)
+      val (x2r, y2r) = imageInfo.rotate(left+width, top+height)
+      Rectangle(label, x1r, y1r, x2r-x1r, y2r-y1r)
+    }
+
+    def toAWT(): java.awt.Rectangle = new awt.Rectangle(this.left, this.top, this.width, this.height)
   }
 
   object Rectangle {
     def apply(label: String, rotatedRect: RotatedRect): Rectangle =
       Rectangle(label, rotatedRect.boundingRect().x, rotatedRect.boundingRect().y, rotatedRect.boundingRect().width, rotatedRect.boundingRect.height)
+
+    def fromXML(label: String, node: Node): Rectangle = Rectangle(label, left=(node \@ "HPOS").toInt, top=(node \@ "VPOS").toInt, width=(node \@ "WIDTH").toInt, height = (node \@ "HEIGHT").toInt)
   }
 
   case class Line(label: String, x1: Int, y1: Int, x2: Int, y2: Int) extends ImageLabel with Ordered[Line] {
@@ -66,5 +82,37 @@ object ImageLabel {
 
     def rescale(scale: Double): Line =
       Line(label, (x1.toDouble * scale).toInt, (y1.toDouble * scale).toInt, (x2.toDouble * scale).toInt, (y2.toDouble * scale).toInt)
+
+    def rotate(imageInfo: ImageInfo): Line = {
+      val (x1r, y1r) = imageInfo.rotate(x1, y1)
+      val (x2r, y2r) = imageInfo.rotate(x2, y2)
+      Line(label, x1r, y1r, x2r, y2r)
+    }
+
+    def translate(xDiff: Int, yDiff: Int): Line =
+      Line(label, x1 + xDiff, y1 + yDiff, x2 + xDiff, y2 + yDiff)
+  }
+
+  object Line {
+    def fromXML(imageInfo: ImageInfo, node: Node): Line = {
+      // BASELINE: According to Alto: Pixel coordinates based on the left-hand top corner of an image which define a polyline on which a line of text rests
+      // In Jochre2, this is a single INT (indicating the Y coordinate only, with X taken from RIGHT)
+      // Or a single pair (x2,y2)
+      // TODO: later we'll have to fix this, best would be to store x1,y1 x2,y2
+      val baseLineText = (node \@ "BASELINE")
+
+      val left = (node \@ "HPOS").toInt
+      val width = (node \@ "WIDTH").toInt
+
+      val (x2, y2) = baseLineText.toIntOption match {
+        case Some(yCoord) => (left+width) -> yCoord
+        case None =>
+          val ints = baseLineText.split(',').map(_.strip()).map(_.toInt)
+          ints(0) -> ints(1)
+      }
+
+      val (x1, y1) = imageInfo.rotate(x2 - width, y2)
+      Line("", x1, y1, x2, y2)
+    }
   }
 }

@@ -1,57 +1,65 @@
 package com.joliciel.jochre.ocr.core
 
-import com.joliciel.jochre.ocr.core.model.{Illustration, JochreImage, Paragraph, TextBlock}
+import com.joliciel.jochre.ocr.core.analysis.TextAnalyzer
+import com.joliciel.jochre.ocr.core.model.{Illustration, Page}
 import com.joliciel.jochre.ocr.core.output.Alto4Writer
-import com.joliciel.jochre.ocr.core.segmentation.{Block, BlockPredictor}
-import com.joliciel.jochre.ocr.core.transform.{BoxTransform, Deskewer, ResizeImageAndKeepAspectRatio, Scale, SkewAngle}
-import com.joliciel.jochre.ocr.core.utils.{FileUtils, OpenCvUtils, OutputLocation}
+import com.joliciel.jochre.ocr.core.segmentation.{BlockPredictor, IllustrationSegment, ImageSegmentExtractor, TextSegment}
+import com.joliciel.jochre.ocr.core.transform.{BoxTransform, Deskewer, GrayscaleTransform, ResizeImageAndKeepAspectRatio, Scale, SkewAngle}
+import com.joliciel.jochre.ocr.core.utils.{FileUtils, OpenCvUtils, OutputLocation, XmlImplicits}
 import com.typesafe.config.ConfigFactory
 import org.bytedeco.opencv.global.opencv_imgcodecs.{IMREAD_GRAYSCALE, imread}
 import org.bytedeco.opencv.opencv_core.Mat
-import org.rogach.scallop.{ScallopConf, ScallopOption}
 import org.slf4j.LoggerFactory
 
 import java.awt.image.BufferedImage
-import java.io.File
+import java.io.{File, FileWriter}
+import java.nio.charset.StandardCharsets
 import java.nio.file.Path
+import scala.xml.{Elem, PrettyPrinter}
 
-case class Jochre(outputDir: Path) extends OpenCvUtils {
+trait Jochre extends OpenCvUtils with XmlImplicits {
   private val log = LoggerFactory.getLogger(getClass)
   private val config = ConfigFactory.load().getConfig("jochre.ocr")
   private val longerSide: Int = config.getInt("corpus-transform.longer-side")
   private val boxImages: Boolean = config.getBoolean("corpus-transform.box-images")
 
+  def outputDir: Option[Path]
+  def textAnalyzer: TextAnalyzer
+
   private val transforms = List(
+    // change to grayscale
+    Some(new GrayscaleTransform()),
+
     // resize the image
     Some(new ResizeImageAndKeepAspectRatio(longerSide)),
 
-    // deskewer the image
+    // deskew the image
     Some(new Deskewer()),
 
     // box the image if required
     Option.when(boxImages)(new BoxTransform(longerSide)),
   ).flatten
 
-  def process(inputDir: Path, maxImages: Option[Int]): Unit = {
+  def process(inputDir: Path, maxImages: Option[Int]): Seq[Elem] = {
     val allFiles = FileUtils.recursiveListImages(inputDir.toFile).map(new File(_))
 
     val inputFiles = allFiles
       .take(maxImages.getOrElse(allFiles.size))
 
-    inputFiles.zipWithIndex.foreach { case (inputFile, i) =>
+    inputFiles.zipWithIndex.map { case (inputFile, i) =>
       log.debug(f"Processing file $i: ${inputFile.getPath}")
       val mat = imread(inputFile.getPath, IMREAD_GRAYSCALE)
       this.processImage(mat, inputFile.getName)
     }
   }
 
-  def processImage(bufferedImage: BufferedImage, fileName: String): Unit = {
+  def processImage(bufferedImage: BufferedImage, fileName: String): Elem = {
     val mat = fromBufferedImage(bufferedImage)
     this.processImage(mat, fileName)
   }
 
-  def processImage(mat: Mat, fileName: String): Unit = {
-    val outputLocation = Some(OutputLocation(outputDir, fileName))
+  def processImage(mat: Mat, fileName: String): Elem = {
+    val outputLocation = outputDir.map(OutputLocation(_, fileName))
 
     // apply transforms
     val (transformed: Mat, outputData: Seq[Any]) = transforms.foldLeft(mat -> Seq.empty[Any]) {
@@ -72,64 +80,54 @@ case class Jochre(outputDir: Path) extends OpenCvUtils {
 
     // detect blocks
     val blockPredictor = BlockPredictor(transformed, fileName, outputLocation)
-    val blocks = blockPredictor.predict()
+    val labeledRectangles = blockPredictor.predict()
 
     // re-scale coordinates
-    val rescaledBlocks = blocks.map(_.rescale(1 / scale))
+    val rescaledRectangles = labeledRectangles.map(_.rescale(1 / scale))
 
-    val textBlocks = rescaledBlocks
-      .filter{ block => block.label == Block.Paragraph.entryName || block.label==Block.TextBox.entryName }
-      .map { block =>
-        TextBlock(
-          paragraphs = Seq(Paragraph(Seq.empty, block)),
-          rectangle = block
-        )
-      }
-    val illustrations = rescaledBlocks
-      .filter(_.label == Block.Illustration.entryName)
-      .map { block =>
-        Illustration(
-          rectangle = block
-        )
-      }
+    val uprightImage = this.unrotate(skewAngle, mat)
 
-    val jochreImage = JochreImage(
+    val imageSegmentExtractor = ImageSegmentExtractor(uprightImage, rescaledRectangles, outputLocation)
+    val segments = imageSegmentExtractor.segments
+
+    val blocks = segments.flatMap{
+      case TextSegment(block, subImage) =>
+        // Analyze OCR on each text segment and extract the analyzed blocks
+        val altoXml = textAnalyzer.analyze(subImage)
+        val jochreSubImage = Page.fromXML(altoXml)
+        val translatedSubImage = jochreSubImage.rotate().translate(block.left, block.top)
+        translatedSubImage.blocks
+      case IllustrationSegment(block) =>
+        Seq(Illustration(block))
+    }.sortBy(_.rectangle)
+
+    val page = Page(
       id = "1",
-      height = transformed.rows(),
-      width = transformed.cols(),
+      height = mat.rows(),
+      width = mat.cols(),
       physicalPageNumber = 1,
       rotation = skewAngle,
-      textBlocks = textBlocks,
-      illustrations = illustrations,
+      blocks = blocks
     )
 
-    // write Alto file
-    val alto4Writer = new Alto4Writer(jochreImage, fileName)
+    val rotatedPage = page.rotate()
+
+    val alto4Writer = Alto4Writer(rotatedPage, fileName)
+    val alto = alto4Writer.alto
+
     outputLocation.foreach { outputLocation =>
       val altoFile = outputLocation.resolve("_alto4.xml").toFile
-      alto4Writer.write(altoFile)
+      val prettyPrinter = new PrettyPrinter(80, 2)
+      val writer = new FileWriter(altoFile, StandardCharsets.UTF_8)
+      try {
+        val xml = prettyPrinter.format(alto)
+        writer.write(xml)
+        writer.flush()
+      } finally {
+        writer.close()
+      }
     }
-  }
-}
 
-object Jochre {
-  class JochreCLI(arguments: Seq[String]) extends ScallopConf(arguments) {
-    val inputDir: ScallopOption[String] = opt[String](required = true)
-    val outputDir: ScallopOption[String] = opt[String](required = true)
-    val maxImages: ScallopOption[Int] = opt[Int](default = Some(0))
-    verify()
-  }
-
-  def main(args: Array[String]): Unit = {
-    val options = new JochreCLI(args.toIndexedSeq)
-
-    val inputDir = Path.of(options.inputDir())
-    val outDir = Path.of(options.outputDir())
-    outDir.toFile.mkdirs()
-
-    val maxImages = Option.when(options.maxImages() > 0)(options.maxImages())
-
-    val jochre: Jochre = Jochre(outDir)
-    jochre.process(inputDir, maxImages)
+    alto
   }
 }

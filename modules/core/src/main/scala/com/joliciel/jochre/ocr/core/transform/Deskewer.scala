@@ -28,7 +28,7 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) 
 
   def deskew(path: String, mat: Mat, angle: Option[Double]): Mat = {
     val rotated = angle.map(
-      this.rotate(_, mat)).getOrElse(mat)
+      this.unrotate(_, mat)).getOrElse(mat)
 
     val baseName = FileUtils.removeFileExtension(new File(path).getName)
     outDir.foreach(outDir => imwrite(Paths.get(outDir.toString, baseName + "_deskewered.jpg").toString, rotated))
@@ -40,14 +40,11 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) 
 
     val baseName = path.map(path => FileUtils.removeFileExtension(new File(path).getName)).getOrElse("test")
 
-    // Image preparation: convert to gray scale, blur, and threshold
-    val colored = new Mat()
-    cvtColor(mat, colored, COLOR_GRAY2BGR)
-    val gray = new Mat()
-    cvtColor(colored, gray, COLOR_BGR2GRAY)
+    val colored = toRGB(mat)
 
+    // Image preparation: blur, and threshold
     val blur = new Mat()
-    GaussianBlur(gray, blur, new Size(9, 9), 0)
+    GaussianBlur(mat, blur, new Size(9, 9), 0)
 
     debugDir.foreach(debugDir => imwrite(Paths.get(debugDir.toString, baseName + "_deskewer1_blur.jpg").toString, blur))
 

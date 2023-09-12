@@ -1,5 +1,6 @@
 package com.joliciel.jochre.ocr.core.transform
 
+import com.joliciel.jochre.ocr.core.utils.OpenCvUtils
 import org.bytedeco.opencv.opencv_core.Mat
 import org.slf4j.LoggerFactory
 import org.w3c.dom.{Attr, NodeList}
@@ -7,12 +8,12 @@ import org.w3c.dom.{Attr, NodeList}
 import javax.xml.parsers.DocumentBuilderFactory
 import javax.xml.xpath.{XPathConstants, XPathFactory}
 
-class RotationTransformer(val defaultAngle: Double = 0.0) extends ImageTransformer[Double] {
+class RotationTransformer(val defaultAngle: Double = 0.0) extends ImageTransformer[Double] with OpenCvUtils {
   private val log = LoggerFactory.getLogger(getClass)
 
   override def transform(path: String, mat: Mat): (Mat, Double) = {
     val angle = this.getRotation(path)
-    this.rotate(angle, mat) -> angle
+    this.unrotate(angle, mat) -> angle
   }
 
   def getRotation(path: String): Double = {

@@ -48,7 +48,7 @@ case class BlockPredictor(override val mat: Mat, override val fileName: String, 
         val subImages = (0 until 4).map{ i =>
           predictedImage.getSubimage(0, i * imageHeight, imageWidth, imageHeight)
         }
-        val labels = Block.values.map(_.entryName)
+        val labels = BlockType.values.map(_.entryName)
         labels.zip(subImages).toMap
     }
   }
