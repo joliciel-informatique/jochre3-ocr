@@ -15,7 +15,10 @@ object JochreYiddish extends ZIOAppDefault {
     override val altoProcessor: AltoProcessor = YiddishAltoProcessor()
   }
 
-  val jochreYiddishLayer: ZLayer[BlockPredictorService, Nothing, Jochre] = ZLayer.fromFunction(JochreYiddishImpl(_))
+  private val blockPredictorServiceLayer = HttpClientZioBackend.layer() >>>
+    BlockPredictorService.live
+  val jochreYiddishLayer: ZLayer[Any, Throwable, Jochre] = blockPredictorServiceLayer >>>
+    ZLayer.fromFunction(JochreYiddishImpl(_))
 
   class JochreYiddishCLI(arguments: Seq[String]) extends ScallopConf(arguments) {
     val inputDir: ScallopOption[String] = opt[String](required = true)
@@ -38,9 +41,7 @@ object JochreYiddish extends ZIOAppDefault {
     for {
       args <- getArgs
       result <- app(args).provide(
-        HttpClientZioBackend.layer(),
-        BlockPredictorService.live,
-        jochreYiddishLayer,
+        jochreYiddishLayer
       )
     } yield result
   }
