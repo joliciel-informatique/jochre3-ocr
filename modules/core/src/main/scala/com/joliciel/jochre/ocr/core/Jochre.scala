@@ -1,6 +1,6 @@
 package com.joliciel.jochre.ocr.core
 
-import com.joliciel.jochre.ocr.core.analysis.TextAnalyzer
+import com.joliciel.jochre.ocr.core.analysis.{AltoProcessor, TextAnalyzer}
 import com.joliciel.jochre.ocr.core.model.{Illustration, Page}
 import com.joliciel.jochre.ocr.core.output.Alto4Writer
 import com.joliciel.jochre.ocr.core.segmentation.{BlockPredictorService, IllustrationSegment, ImageSegmentExtractor, TextSegment}
@@ -32,6 +32,7 @@ trait AbstractJochre extends Jochre with OpenCvUtils with XmlImplicits {
 
   def blockPredictorService: BlockPredictorService
   def textAnalyzer: TextAnalyzer
+  def altoProcessor: AltoProcessor
 
   private val transforms = List(
     // change to grayscale
@@ -130,9 +131,10 @@ trait AbstractJochre extends Jochre with OpenCvUtils with XmlImplicits {
         val alto4Writer = Alto4Writer(rotatedPage, fileName)
         val alto = alto4Writer.alto
 
+        val prettyPrinter = new PrettyPrinter(80, 2)
+
         outputLocation.foreach { outputLocation =>
           val altoFile = outputLocation.resolve("_alto4.xml").toFile
-          val prettyPrinter = new PrettyPrinter(80, 2)
           val writer = new FileWriter(altoFile, StandardCharsets.UTF_8)
           try {
             val xml = prettyPrinter.format(alto)
@@ -143,7 +145,21 @@ trait AbstractJochre extends Jochre with OpenCvUtils with XmlImplicits {
           }
         }
 
-        alto
+        val fixedAlto = altoProcessor.process(alto, fileName)
+
+        outputLocation.foreach { outputLocation =>
+          val altoFile = outputLocation.resolve("_fixed_alto4.xml").toFile
+          val writer = new FileWriter(altoFile, StandardCharsets.UTF_8)
+          try {
+            val xml = prettyPrinter.format(fixedAlto)
+            writer.write(xml)
+            writer.flush()
+          } finally {
+            writer.close()
+          }
+        }
+
+        fixedAlto
       }
     } yield alto
   }
