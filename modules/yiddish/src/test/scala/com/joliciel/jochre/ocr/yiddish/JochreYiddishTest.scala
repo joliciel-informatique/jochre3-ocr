@@ -1,8 +1,6 @@
 package com.joliciel.jochre.ocr.yiddish
 
 import com.joliciel.jochre.ocr.core.Jochre
-import com.joliciel.jochre.ocr.core.segmentation.BlockPredictorService
-import sttp.client3.httpclient.zio.HttpClientZioBackend
 import zio._
 import zio.test.junit.JUnitRunnableSpec
 import zio.test.{Spec, TestAspect, TestEnvironment, assertTrue}
@@ -10,11 +8,6 @@ import zio.test.{Spec, TestAspect, TestEnvironment, assertTrue}
 import javax.imageio.ImageIO
 
 object JochreYiddishTest extends JUnitRunnableSpec {
-  val blockPredictorServiceLayer = HttpClientZioBackend.layer() >>>
-    BlockPredictorService.live
-  val jochreYiddishLayer = blockPredictorServiceLayer >>>
-    JochreYiddish.jochreYiddishLayer
-
   override def spec: Spec[TestEnvironment with Scope, Any] = suite("JochreYiddishTest")(
     test("analyze an image") {
       val inputStream = getClass.getClassLoader.getResourceAsStream("yiddish_sample.jpg")
@@ -27,5 +20,5 @@ object JochreYiddishTest extends JUnitRunnableSpec {
         assertTrue(content == "מאַמע - לשון")
       }
     }
-  ).provideLayer(blockPredictorServiceLayer ++ jochreYiddishLayer) @@ TestAspect.sequential
+  ).provideLayer(JochreYiddish.jochreYiddishLayer) @@ TestAspect.sequential
 }
