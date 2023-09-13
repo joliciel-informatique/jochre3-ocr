@@ -6,11 +6,12 @@ ThisBuild / scalaVersion := "2.13.11"
 ThisBuild / organization := "com.joli-ciel"
 ThisBuild / homepage     := Some(url("https://www.joli-ciel.com/"))
 ThisBuild / licenses     := List("Apache-2.0" -> url("https://www.apache.org/licenses/LICENSE-2.0"))
+ThisBuild / versionScheme := Some("semver-spec")
 
 val cloakroomVersion = "0.5.13"
 val amazonSdkVersion = "2.20.98"
 val scalaXmlVersion = "2.1.0"
-val jochre2Version = "2.6.3-SNAPSHOT"
+val jochre2Version = "2.6.3"
 val yivoTranscriberVersion = "0.1.2-SNAPSHOT"
 val javaCVVersion = "1.5.9"
 val scallopVersion = "5.0.0"
@@ -20,6 +21,42 @@ lazy val jochre3OCRVersion = sys.env.get("JOCHRE3_OCR_VERSION")
     ConsoleLogger().warn("JOCHRE3_OCR_VERSION env var not found")
     "0.0.1-SNAPSHOT"
   }
+
+ThisBuild / organization := "com.joliciel"
+ThisBuild / organizationName := "Joliciel Informatique SARL"
+ThisBuild / organizationHomepage := Some(url("https://joli-ciel.com/"))
+
+ThisBuild / scmInfo := Some(
+  ScmInfo(
+    url("https://gitlab.com/jochre/jochre3-ocr"),
+    "scm:git@gitlab.com:jochre/jochre3-ocr.git"
+  )
+)
+ThisBuild / developers := List(
+  Developer(
+    id = "assaf.urieli@gmail.com",
+    name = "Assaf Urieli",
+    email = "assaf.urieli@gmail.com",
+    url = url("https://gitlab.com/assafurieli")
+  )
+)
+
+ThisBuild / description := "Jochre3 OCR engine with default implementation for Yiddish"
+ThisBuild / licenses := List(
+  "GNU Affero General Public License Version 3" -> new URL("http://www.gnu.org/licenses/agpl-3.0.html")
+)
+ThisBuild / homepage := Some(url("https://gitlab.com/jochre/jochre3-ocr"))
+
+// Remove all additional repository other than Maven Central from POM
+ThisBuild / pomIncludeRepository := { _ => false }
+ThisBuild / publishTo := {
+  // For accounts created after Feb 2021:
+  //val nexus = "https://s01.oss.sonatype.org/"
+  val nexus = "https://oss.sonatype.org/"
+  if (isSnapshot.value) Some("snapshots" at nexus + "content/repositories/snapshots")
+  else Some("releases" at nexus + "service/local/staging/deploy/maven2")
+}
+ThisBuild / publishMavenStyle := true
 
 val projectSettings = commonSettings ++ Seq(
   version := jochre3OCRVersion,
@@ -47,17 +84,23 @@ downloadZip := {
 (Compile / compile) := ((Compile / compile).dependsOn(downloadZip)).value
 
 testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
+credentials += Credentials(Path.userHome / ".sbt" / "sonatype_credentials_joliciel")
 
 lazy val root =
   Project(id = "jochre3-ocr", base = file("."))
     .settings(noDoc: _*)
     .settings(noPublishSettings: _*)
+    .settings(
+      name := "jochre3-ocr",
+      publish / skip := false,
+    )
     .aggregate(core, yiddish)
 
 lazy val core = project
   .in(file("modules/core"))
   .settings(projectSettings: _*)
   .settings(
+    name := "jochre3-ocr-core",
     libraryDependencies ++= commonDeps ++ httpClientDeps ++ Seq(
       "org.rogach" %% "scallop" % scallopVersion,
       "org.bytedeco" % "javacv-platform" % javaCVVersion,
@@ -65,19 +108,20 @@ lazy val core = project
     ),
     Compile / packageDoc / mappings := Seq(),
     fork := true,
-    publish / skip  := true,
+    publish / skip  := false,
   )
 
 lazy val yiddish = project
   .in(file("modules/yiddish"))
   .settings(projectSettings: _*)
   .settings(
+    name := "jochre3-ocr-yiddish",
     libraryDependencies ++= commonDeps ++ Seq(
       "com.joliciel.ljtrad" % "yivo-transcriber" % yivoTranscriberVersion,
       "com.joliciel.jochre" % "jochre-yiddish" % jochre2Version
     ),
     Compile / packageDoc / mappings := Seq(),
     fork := true,
-    publish / skip  := true,
+    publish / skip  := false,
   )
   .dependsOn(core % "compile->compile;test->test")
