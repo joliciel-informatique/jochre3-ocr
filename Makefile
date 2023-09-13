@@ -5,7 +5,7 @@ COMPOSE_PROJECT ?= "JOCHRE_OCR_TEST"
 
 test: start-dep-with-ports-binding
 	@ cd "${CURDIR}"
-	JOCHRE3_DIRECTORY="${CURDIR}" sbt test
+	JOCHRE3_OCR_DIRECTORY="${CURDIR}" sbt test
 
 start-dep-with-ports-binding:
 	@ cd "${CURDIR}"
@@ -45,7 +45,7 @@ simulate-ci:
 		make test-ci
 run:
 	@ cd "${CURDIR}"
-	JOCHRE3_DIRECTORY="${CURDIR}" sbt run
+	JOCHRE3_OCR_DIRECTORY="${CURDIR}" sbt run
 
 clean-docker-compose:
 	@ cd "${CURDIR}"

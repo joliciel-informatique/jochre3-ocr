@@ -10,7 +10,7 @@ import com.typesafe.config.ConfigFactory
 import org.bytedeco.opencv.global.opencv_imgcodecs.{IMREAD_GRAYSCALE, imread}
 import org.bytedeco.opencv.opencv_core.Mat
 import org.slf4j.LoggerFactory
-import zio.{RIO, ZIO}
+import zio.{RIO, Task, ZIO}
 
 import java.awt.image.BufferedImage
 import java.io.{File, FileWriter}
@@ -19,9 +19,9 @@ import java.nio.file.Path
 import scala.xml.{Elem, PrettyPrinter}
 
 trait Jochre {
-  def process(inputDir: Path, outputDir: Option[Path], maxImages: Option[Int]): RIO[BlockPredictorService, Seq[Elem]]
-  def processImage(bufferedImage: BufferedImage, outputDir: Option[Path], fileName: String): RIO[BlockPredictorService, Elem]
-  def processImage(mat: Mat, outputDir: Option[Path], fileName: String): RIO[BlockPredictorService, Elem]
+  def process(inputDir: Path, outputDir: Option[Path], maxImages: Option[Int]): Task[Seq[Elem]]
+  def processImage(bufferedImage: BufferedImage, outputDir: Option[Path], fileName: String): Task[Elem]
+  def processImage(mat: Mat, outputDir: Option[Path], fileName: String): Task[Elem]
 }
 
 trait AbstractJochre extends Jochre with OpenCvUtils with XmlImplicits {
@@ -48,7 +48,7 @@ trait AbstractJochre extends Jochre with OpenCvUtils with XmlImplicits {
     Option.when(boxImages)(new BoxTransform(longerSide)),
   ).flatten
 
-  def process(inputDir: Path, outputDir: Option[Path], maxImages: Option[Int]): RIO[BlockPredictorService, Seq[Elem]] = {
+  def process(inputDir: Path, outputDir: Option[Path], maxImages: Option[Int]): Task[Seq[Elem]] = {
     val allFiles = FileUtils.recursiveListImages(inputDir.toFile).map(new File(_))
 
     val inputFiles = allFiles
@@ -62,12 +62,12 @@ trait AbstractJochre extends Jochre with OpenCvUtils with XmlImplicits {
       }
   }
 
-  def processImage(bufferedImage: BufferedImage, outputDir: Option[Path], fileName: String): RIO[BlockPredictorService, Elem] = {
+  def processImage(bufferedImage: BufferedImage, outputDir: Option[Path], fileName: String): Task[Elem] = {
     val mat = fromBufferedImage(bufferedImage)
     this.processImage(mat, outputDir, fileName)
   }
 
-  def processImage(mat: Mat, outputDir: Option[Path], fileName: String): RIO[BlockPredictorService, Elem] = {
+  def processImage(mat: Mat, outputDir: Option[Path], fileName: String): Task[Elem] = {
     val outputLocation = outputDir.map(OutputLocation(_, fileName))
 
     for {
