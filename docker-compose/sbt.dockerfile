@@ -9,5 +9,5 @@ COPY . /jochre
 RUN mkdir -p /jochre/modules/yiddish/resources
 RUN mv /jochre/docker-compose/sbt_entry_point.sh /bin/
 WORKDIR /jochre
-ENV JOCHRE3_DIRECTORY=/jochre
+ENV JOCHRE3_OCR_DIRECTORY=/jochre
 ENTRYPOINT ["/bin/sbt_entry_point.sh", "-Dsbt.boot.directory=/root/.sbt/boot/"]
