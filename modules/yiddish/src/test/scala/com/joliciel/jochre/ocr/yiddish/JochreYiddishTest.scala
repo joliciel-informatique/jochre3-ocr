@@ -24,7 +24,7 @@ object JochreYiddishTest extends JUnitRunnableSpec {
         alto <- jochreYiddish.processImage(image, None, "yiddish_sample.jpg")
       } yield {
         val content = (alto \\ "String").map(node => node \@ "CONTENT").mkString(" ")
-        assertTrue(content == "מאַמע-לשון")
+        assertTrue(content == "מאַמע - לשון")
       }
     }
   ).provideLayer(blockPredictorServiceLayer ++ jochreYiddishLayer) @@ TestAspect.sequential
