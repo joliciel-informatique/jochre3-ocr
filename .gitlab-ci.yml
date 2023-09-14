@@ -1,0 +1,21 @@
+variables:
+  COMPOSE_PROJECT: "jochre3-ocr-test-${CI_JOB_ID}"
+  LOGLEVEL: warn
+  DOCKER_TLS_CERTDIR: ""
+  DOCKER_HOST: "tcp://docker:2375"
+services:
+  - docker:dind
+default:
+  image: docker:24
+before_script:
+  - docker-compose version
+  - docker info
+  - apk update
+  - apk add --no-cache make bash git
+test:
+  stage: test
+  script:
+    # Execute your project's tests
+    - make test-ci
+  after_script:
+    - make clean-docker-compose

@@ -8,6 +8,8 @@ services:
     volumes:
       - ivy_cache:/root/.ivy2
       - sbt_cache:/root/.sbt
+    environment:
+      DOCUMENT_LAYOUT_ANALYSIS_URL: http://yolo-dla:8444
 volumes:
   ivy_cache:
     name: ivy_cache
