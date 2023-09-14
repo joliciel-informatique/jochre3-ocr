@@ -2,6 +2,7 @@ package com.joliciel.jochre.ocr.core.segmentation
 
 import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
 import com.joliciel.jochre.ocr.core.utils.OutputLocation
+import com.typesafe.config.ConfigFactory
 import org.bytedeco.opencv.opencv_core.Mat
 import org.slf4j.LoggerFactory
 import sttp.capabilities
@@ -26,6 +27,8 @@ case class BlockPredictorServiceImpl(httpClient: SttpBackend[Task, ZioStreams wi
 class BlockPredictor(httpClient: SttpBackend[Task, ZioStreams with capabilities.WebSockets], override val mat: Mat, override val fileName: String, override val outputLocation: Option[OutputLocation] = None) extends SegmentationPredictor[Rectangle] {
   private val log = LoggerFactory.getLogger(getClass)
 
+  private val config = ConfigFactory.load().getConfig("jochre.ocr.block-predictor")
+  private val documentLayoutAnalysisUrl = config.getString("url")
   override val detector: ImageLabelDetector[Rectangle] = new BoxDetector(outputLocation = outputLocation)
 
   override val extension: String = "_block_prediction.png"
@@ -39,7 +42,7 @@ class BlockPredictor(httpClient: SttpBackend[Task, ZioStreams with capabilities.
         val in = new ByteArrayInputStream(out.toByteArray)
 
         val request = basicRequest
-          .post(uri"http://localhost:8444/analyze")
+          .post(uri"${documentLayoutAnalysisUrl}/analyze")
           .multipartBody(
             multipart("imageFile", in).fileName(fileName)
           )
