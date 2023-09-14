@@ -64,6 +64,14 @@ ThisBuild / credentials += Credentials(Path.userHome / ".sbt" / "sonatype_creden
 ThisBuild / publishTo := sonatypePublishToBundle.value
 ThisBuild / sonatypeProjectHosting := Some(GitLabHosting("assafurieli", "jochre/jochre3-ocr", "assafurieli@gmail.com"))
 
+lazy val setPgpKeyTask = taskKey[Unit]("Set PGP Key if it has been specified")
+setPgpKeyTask := {
+  sys.env.get("PGP_KEY_HEX").foreach{ pgpKeyHex =>
+    ConsoleLogger().warn("Setting GPG key to use")
+    usePgpKeyHex(pgpKeyHex)
+  }
+}
+
 val projectSettings = commonSettings ++ Seq(
   version := jochre3OCRVersion,
 )
@@ -87,7 +95,8 @@ downloadZip := {
   }
 }
 
-(Compile / compile) := ((Compile / compile).dependsOn(downloadZip)).value
+(Compile / compile) := ((Compile / compile).dependsOn(downloadZip).dependsOn(setPgpKeyTask)).value
+
 
 testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
 
@@ -111,7 +120,6 @@ lazy val core = project
       "org.bytedeco" % "javacv-platform" % javaCVVersion,
       "org.scala-lang.modules" %% "scala-xml" % scalaXmlVersion,
     ),
-    //Compile / packageDoc / mappings := Seq(),
     Compile / packageDoc / publishArtifact := true,
     fork := true,
     publish / skip  := false,
@@ -126,7 +134,6 @@ lazy val yiddish = project
       "com.joliciel.ljtrad" % "yivo-transcriber" % yivoTranscriberVersion,
       "com.joliciel.jochre" % "jochre-yiddish" % jochre2Version
     ),
-    //Compile / packageDoc / mappings := Seq(),
     Compile / packageDoc / publishArtifact := true,
     fork := true,
     publish / skip  := false,

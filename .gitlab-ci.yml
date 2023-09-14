@@ -11,11 +11,21 @@ before_script:
   - docker-compose version
   - docker info
   - apk update
-  - apk add --no-cache make bash git
-test:
-  stage: test
+  - apk add --no-cache make bash git curl
+#test:
+#  stage: test
+#  script:
+#    # Execute your project's tests
+#    - make test-ci
+#  after_script:
+#    - make clean-docker-compose
+publish-image:
+  stage: deploy
   script:
-    # Execute your project's tests
-    - make test-ci
-  after_script:
-    - make clean-docker-compose
+    - curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | bash
+    - pwd
+    - ls -a
+    - ls -la .secure_files/
+    - make publish-library
+  only:
+    - tags

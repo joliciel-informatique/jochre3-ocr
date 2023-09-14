@@ -47,6 +47,10 @@ run:
 	@ cd "${CURDIR}"
 	JOCHRE3_OCR_DIRECTORY="${CURDIR}" sbt run
 
+publish-library:
+	@ cd "${CURDIR}"
+	COMPOSE_PROJECT=$(COMPOSE_PROJECT) "./publish_library.sh"
+
 clean-docker-compose:
 	@ cd "${CURDIR}"
 	docker-compose -p $(COMPOSE_PROJECT) -f docker-compose/deps.yml -f docker-compose/bind-ports.yml -f docker-compose/runner.yml -f docker-compose/jochre.yml down --remove-orphans --rmi local

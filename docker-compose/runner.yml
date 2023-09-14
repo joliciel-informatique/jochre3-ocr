@@ -10,6 +10,19 @@ services:
       - sbt_cache:/root/.sbt
     environment:
       DOCUMENT_LAYOUT_ANALYSIS_URL: http://yolo-dla:8444
+  publisher:
+    command: publishSigned
+    build:
+      context: ../
+      dockerfile: docker-compose/sbt.dockerfile
+    volumes:
+      - ivy_cache:/root/.ivy2
+      - sbt_cache:/root/.sbt/boot/
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - JOCHRE3_OCR_VERSION
+      - GPG_PASSWORD
+      - PGP_KEY_HEX
 volumes:
   ivy_cache:
     name: ivy_cache
