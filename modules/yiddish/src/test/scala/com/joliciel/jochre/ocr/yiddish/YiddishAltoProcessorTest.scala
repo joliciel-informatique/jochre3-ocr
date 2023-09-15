@@ -4,7 +4,8 @@ import com.joliciel.jochre.ocr.core.analysis.AltoAlternative
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import scala.xml.PrettyPrinter
+import scala.xml.{Elem, PrettyPrinter}
+import scala.xml.transform.RuleTransformer
 
 class YiddishAltoProcessorTest extends AnyFlatSpec with Matchers {
   private val yiddishConfig: YiddishConfig = YiddishConfig.fromConfig
@@ -112,14 +113,14 @@ class YiddishAltoProcessorTest extends AnyFlatSpec with Matchers {
     val yiddishAltoProcessor = YiddishAltoProcessor(yiddishConfig)
     val alto = <Page>
       <Paragraph>
-        <String VPOS="10" HPOS="10" HEIGHT="80" WIDTH="80" WC="0.8" CONTENT="-a,.bc.">
-          <Glyph VPOS="10" HPOS="10" HEIGHT="10" WIDTH="10" GC="0.1" CONTENT="-"/>
-          <Glyph VPOS="20" HPOS="20" HEIGHT="10" WIDTH="10" GC="0.2" CONTENT="a"/>
-          <Glyph VPOS="30" HPOS="30" HEIGHT="10" WIDTH="10" GC="0.3" CONTENT=","/>
-          <Glyph VPOS="40" HPOS="40" HEIGHT="10" WIDTH="10" GC="0.4" CONTENT="."/>
-          <Glyph VPOS="50" HPOS="50" HEIGHT="10" WIDTH="10" GC="0.5" CONTENT="b"/>
-          <Glyph VPOS="60" HPOS="60" HEIGHT="10" WIDTH="10" GC="0.6" CONTENT="c"/>
-          <Glyph VPOS="70" HPOS="70" HEIGHT="10" WIDTH="10" GC="0.7" CONTENT="."/>
+        <String HPOS="10" VPOS="10" WIDTH="80" HEIGHT="80" CONTENT="-a,.bc." WC="0.8">
+          <Glyph HPOS="10" VPOS="10" WIDTH="10" HEIGHT="10" CONTENT="-" GC="0.1"/>
+          <Glyph HPOS="20" VPOS="20" WIDTH="10" HEIGHT="10" CONTENT="a" GC="0.2"/>
+          <Glyph HPOS="30" VPOS="30" WIDTH="10" HEIGHT="10" CONTENT="," GC="0.3"/>
+          <Glyph HPOS="40" VPOS="40" WIDTH="10" HEIGHT="10" CONTENT="." GC="0.4"/>
+          <Glyph HPOS="50" VPOS="50" WIDTH="10" HEIGHT="10" CONTENT="b" GC="0.5"/>
+          <Glyph HPOS="60" VPOS="60" WIDTH="10" HEIGHT="10" CONTENT="c" GC="0.6"/>
+          <Glyph HPOS="70" VPOS="70" WIDTH="10" HEIGHT="10" CONTENT="." GC="0.7"/>
         </String>
       </Paragraph>
     </Page>
@@ -127,17 +128,42 @@ class YiddishAltoProcessorTest extends AnyFlatSpec with Matchers {
 
     val expected = <Page>
       <Paragraph>
-        <String VPOS="10" HPOS="10" HEIGHT="10" WIDTH="10" WC="0.1" CONTENT="-"></String>
-        <String VPOS="20" HPOS="20" HEIGHT="10" WIDTH="10" WC="0.2" CONTENT="a"></String>
-        <String VPOS="30" HPOS="30" HEIGHT="10" WIDTH="10" WC="0.3" CONTENT=","></String>
-        <String VPOS="40" HPOS="40" HEIGHT="10" WIDTH="10" WC="0.4" CONTENT="."></String>
-        <String VPOS="50" HPOS="50" HEIGHT="20" WIDTH="20" WC="0.8" CONTENT="bc"></String>
-        <String VPOS="70" HPOS="70" HEIGHT="10" WIDTH="10" WC="0.7" CONTENT="."></String>
+        <String HPOS="10" VPOS="10" WIDTH="10" HEIGHT="10" CONTENT="-" WC="0.1"></String>
+        <String HPOS="20" VPOS="20" WIDTH="10" HEIGHT="10" CONTENT="a" WC="0.2"></String>
+        <String HPOS="30" VPOS="30" WIDTH="10" HEIGHT="10" CONTENT="," WC="0.3"></String>
+        <String HPOS="40" VPOS="40" WIDTH="10" HEIGHT="10" CONTENT="." WC="0.4"></String>
+        <String HPOS="50" VPOS="50" WIDTH="20" HEIGHT="20" CONTENT="bc" WC="0.8"></String>
+        <String HPOS="70" VPOS="70" WIDTH="10" HEIGHT="10" CONTENT="." WC="0.7"></String>
       </Paragraph>
     </Page>
 
     val prettyPrinter = new PrettyPrinter(80, 2)
 
+    prettyPrinter.format(actual) shouldEqual prettyPrinter.format(expected)
+  }
+
+  "punctuationSplitRule" should "calculate coordinates correctly when splitting punctutation" in {
+    val original = {
+      <alto>
+        <String HPOS="1248" VPOS="1387" WIDTH="47" HEIGHT="42" CONTENT="A." WC="0.5">
+          <Glyph HPOS="1263" VPOS="1387" WIDTH="32" HEIGHT="42" CONTENT="A" GC="0.5"></Glyph>
+          <Glyph HPOS="1248" VPOS="1415" WIDTH="12" HEIGHT="14" CONTENT="." GC="0.1"></Glyph>
+        </String>
+      </alto>
+    }
+    val transform = new RuleTransformer(YiddishAltoProcessor.punctuationSplitRule)
+    val actual = transform(original).asInstanceOf[Elem]
+    val expected =
+      <alto>
+        <String HPOS="1263" VPOS="1387" WIDTH="32" HEIGHT="42" CONTENT="A" WC="0.5">
+          <Glyph HPOS="1263" VPOS="1387" WIDTH="32" HEIGHT="42" CONTENT="A" GC="0.5"></Glyph>
+        </String>
+        <String HPOS="1248" VPOS="1415" WIDTH="12" HEIGHT="14" CONTENT="." WC="0.1">
+          <Glyph HPOS="1248" VPOS="1415" WIDTH="12" HEIGHT="14" CONTENT="." GC="0.1"></Glyph>
+        </String>
+      </alto>
+
+    val prettyPrinter = new PrettyPrinter(80, 2)
     prettyPrinter.format(actual) shouldEqual prettyPrinter.format(expected)
   }
 }
