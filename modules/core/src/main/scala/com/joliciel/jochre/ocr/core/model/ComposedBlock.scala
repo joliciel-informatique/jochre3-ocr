@@ -5,17 +5,19 @@ import com.joliciel.jochre.ocr.core.segmentation.BlockType
 
 import scala.xml.{Elem, Node}
 
-case class ComposedBlock(textBlocks: Seq[TextBlock], rectangle: Rectangle) extends Block {
+case class ComposedBlock(rectangle: Rectangle, textBlocks: Seq[TextBlock]) extends Block {
   override def translate(xDiff: Int, yDiff: Int): ComposedBlock =
-    ComposedBlock(textBlocks.map(_.translate(xDiff, yDiff)), rectangle.translate(xDiff, yDiff))
+    ComposedBlock(rectangle.translate(xDiff, yDiff), textBlocks.map(_.translate(xDiff, yDiff)))
 
   override def rotate(imageInfo: ImageInfo): ComposedBlock =
-    ComposedBlock(textBlocks.map(_.rotate(imageInfo)), rectangle.rotate(imageInfo))
+    ComposedBlock(rectangle.rotate(imageInfo), textBlocks.map(_.rotate(imageInfo)))
 
   override def toXml(id: String): Elem =
     <ComposedBlock ID={id} HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString}>
       {textBlocks.zipWithIndex.map{ case (textBlock, i) => textBlock.toXml(f"${id}_T${i}")}}
     </ComposedBlock>
+
+  lazy val allWords: Seq[Word] = textBlocks.flatMap(_.allWords)
 }
 
 object ComposedBlock {
@@ -23,6 +25,6 @@ object ComposedBlock {
     val paragraphs = node.child.collect {
       case elem: Elem if elem.label == "TextBlock" => TextBlock.fromXML(imageInfo, elem)
     }.toSeq
-    ComposedBlock(paragraphs, Rectangle.fromXML(BlockType.Paragraph.entryName, node))
+    ComposedBlock(Rectangle.fromXML(BlockType.Paragraph.entryName, node), paragraphs)
   }
 }

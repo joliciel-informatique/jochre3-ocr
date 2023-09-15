@@ -5,17 +5,19 @@ import com.joliciel.jochre.ocr.core.segmentation.BlockType
 
 import scala.xml.{Elem, Node}
 
-case class TextBlock(textLines: Seq[TextLine], rectangle: Rectangle) extends Block {
+case class TextBlock(rectangle: Rectangle, textLines: Seq[TextLine]) extends Block {
   override def translate(xDiff: Int, yDiff: Int): TextBlock =
-    TextBlock(textLines.map(_.translate(xDiff, yDiff)), rectangle.translate(xDiff, yDiff))
+    TextBlock(rectangle.translate(xDiff, yDiff), textLines.map(_.translate(xDiff, yDiff)))
 
   override def rotate(imageInfo: ImageInfo): TextBlock =
-    TextBlock(textLines.map(_.rotate(imageInfo)), rectangle.rotate(imageInfo))
+    TextBlock(rectangle.rotate(imageInfo), textLines.map(_.rotate(imageInfo)))
 
   override def toXml(id: String): Elem =
     <TextBlock ID={id} HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString} >
       {textLines.map(_.toXml())}
     </TextBlock>
+
+  def allWords: Seq[Word] = textLines.flatMap(_.words)
 }
 
 object TextBlock {
@@ -23,6 +25,6 @@ object TextBlock {
     val textLines = node.child.collect {
       case elem: Elem if elem.label == "TextLine" => TextLine.fromXML(imageInfo, elem)
     }.toSeq
-    TextBlock(textLines, Rectangle.fromXML(BlockType.TextBox.entryName, node))
+    TextBlock(Rectangle.fromXML(BlockType.TextBox.entryName, node), textLines)
   }
 }
