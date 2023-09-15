@@ -12,7 +12,8 @@ case class TextLine(baseLine: Line, words: Seq[Word]) extends PageElement {
     TextLine(baseLine.rotate(imageInfo), words.map(_.rotate(imageInfo)))
 
   override def toXml(id: String): Elem =
-    <TextLine HPOS={baseLine.x1.toString} VPOS={baseLine.y1.toString} WIDTH={baseLine.width.toString} HEIGHT={baseLine.height.toString} BASELINE={baseLine.y1.toString}>
+    <TextLine HPOS={baseLine.x1.toString} VPOS={baseLine.y1.toString} WIDTH={baseLine.width.toString} HEIGHT={baseLine.height.toString}
+              BASELINE={f"${baseLine.x1},${baseLine.y1} ${baseLine.x2},${baseLine.y2}"}>
       {words.map(_.toXml())}
     </TextLine>
 }

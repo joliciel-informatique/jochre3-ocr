@@ -96,22 +96,36 @@ object ImageLabel {
   object Line {
     def fromXML(imageInfo: ImageInfo, node: Node): Line = {
       // BASELINE: According to Alto: Pixel coordinates based on the left-hand top corner of an image which define a polyline on which a line of text rests
-      // In Jochre2, this is a single INT (indicating the Y coordinate only, with X taken from RIGHT)
-      // Or a single pair (x2,y2)
-      // TODO: later we'll have to fix this, best would be to store x1,y1 x2,y2
+      // In Jochre2, this is a single INT (indicating the Y coordinate only, with X taken from LEFT)
       val baseLineText = (node \@ "BASELINE")
 
       val left = (node \@ "HPOS").toInt
       val width = (node \@ "WIDTH").toInt
 
-      val (x2, y2) = baseLineText.toIntOption match {
-        case Some(yCoord) => (left+width) -> yCoord
+      val (x1, y1, x2, y2) = baseLineText.toIntOption match {
+        case Some(yCoord) =>
+          val x1 = left
+          val y1 = yCoord
+          val (x2, y2) = imageInfo.rotate(x1 + width, y1)
+          (x1, y1, x2, y2)
         case None =>
-          val ints = baseLineText.split(',').map(_.strip()).map(_.toInt)
-          ints(0) -> ints(1)
+          val sets = baseLineText.split(' ')
+          if (sets.length==1) {
+            val ints = sets(0).split(',').map(_.toInt)
+            val x1 = ints(0)
+            val y1 = ints(1)
+            val (x2, y2) = imageInfo.rotate(x1 + width, y1)
+            (x1, y1, x2, y2)
+          } else {
+            val ints = sets.map(_.split(',').map(_.toInt))
+            val x1 = ints(0)(0)
+            val y1 = ints(0)(1)
+            val x2 = ints(1)(0)
+            val y2 = ints(1)(1)
+            (x1, y1, x2, y2)
+          }
       }
 
-      val (x1, y1) = imageInfo.rotate(x2 - width, y2)
       Line("", x1, y1, x2, y2)
     }
   }
