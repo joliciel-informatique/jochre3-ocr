@@ -1,6 +1,7 @@
 import BuildHelper._
 import Libraries._
 import scala.sys.process._
+import xerial.sbt.Sonatype._
 
 ThisBuild / scalaVersion := "2.13.11"
 ThisBuild / organization := "com.joli-ciel"
@@ -22,6 +23,8 @@ lazy val jochre3OCRVersion = sys.env.get("JOCHRE3_OCR_VERSION")
     "0.0.1-SNAPSHOT"
   }
 
+ThisBuild / version := jochre3OCRVersion
+
 ThisBuild / organization := "com.joliciel"
 ThisBuild / organizationName := "Joliciel Informatique SARL"
 ThisBuild / organizationHomepage := Some(url("https://joli-ciel.com/"))
@@ -34,9 +37,9 @@ ThisBuild / scmInfo := Some(
 )
 ThisBuild / developers := List(
   Developer(
-    id = "assaf.urieli@gmail.com",
+    id = "assafurieli@gmail.com",
     name = "Assaf Urieli",
-    email = "assaf.urieli@gmail.com",
+    email = "assafurieli@gmail.com",
     url = url("https://gitlab.com/assafurieli")
   )
 )
@@ -57,6 +60,9 @@ ThisBuild / publishTo := {
   else Some("releases" at nexus + "service/local/staging/deploy/maven2")
 }
 ThisBuild / publishMavenStyle := true
+ThisBuild / credentials += Credentials(Path.userHome / ".sbt" / "sonatype_credentials_joliciel")
+ThisBuild / publishTo := sonatypePublishToBundle.value
+ThisBuild / sonatypeProjectHosting := Some(GitLabHosting("assafurieli", "jochre/jochre3-ocr", "assafurieli@gmail.com"))
 
 val projectSettings = commonSettings ++ Seq(
   version := jochre3OCRVersion,
@@ -84,7 +90,6 @@ downloadZip := {
 (Compile / compile) := ((Compile / compile).dependsOn(downloadZip)).value
 
 testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
-credentials += Credentials(Path.userHome / ".sbt" / "sonatype_credentials_joliciel")
 
 lazy val root =
   Project(id = "jochre3-ocr", base = file("."))
@@ -106,7 +111,8 @@ lazy val core = project
       "org.bytedeco" % "javacv-platform" % javaCVVersion,
       "org.scala-lang.modules" %% "scala-xml" % scalaXmlVersion,
     ),
-    Compile / packageDoc / mappings := Seq(),
+    //Compile / packageDoc / mappings := Seq(),
+    Compile / packageDoc / publishArtifact := true,
     fork := true,
     publish / skip  := false,
   )
@@ -120,7 +126,8 @@ lazy val yiddish = project
       "com.joliciel.ljtrad" % "yivo-transcriber" % yivoTranscriberVersion,
       "com.joliciel.jochre" % "jochre-yiddish" % jochre2Version
     ),
-    Compile / packageDoc / mappings := Seq(),
+    //Compile / packageDoc / mappings := Seq(),
+    Compile / packageDoc / publishArtifact := true,
     fork := true,
     publish / skip  := false,
   )
