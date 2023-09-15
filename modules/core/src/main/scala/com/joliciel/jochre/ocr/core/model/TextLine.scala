@@ -4,12 +4,12 @@ import com.joliciel.jochre.ocr.core.model.ImageLabel.Line
 
 import scala.xml.{Elem, Node}
 
-case class TextLine(words: Seq[Word], baseLine: Line) extends PageElement {
+case class TextLine(baseLine: Line, words: Seq[Word]) extends PageElement {
   override def translate(xDiff: Int, yDiff: Int): TextLine =
-    TextLine(words.map(_.translate(xDiff, yDiff)), baseLine.translate(xDiff, yDiff))
+    TextLine(baseLine.translate(xDiff, yDiff), words.map(_.translate(xDiff, yDiff)))
 
   override def rotate(imageInfo: ImageInfo): TextLine =
-    TextLine(words.map(_.rotate(imageInfo)), baseLine.rotate(imageInfo))
+    TextLine(baseLine.rotate(imageInfo), words.map(_.rotate(imageInfo)))
 
   override def toXml(id: String): Elem =
     <TextLine HPOS={baseLine.x1.toString} VPOS={baseLine.y1.toString} WIDTH={baseLine.width.toString} HEIGHT={baseLine.height.toString} BASELINE={baseLine.y1.toString}>
@@ -22,6 +22,6 @@ object TextLine {
     val words = node.child.collect {
       case elem: Elem if elem.label == "String" => Word.fromXML(elem)
     }.toSeq
-    TextLine(words, Line.fromXML(imageInfo, node))
+    TextLine(Line.fromXML(imageInfo, node), words)
   }
 }

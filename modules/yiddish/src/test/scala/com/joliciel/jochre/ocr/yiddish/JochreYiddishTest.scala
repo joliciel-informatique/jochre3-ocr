@@ -18,6 +18,9 @@ object JochreYiddishTest extends JUnitRunnableSpec {
       } yield {
         val content = (alto \\ "String").map(node => node \@ "CONTENT").mkString(" ")
         assertTrue(content == "מאַמע - לשון")
+
+        val wcs = (alto \\ "String").map(node => node \@ "WC").map(_.toDouble)
+        assertTrue(wcs.forall(_>0.0))
       }
     }
   ).provideLayer(JochreYiddish.jochreYiddishLayer) @@ TestAspect.sequential

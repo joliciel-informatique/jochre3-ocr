@@ -1,5 +1,7 @@
 package com.joliciel.jochre.ocr.core.model
 
+import com.joliciel.jochre.ocr.core.utils.MathImplicits._
+
 import scala.xml.{Elem, Node}
 
 case class Page(
@@ -8,6 +10,8 @@ case class Page(
   width: Int,
   physicalPageNumber: Int,
   rotation: Double,
+  language: String,
+  confidence: Double,
   blocks: Seq[Block]) extends PageElement {
   override def translate(xDiff: Int, yDiff: Int): Page = {
     this.copy(blocks = blocks.map(_.translate(xDiff, yDiff)).collect{
@@ -26,7 +30,8 @@ case class Page(
   }
 
   override def toXml(idToIgnore: String): Elem =
-    <Page ID={id} HEIGHT={height.toString} WIDTH={width.toString} PHYSICAL_IMG_NR={physicalPageNumber.toString} ROTATION={rotation.toString} LANG="yi" PC="0.0000">
+    <Page ID={id} HEIGHT={height.toString} WIDTH={width.toString} PHYSICAL_IMG_NR={physicalPageNumber.toString} ROTATION={rotation.roundTo(2).toString}
+          LANG={language} PC={confidence.roundTo(2).toString}>
       <PrintSpace HEIGHT={height.toString} WIDTH={width.toString} HPOS="0" VPOS="0">
         {blocks.zipWithIndex.map{ case (block, i) => block.toXml(f"${id}_B${i}")}}
       </PrintSpace>
@@ -43,6 +48,8 @@ object Page {
     val rotation = (page \@ "ROTATION").toDouble
     val imageInfo = ImageInfo(width, height, rotation)
     val printSpace = (page \ "PrintSpace").head
+    val language = (page \@"LANG")
+    val confidence = (page \@ "PC").toDoubleOption.getOrElse(0.0)
 
     val blocks = printSpace.child.collect{
       case elem: Elem if elem.label == "TextBlock" => TextBlock.fromXML(imageInfo, elem)
@@ -50,6 +57,6 @@ object Page {
       case elem: Elem if elem.label == "Illustration" => Illustration.fromXML(elem)
     }.toSeq
 
-    Page(id, height, width, physicalPageNumber, rotation, blocks)
+    Page(id, height, width, physicalPageNumber, rotation, language, confidence, blocks)
   }
 }

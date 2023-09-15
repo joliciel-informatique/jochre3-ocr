@@ -1,7 +1,7 @@
 package com.joliciel.jochre.ocr.core
 
 import com.joliciel.jochre.ocr.core.analysis.{AltoProcessor, TextAnalyzer}
-import com.joliciel.jochre.ocr.core.model.{Illustration, Page}
+import com.joliciel.jochre.ocr.core.model.{ComposedBlock, Illustration, Page, TextBlock}
 import com.joliciel.jochre.ocr.core.output.Alto4Writer
 import com.joliciel.jochre.ocr.core.segmentation.{BlockPredictorService, IllustrationSegment, ImageSegmentExtractor, TextSegment}
 import com.joliciel.jochre.ocr.core.transform.{BoxTransform, Deskewer, GrayscaleTransform, ResizeImageAndKeepAspectRatio, Scale, SkewAngle}
@@ -69,7 +69,7 @@ trait AbstractJochre extends Jochre with OpenCvUtils with XmlImplicits {
 
   def processImage(mat: Mat, outputDir: Option[Path], fileName: String): Task[Elem] = {
     val outputLocation = outputDir.map(OutputLocation(_, fileName))
-
+    val baseName = FileUtils.removeFileExtension(fileName)
     for {
       // apply transforms
       transformedAndData <- ZIO.attempt{
@@ -117,12 +117,26 @@ trait AbstractJochre extends Jochre with OpenCvUtils with XmlImplicits {
             Seq(Illustration(block))
         }.flatten.sortBy(_.rectangle)
 
+        val allConfidences = blocks.flatMap{
+          case composedBlock:ComposedBlock => composedBlock.allWords
+          case textBlock:TextBlock => textBlock.allWords
+          case _ => Seq()
+        }.map(_.confidence)
+
+        val meanConfidence = if (allConfidences.size==0) {
+          0.0
+        } else {
+          allConfidences.sum / allConfidences.size
+        }
+
         val page = Page(
-          id = "1",
+          id = baseName,
           height = mat.rows(),
           width = mat.cols(),
           physicalPageNumber = 1,
           rotation = skewAngle,
+          language = "yi",
+          confidence = meanConfidence,
           blocks = blocks
         )
 
