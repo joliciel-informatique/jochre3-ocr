@@ -10,7 +10,7 @@ import com.typesafe.config.ConfigFactory
 import org.bytedeco.opencv.global.opencv_imgcodecs.{IMREAD_GRAYSCALE, imread}
 import org.bytedeco.opencv.opencv_core.Mat
 import org.slf4j.LoggerFactory
-import zio.{RIO, Task, ZIO}
+import zio.{Task, ZIO}
 
 import java.awt.image.BufferedImage
 import java.io.{File, FileWriter}
@@ -95,7 +95,7 @@ trait AbstractJochre extends Jochre with OpenCvUtils with XmlImplicits {
       blockPredictor <- blockPredictorService.getBlockPredictor(transformed, fileName, outputLocation)
       // detect blocks
       segments <- blockPredictor.predict()
-        .map{labeledRectangles =>
+        .mapAttempt{labeledRectangles =>
           // re-scale coordinates
           val rescaledRectangles = labeledRectangles.map(_.rescale(1 / scale))
 
@@ -109,13 +109,17 @@ trait AbstractJochre extends Jochre with OpenCvUtils with XmlImplicits {
         val blocks = segments.map{
           case TextSegment(block, subImage) =>
             // Analyze OCR on each text segment and extract the analyzed blocks
+            log.debug(f"About to perform OCR analysis for text segment $block")
             val altoXml = textAnalyzer.analyze(subImage)
             val jochreSubImage = Page.fromXML(altoXml)
             val translatedSubImage = jochreSubImage.rotate().translate(block.left, block.top)
+            log.debug(f"OCR analysis complete for $block")
             translatedSubImage.blocks
           case IllustrationSegment(block) =>
             Seq(Illustration(block))
         }.flatten.sortBy(_.rectangle)
+
+        log.debug(f"Found ${blocks.size} blocks")
 
         val allConfidences = blocks.flatMap{
           case composedBlock:ComposedBlock => composedBlock.allWords

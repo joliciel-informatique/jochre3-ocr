@@ -26,36 +26,37 @@ trait SegmentationPredictor[T <: ImageLabel] extends OpenCvUtils {
     for {
       bufferedImage <- ZIO.attempt(toBufferedImage(mat))
       prediction <- predictor(bufferedImage)
-    } yield {
-      val imageLabels = prediction.view
-        .map { case (label, image) =>
-          val mat = fromBufferedImage(image)
-          outputLocation.foreach { outputLocation =>
-            ImageIO.write(image, "png", new FileOutputStream(outputLocation.resolve(f"_${label}${extension}").toFile))
-            imwrite(outputLocation.resolve(f"_${label}_mat.png").toString, mat)
+      imageLabels <- ZIO.attempt{
+        val imageLabels = prediction.view
+          .map { case (label, image) =>
+            val mat = fromBufferedImage(image)
+            outputLocation.foreach { outputLocation =>
+              ImageIO.write(image, "png", new FileOutputStream(outputLocation.resolve(f"_${label}${extension}").toFile))
+              imwrite(outputLocation.resolve(f"_${label}_mat.png").toString, mat)
+            }
+            val detected = detector.detect(mat, label)
+            detected
+          }.toSeq
+          .flatten
+
+        imageLabels.zipWithIndex.foreach { case (imageLabel, i) => log.debug(s"Label $i: ${imageLabel}") }
+
+        outputLocation.foreach { outputLocation =>
+          val newMat: Mat = toRGB(mat.clone())
+
+          imageLabels.foreach {
+            case ImageLabel.Rectangle(label, left, top, width, height) =>
+              opencv_imgproc.rectangle(newMat, new Point(left, top), new Point(left + width, top + height), AbstractScalar.RED)
+              opencv_imgproc.putText(newMat, label, new Point(left + width + 2, top + height + 20), opencv_imgproc.FONT_HERSHEY_DUPLEX, 3, AbstractScalar.GREEN)
+            case ImageLabel.Line(label, x1, y1, x2, y2) =>
+              opencv_imgproc.line(newMat, new Point(x1, y1), new Point(x2, y2), AbstractScalar.RED)
+              opencv_imgproc.putText(newMat, label, new Point(x2 + 20, y2 + 5), opencv_imgproc.FONT_HERSHEY_DUPLEX, 1, AbstractScalar.GREEN)
           }
-          val detected = detector.detect(mat, label)
-          detected
-        }.toSeq
-        .flatten
 
-      imageLabels.zipWithIndex.foreach { case (imageLabel, i) => log.debug(s"Label $i: ${imageLabel}") }
-
-      outputLocation.foreach { outputLocation =>
-        val newMat: Mat = toRGB(mat.clone())
-
-        imageLabels.foreach {
-          case ImageLabel.Rectangle(label, left, top, width, height) =>
-            opencv_imgproc.rectangle(newMat, new Point(left, top), new Point(left + width, top + height), AbstractScalar.RED)
-            opencv_imgproc.putText(newMat, label, new Point(left + width + 2, top + height + 20), opencv_imgproc.FONT_HERSHEY_DUPLEX, 3, AbstractScalar.GREEN)
-          case ImageLabel.Line(label, x1, y1, x2, y2) =>
-            opencv_imgproc.line(newMat, new Point(x1, y1), new Point(x2, y2), AbstractScalar.RED)
-            opencv_imgproc.putText(newMat, label, new Point(x2 + 20, y2 + 5), opencv_imgproc.FONT_HERSHEY_DUPLEX, 1, AbstractScalar.GREEN)
+          imwrite(outputLocation.resolve("_labels.png").toString, newMat)
         }
-
-        imwrite(outputLocation.resolve("_labels.png").toString, newMat)
+        imageLabels
       }
-      imageLabels
-    }
+    } yield imageLabels
   }
 }

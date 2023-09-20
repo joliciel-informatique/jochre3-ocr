@@ -31,7 +31,11 @@ case class ImageSegmentExtractor(image: Mat, blocks: Seq[ImageLabel.Rectangle], 
 
     blocks.flatMap{
       case textBlock: ImageLabel.Rectangle if BlockType.withName(textBlock.label).isText =>
-        val subImage = withoutIllustrations.getSubimage(textBlock.left, textBlock.top, textBlock.width, textBlock.height)
+        val left = if (textBlock.left<0) { 0 } else {textBlock.left}
+        val width = if (left + textBlock.width > withoutIllustrations.getWidth) { withoutIllustrations.getWidth - left}  else { textBlock.width }
+        val top = if (textBlock.top<0) { 0 } else {textBlock.top}
+        val height = if (top + textBlock.height> withoutIllustrations.getHeight) { withoutIllustrations.getHeight - top } else { textBlock.height }
+        val subImage = withoutIllustrations.getSubimage(left, top, width, height)
         Some(TextSegment(textBlock, subImage))
       case block: ImageLabel.Rectangle if block.label == BlockType.Illustration.entryName =>
         Some(IllustrationSegment(block))
