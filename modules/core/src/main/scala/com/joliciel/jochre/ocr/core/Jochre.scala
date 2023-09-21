@@ -110,11 +110,12 @@ trait AbstractJochre extends Jochre with OpenCvUtils with XmlImplicits {
           case TextSegment(block, subImage) =>
             // Analyze OCR on each text segment and extract the analyzed blocks
             log.debug(f"About to perform OCR analysis for text segment $block")
-            val altoXml = textAnalyzer.analyze(subImage)
-            val jochreSubImage = Page.fromXML(altoXml)
-            val translatedSubImage = jochreSubImage.rotate().translate(block.left, block.top)
-            log.debug(f"OCR analysis complete for $block")
-            translatedSubImage.blocks
+            textAnalyzer.analyze(subImage).map { altoXml =>
+              val jochreSubImage = Page.fromXML(altoXml)
+              val translatedSubImage = jochreSubImage.rotate().translate(block.left, block.top)
+              log.debug(f"OCR analysis complete for $block")
+              translatedSubImage.blocks
+            }.getOrElse(Seq.empty)
           case IllustrationSegment(block) =>
             Seq(Illustration(block))
         }.flatten.sortBy(_.rectangle)

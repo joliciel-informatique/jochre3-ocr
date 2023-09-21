@@ -4,5 +4,5 @@ import java.awt.image.BufferedImage
 import scala.xml.Elem
 
 trait TextAnalyzer {
-  def analyze(image: BufferedImage): Elem
+  def analyze(image: BufferedImage): Option[Elem]
 }
