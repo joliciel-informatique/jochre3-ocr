@@ -7,7 +7,6 @@ import com.joliciel.jochre.ocr.core.segmentation.{BlockPredictorService, Illustr
 import com.joliciel.jochre.ocr.core.transform.{BoxTransform, Deskewer, GrayscaleTransform, ResizeImageAndKeepAspectRatio, Scale, SkewAngle}
 import com.joliciel.jochre.ocr.core.utils.{FileUtils, OpenCvUtils, OutputLocation, XmlImplicits}
 import com.typesafe.config.ConfigFactory
-import org.bytedeco.opencv.global.opencv_imgcodecs.{IMREAD_GRAYSCALE, imread}
 import org.bytedeco.opencv.opencv_core.Mat
 import org.slf4j.LoggerFactory
 import zio.{Task, ZIO}
@@ -57,7 +56,7 @@ trait AbstractJochre extends Jochre with OpenCvUtils with XmlImplicits {
     ZIO.foreach(inputFiles.zipWithIndex)
       { case (inputFile, i) =>
         log.debug(f"Processing file $i: ${inputFile.getPath}")
-        val mat = imread(inputFile.getPath, IMREAD_GRAYSCALE)
+        val mat = loadImage(inputFile.getPath)
         this.processImage(mat, outputDir, inputFile.getName)
       }
   }

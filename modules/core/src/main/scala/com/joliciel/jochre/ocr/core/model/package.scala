@@ -31,4 +31,8 @@ package object model {
   trait Block extends PageElement {
     def rectangle: Rectangle
   }
+
+  trait WordOrSpace extends PageElement {
+    def rectangle: Rectangle
+  }
 }
