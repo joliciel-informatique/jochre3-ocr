@@ -106,8 +106,11 @@ object ImageLabel {
         case Some(yCoord) =>
           val x1 = left
           val y1 = yCoord
-          val (x2, y2) = imageInfo.rotate(x1 + width, y1)
-          (x1, y1, x2, y2)
+          val right = x1+width
+          val (x2, y2) = imageInfo.rotate(right, y1)
+          // I can't explain why right gives better results than x2 here.
+          // Hopefully this only affects the strange case of Jochre2 with a single int value for the BASELINE
+          (x1, y1, right, y2)
         case None =>
           val sets = baseLineText.split(' ')
           if (sets.length==1) {

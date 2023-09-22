@@ -1,10 +1,10 @@
 package com.joliciel.jochre.ocr.core.transform
 
+import com.joliciel.jochre.ocr.core.corpus.AltoFinder
 import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
 import com.joliciel.jochre.ocr.core.utils.{FileUtils, OpenCvUtils}
 import com.typesafe.config.ConfigFactory
 import org.bytedeco.opencv.global.opencv_core._
-import org.bytedeco.opencv.global.opencv_imgcodecs.{IMREAD_GRAYSCALE, imread, imwrite}
 import org.bytedeco.opencv.global.opencv_imgproc
 import org.bytedeco.opencv.global.opencv_imgproc._
 import org.bytedeco.opencv.opencv_core._
@@ -31,7 +31,7 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) 
       this.unrotate(_, mat)).getOrElse(mat)
 
     val baseName = FileUtils.removeFileExtension(new File(path).getName)
-    outDir.foreach(outDir => imwrite(Paths.get(outDir.toString, baseName + "_deskewered.jpg").toString, rotated))
+    outDir.foreach(outDir => saveImage(rotated, Paths.get(outDir.toString, baseName + "_deskewered.jpg").toString))
     rotated
   }
 
@@ -46,12 +46,12 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) 
     val blur = new Mat()
     GaussianBlur(mat, blur, new Size(9, 9), 0)
 
-    debugDir.foreach(debugDir => imwrite(Paths.get(debugDir.toString, baseName + "_deskewer1_blur.jpg").toString, blur))
+    debugDir.foreach(debugDir => saveImage(blur, Paths.get(debugDir.toString, baseName + "_deskewer1_blur.jpg").toString))
 
     val thresh = new Mat()
     threshold(blur, thresh, 0, 255, THRESH_BINARY_INV + THRESH_OTSU)
 
-    debugDir.foreach(debugDir => imwrite(Paths.get(debugDir.toString, baseName + "_deskewer2_threshold.jpg").toString, thresh))
+    debugDir.foreach(debugDir => saveImage(thresh, Paths.get(debugDir.toString, baseName + "_deskewer2_threshold.jpg").toString))
 
     // thresh = cv2.threshold (blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
 
@@ -62,7 +62,7 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) 
     val dilated = new Mat()
     dilate(thresh, dilated, kernel, new Point(-1, -1), 3, BORDER_CONSTANT, new Scalar(morphologyDefaultBorderValue))
 
-    debugDir.foreach(debugDir => imwrite(Paths.get(debugDir.toString, baseName + "_deskewer3_dilated.jpg").toString, dilated))
+    debugDir.foreach(debugDir => saveImage(dilated, Paths.get(debugDir.toString, baseName + "_deskewer3_dilated.jpg").toString))
 
     // Find all contours
     val mode = opencv_imgproc.RETR_LIST
@@ -150,7 +150,7 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) 
           isInlier
       }
 
-      debugDir.foreach(debugDir => imwrite(Paths.get(debugDir.toString, baseName + "_deskewer4_rectangle.jpg").toString, colored))
+      debugDir.foreach(debugDir => saveImage(colored, Paths.get(debugDir.toString, baseName + "_deskewer4_rectangle.jpg").toString))
 
       val meanAngle = inliers.map(_.correctedAngle).sum / inliers.size
       log.debug(f"meanAngle: ${meanAngle}")
@@ -159,7 +159,7 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) 
   }
 }
 
-object Deskewer {
+object Deskewer extends OpenCvUtils {
   private val log = LoggerFactory.getLogger(getClass)
 
   class DeskewerCLI(arguments: Seq[String]) extends ScallopConf(arguments) {
@@ -182,14 +182,13 @@ object Deskewer {
     val files = FileUtils.recursiveListImages(inputDir.toFile)
 
     val deskewer = Deskewer(Some(outDir), debugDir)
-    val rotationTransfomer = new RotationTransformer()
 
     val transforms = List[ImageTransformer[_]](
       new ResizeImageAndKeepAspectRatio(options.longSide()))
 
     files.map { file =>
       log.debug(f"Processing ${file.getPath}")
-      val mat = imread(file.getPath, IMREAD_GRAYSCALE)
+      val mat = loadImage(file.getPath)
 
       val transformed: Mat = transforms.foldLeft(mat) {
         case (mat, transformer) =>
@@ -197,11 +196,13 @@ object Deskewer {
       }
 
       val calculated = deskewer.getSkewAngle(transformed, Some(file.getPath))
-      val readFromAlto = rotationTransfomer.getRotation(file.getPath)
+      val altoFinder = AltoFinder.default
+      val alto = altoFinder.getAltoPage(Path.of(file))
+      val expected = alto.rotation
       val calculatedOrZero = calculated.getOrElse(0.0)
 
       log.info(f"Calculated: $calculatedOrZero")
-      log.info(f"Read:       $readFromAlto")
+      log.info(f"Expected:   $expected")
 
       deskewer.deskew(file.getPath, mat, calculated)
     }

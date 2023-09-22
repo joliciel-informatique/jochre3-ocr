@@ -1,10 +1,13 @@
 package com.joliciel.jochre.ocr.core.utils
 
+import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
+import com.sun.javafx.collections.NonIterableChange.SimpleRemovedChange
 import org.bytedeco.javacv.Java2DFrameUtils
-import org.bytedeco.opencv.global.opencv_imgproc.{INTER_LINEAR, LINE_8, cvtColor, getRotationMatrix2D, warpAffine}
+import org.bytedeco.opencv.global.opencv_imgcodecs._
+import org.bytedeco.opencv.global.opencv_imgproc._
 import org.bytedeco.opencv.global.{opencv_core, opencv_imgproc}
 import org.bytedeco.opencv.helper.opencv_core.RGB
-import org.bytedeco.opencv.opencv_core.{Mat, MatVector, Point2f, RotatedRect, Scalar}
+import org.bytedeco.opencv.opencv_core.{Mat, MatVector, Point2f, Rect, RotatedRect, Scalar}
 import org.slf4j.LoggerFactory
 
 import java.awt.Color
@@ -12,6 +15,12 @@ import java.awt.image.BufferedImage
 
 trait OpenCvUtils {
   private val log = LoggerFactory.getLogger(getClass)
+
+  def loadImage(path: String): Mat =
+    imread(path, IMREAD_GRAYSCALE)
+
+  def saveImage(mat: Mat, path: String): Unit =
+    imwrite(path, mat)
 
   def rotate(angle: Double, mat: Mat): Mat = {
     val cy = mat.rows.toFloat / 2f
@@ -24,7 +33,6 @@ trait OpenCvUtils {
 
   def unrotate(angle: Double, mat: Mat): Mat =
     rotate(0 - angle, mat)
-
 
   def drawRotatedRect(mat: Mat, rotatedRect: RotatedRect, color: Color = Color.BLACK, thickness: Int = 1): Unit = {
     val vertices = new Point2f(4)
@@ -80,5 +88,11 @@ trait OpenCvUtils {
   def toBufferedImage(mat: Mat): BufferedImage = {
     //bufferedImageConverter.convert(cvConverter.convert(mat))
     Java2DFrameUtils.toBufferedImage(mat)
+  }
+
+  def crop(src: Mat, rectangle: Rectangle): Mat = {
+    val rect: Rect = new Rect(rectangle.left, rectangle.top, rectangle.width, rectangle.height)
+    val cropped: Mat = new Mat(src, rect)
+    cropped
   }
 }
