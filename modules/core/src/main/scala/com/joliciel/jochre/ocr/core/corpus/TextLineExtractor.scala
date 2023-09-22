@@ -5,11 +5,12 @@ import com.joliciel.jochre.ocr.core.utils.{FileUtils, OpenCvUtils}
 import org.rogach.scallop.{ScallopConf, ScallopOption}
 import org.slf4j.LoggerFactory
 
-import java.io.File
+import java.io.{File, FileOutputStream, OutputStreamWriter}
 import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.Path
+import scala.util.Using
 
-case class TextLineExtractor(altoFinder: AltoFinder = AltoFinder.default) extends OpenCvUtils {
+case class TextLineExtractor(textSimplifier: TextSimplifier = TextSimplifier.default, altoFinder: AltoFinder = AltoFinder.default) extends OpenCvUtils {
   private val log = LoggerFactory.getLogger(getClass)
 
   def transform(corpusDir: Path, outDir: Path, debugDir: Option[Path], keepStructure: Boolean, maxFiles: Option[Int], extension: String, fileList: Option[Set[String]]) = {
@@ -23,49 +24,51 @@ case class TextLineExtractor(altoFinder: AltoFinder = AltoFinder.default) extend
       RotationTransformer
     )
 
-    locations.map{ location =>
-      val mat = loadImage(location.getPath)
-      val alto = altoFinder.getAltoPage(Path.of(location))
+    val textFile = new File(outDir.toFile, "line-to-text.txt")
+    Using.resource(new OutputStreamWriter(new FileOutputStream(textFile), StandardCharsets.UTF_8)) { writer =>
+      locations.map { location =>
+        val mat = loadImage(location.getPath)
+        val alto = altoFinder.getAltoPage(Path.of(location))
 
-      val (transformedMat, transformedAlto)= initialTransforms.foldLeft(mat -> alto) {
-        case ((mat, alto), transformer) =>
-          val (newMat, newAlto, _) = transformer.transform(location.getPath, mat, alto)
-          newMat -> newAlto
-      }
-
-      val textLineWithRectangles = transformedAlto.textBlocks.flatMap(_.textLinesWithRectangles) ++
-        transformedAlto.composedBlocks.flatMap(_.textBlocks.flatMap(_.textLinesWithRectangles))
-
-      val filePath = Path.of(location)
-      val outFile =
-        if (keepStructure) {
-          outDir.resolve(corpusDir.relativize(filePath)).toFile
-        } else {
-          new File(outDir.toFile, filePath.toFile.getName)
+        val (transformedMat, transformedAlto) = initialTransforms.foldLeft(mat -> alto) {
+          case ((mat, alto), transformer) =>
+            val (newMat, newAlto, _) = transformer.transform(location.getPath, mat, alto)
+            newMat -> newAlto
         }
 
-      val parentDir = outFile.getParentFile
-      parentDir.mkdirs()
+        val textLineWithRectangles = transformedAlto.textBlocks.flatMap(_.textLinesWithRectangles) ++
+          transformedAlto.composedBlocks.flatMap(_.textBlocks.flatMap(_.textLinesWithRectangles))
 
-      val baseName = FileUtils.removeFileExtension(outFile.getName)
+        val filePath = Path.of(location)
+        val fileName = if (keepStructure) {
+          corpusDir.relativize(filePath).toString
+        } else {
+          filePath.toFile.getName
+        }
 
-      debugDir.foreach(_.toFile.mkdirs())
-      debugDir.foreach(debugDir => saveImage(transformedMat, new File(debugDir.toFile, f"${baseName}_rotated.png").getPath))
+        val outFile = new File(outDir.toFile, fileName)
 
-      textLineWithRectangles.zipWithIndex.map{ case ((textLine, rectangle), i) =>
-        log.debug(f"Next textLine: $rectangle")
-        val cropped = crop(transformedMat, rectangle)
-        val content = textLine.content
+        val parentDir = outFile.getParentFile
+        parentDir.mkdirs()
 
-        val fileNameBase = f"${baseName}_${"%03d".format(i)}"
-        val imageFileName = f"${fileNameBase}.${extension}"
-        val textFileName = f"${fileNameBase}.txt"
+        val baseName = FileUtils.removeFileExtension(outFile.getName)
 
-        val imageFile = new File(parentDir, imageFileName)
-        val textFile = new File(parentDir, textFileName)
+        debugDir.foreach(_.toFile.mkdirs())
+        debugDir.foreach(debugDir => saveImage(transformedMat, new File(debugDir.toFile, f"${baseName}_rotated.png").getPath))
 
-        saveImage(cropped, imageFile.getPath)
-        Files.write(Paths.get(textFile.getPath), content.getBytes(StandardCharsets.UTF_8))
+        textLineWithRectangles.zipWithIndex.map { case ((textLine, rectangle), i) =>
+          log.debug(f"Next textLine: $rectangle")
+          val cropped = crop(transformedMat, rectangle)
+          val content = textSimplifier.simplify(textLine.content)
+
+          val fileNameBase = f"${baseName}_${"%03d".format(i)}"
+          val imageFileName = f"${fileNameBase}.${extension}"
+
+          writer.write(f"${imageFileName}\t${content}\n")
+          val imageFile = new File(parentDir, imageFileName)
+          saveImage(cropped, imageFile.getPath)
+        }
+        writer.flush()
       }
     }
   }
@@ -83,7 +86,7 @@ object TextLineExtractor {
     verify()
   }
 
-  def main(args: Array[String]): Unit = {
+  def execute(textLineExtractor: TextLineExtractor, args: Array[String]): Unit = {
     val options = new TextLineExtractorCLI(args.toIndexedSeq)
 
     val corpusDir = new File(options.corpusDir())
@@ -98,7 +101,11 @@ object TextLineExtractor {
 
     val extension = options.extension()
 
-    val textLineExtractor = TextLineExtractor()
     textLineExtractor.transform(corpusPath, outPath, debugDir, options.keepStructure(), options.maxFiles.toOption, extension, fileList)
+  }
+
+  def main(args: Array[String]): Unit = {
+    val textLineExtractor = TextLineExtractor()
+    execute(textLineExtractor, args)
   }
 }
