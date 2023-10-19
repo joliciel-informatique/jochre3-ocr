@@ -28,11 +28,15 @@ package object model {
     def toXml(id: String = ""): Elem
   }
 
-  trait Block extends PageElement {
+  trait Block extends PageElement with Ordered[Block] {
     def rectangle: Rectangle
+
+    override def compareTo(that: Block): Int = this.rectangle.compare(that.rectangle)
   }
 
-  trait WordOrSpace extends PageElement {
+  trait WordOrSpace extends PageElement with Ordered[WordOrSpace] {
     def rectangle: Rectangle
+
+    override def compareTo(that: WordOrSpace): Int = this.rectangle.left.compare(that.rectangle.left)
   }
 }

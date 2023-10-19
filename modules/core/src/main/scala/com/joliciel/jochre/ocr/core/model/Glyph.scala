@@ -5,7 +5,7 @@ import com.joliciel.jochre.ocr.core.utils.MathImplicits._
 
 import scala.xml.{Elem, Node}
 
-case class Glyph(rectangle: Rectangle, confidence: Double) extends PageElement {
+case class Glyph(rectangle: Rectangle, confidence: Double) extends PageElement with Ordered[Glyph] {
   override def translate(xDiff: Int, yDiff: Int): Glyph =
     Glyph(rectangle.translate(xDiff, yDiff), confidence)
 
@@ -16,6 +16,8 @@ case class Glyph(rectangle: Rectangle, confidence: Double) extends PageElement {
     <Glyph HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString}
            CONTENT={rectangle.label} GC={confidence.roundTo(2).toString}>
     </Glyph>
+
+  override def compare(that: Glyph): Int = this.rectangle.left.compare(that.rectangle.left)
 }
 
 object Glyph {

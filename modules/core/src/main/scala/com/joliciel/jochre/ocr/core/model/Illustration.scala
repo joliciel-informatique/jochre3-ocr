@@ -15,6 +15,8 @@ case class Illustration(rectangle: Rectangle) extends Block {
   override def toXml(id: String): Elem =
     <Illustration ID={id} HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString}>
     </Illustration>
+
+  override def compare(that: Block): Int = this.rectangle.compare(that.rectangle)
 }
 
 object Illustration {

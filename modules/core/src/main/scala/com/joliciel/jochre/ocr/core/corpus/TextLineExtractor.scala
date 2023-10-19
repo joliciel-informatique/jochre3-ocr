@@ -1,76 +1,55 @@
 package com.joliciel.jochre.ocr.core.corpus
 
-import com.joliciel.jochre.ocr.core.utils.FileUtils.recursiveListImages
+import com.joliciel.jochre.ocr.core.model.Page
 import com.joliciel.jochre.ocr.core.utils.{FileUtils, OpenCvUtils}
+import org.bytedeco.opencv.opencv_core.Mat
 import org.rogach.scallop.{ScallopConf, ScallopOption}
 import org.slf4j.LoggerFactory
 
 import java.io.{File, FileOutputStream, OutputStreamWriter}
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
-import scala.util.Using
 
-case class TextLineExtractor(textSimplifier: TextSimplifier = TextSimplifier.default, altoFinder: AltoFinder = AltoFinder.default) extends OpenCvUtils {
+case class TextLineExtractor(
+  corpusDir: Path,
+  outDir: Path,
+  debugDir: Option[Path] = None,
+  keepStructure: Boolean = false,
+  maxFiles: Option[Int] = None,
+  extension: String = "png",
+  fileList: Option[Set[String]] = None,
+  textSimplifier: TextSimplifier = TextSimplifier.default,
+  altoFinder: AltoFinder = AltoFinder.default
+) extends CorpusAnnotator with OpenCvUtils {
   private val log = LoggerFactory.getLogger(getClass)
 
-  def transform(corpusDir: Path, outDir: Path, debugDir: Option[Path], keepStructure: Boolean, maxFiles: Option[Int], extension: String, fileList: Option[Set[String]]) = {
-    val corpusFiles = recursiveListImages(corpusDir.toFile)
+  val textFile = new File(outDir.toFile, "line-to-text.txt")
+  val writer = new OutputStreamWriter(new FileOutputStream(textFile), StandardCharsets.UTF_8)
+  debugDir.foreach(_.toFile.mkdirs())
 
-    val locations = corpusFiles
-      .filter(location => fileList.map(_.contains(Path.of(location).getFileName.toString)).getOrElse(true))
-      .take(maxFiles.getOrElse(corpusFiles.size))
+  def annotateOneFile(mat: Mat, alto: Page, parentDir: File, baseName: String): Unit = {
+    val textLineWithRectangles = alto.textBlocks.flatMap(_.textLinesWithRectangles) ++
+      alto.composedBlocks.flatMap(_.textBlocks.flatMap(_.textLinesWithRectangles))
 
-    val initialTransforms = List[AnnotatedImageTransformer[_]](
-      RotationTransformer
-    )
+    debugDir.foreach(debugDir => saveImage(mat, new File(debugDir.toFile, f"${baseName}_rotated.png").getPath))
 
-    val textFile = new File(outDir.toFile, "line-to-text.txt")
-    Using.resource(new OutputStreamWriter(new FileOutputStream(textFile), StandardCharsets.UTF_8)) { writer =>
-      locations.map { location =>
-        val mat = loadImage(location.getPath)
-        val alto = altoFinder.getAltoPage(Path.of(location))
+    textLineWithRectangles.zipWithIndex.map { case ((textLine, rectangle), i) =>
+      log.debug(f"Next textLine: $rectangle")
+      val cropped = crop(mat, rectangle)
+      val content = textSimplifier.simplify(textLine.content)
 
-        val (transformedMat, transformedAlto) = initialTransforms.foldLeft(mat -> alto) {
-          case ((mat, alto), transformer) =>
-            val (newMat, newAlto, _) = transformer.transform(location.getPath, mat, alto)
-            newMat -> newAlto
-        }
+      val fileNameBase = f"${baseName}_${"%03d".format(i)}"
+      val imageFileName = f"${fileNameBase}.${extension}"
 
-        val textLineWithRectangles = transformedAlto.textBlocks.flatMap(_.textLinesWithRectangles) ++
-          transformedAlto.composedBlocks.flatMap(_.textBlocks.flatMap(_.textLinesWithRectangles))
-
-        val filePath = Path.of(location)
-        val fileName = if (keepStructure) {
-          corpusDir.relativize(filePath).toString
-        } else {
-          filePath.toFile.getName
-        }
-
-        val outFile = new File(outDir.toFile, fileName)
-
-        val parentDir = outFile.getParentFile
-        parentDir.mkdirs()
-
-        val baseName = FileUtils.removeFileExtension(outFile.getName)
-
-        debugDir.foreach(_.toFile.mkdirs())
-        debugDir.foreach(debugDir => saveImage(transformedMat, new File(debugDir.toFile, f"${baseName}_rotated.png").getPath))
-
-        textLineWithRectangles.zipWithIndex.map { case ((textLine, rectangle), i) =>
-          log.debug(f"Next textLine: $rectangle")
-          val cropped = crop(transformedMat, rectangle)
-          val content = textSimplifier.simplify(textLine.content)
-
-          val fileNameBase = f"${baseName}_${"%03d".format(i)}"
-          val imageFileName = f"${fileNameBase}.${extension}"
-
-          writer.write(f"${imageFileName}\t${content}\n")
-          val imageFile = new File(parentDir, imageFileName)
-          saveImage(cropped, imageFile.getPath)
-        }
-        writer.flush()
-      }
+      writer.write(f"${imageFileName}\t${content}\n")
+      val imageFile = new File(parentDir, imageFileName)
+      saveImage(cropped, imageFile.getPath)
     }
+    writer.flush()
+  }
+
+  def cleanUp(): Unit = {
+    writer.close()
   }
 }
 
@@ -86,7 +65,7 @@ object TextLineExtractor {
     verify()
   }
 
-  def execute(textLineExtractor: TextLineExtractor, args: Array[String]): Unit = {
+  def execute(args: Array[String], textSimplifier: TextSimplifier = TextSimplifier.default, altoFinder: AltoFinder = AltoFinder.default): Unit = {
     val options = new TextLineExtractorCLI(args.toIndexedSeq)
 
     val corpusDir = new File(options.corpusDir())
@@ -94,18 +73,16 @@ object TextLineExtractor {
     val outDir = new File(options.outDir())
     outDir.mkdirs()
     val outPath = outDir.toPath
-
     val debugDir = options.debugDir.toOption.map(debugDir => (new File(debugDir)).toPath)
-
     val fileList = options.fileList.toOption.map(FileUtils.readFile(_).toSet)
-
     val extension = options.extension()
 
-    textLineExtractor.transform(corpusPath, outPath, debugDir, options.keepStructure(), options.maxFiles.toOption, extension, fileList)
+    val textLineExtractor = TextLineExtractor(corpusPath, outPath, debugDir, options.keepStructure(), options.maxFiles.toOption, extension, fileList,
+      textSimplifier, altoFinder)
+    textLineExtractor.annotate()
   }
 
   def main(args: Array[String]): Unit = {
-    val textLineExtractor = TextLineExtractor()
-    execute(textLineExtractor, args)
+    execute(args)
   }
 }
