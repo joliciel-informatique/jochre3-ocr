@@ -30,7 +30,7 @@ trait CorpusAnnotator extends FileUtils with OpenCvUtils {
         RotationTransformer
       )
 
-      locations.map { location =>
+      locations.zipWithIndex.map { case (location, i) =>
         log.info(f"About to annotate ${location.getPath}")
         val mat = loadImage(location.getPath)
         val alto = altoFinder.getAltoPage(Path.of(location))
@@ -48,21 +48,19 @@ trait CorpusAnnotator extends FileUtils with OpenCvUtils {
           filePath.toFile.getName
         }
 
-        val outFile = new File(outDir.toFile, fileName)
-
-        val parentDir = outFile.getParentFile
+        val parentDir = outDir.toFile
         parentDir.mkdirs()
 
-        val baseName = FileUtils.removeFileExtension(outFile.getName)
+        val baseName = FileUtils.removeFileExtension(fileName)
 
-        this.annotateOneFile(transformedMat, transformedAlto, parentDir, baseName)
+        this.annotateOneFile(transformedMat, transformedAlto, parentDir, baseName, i)
       }
     } finally {
       this.cleanUp()
     }
   }
 
-  def annotateOneFile(mat: Mat, alto: Page, parentDir: File, baseName: String): Unit
+  def annotateOneFile(mat: Mat, alto: Page, parentDir: File, baseName: String, index: Int): Unit
 
   def cleanUp(): Unit
 }

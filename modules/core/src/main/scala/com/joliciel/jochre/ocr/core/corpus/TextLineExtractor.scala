@@ -27,7 +27,7 @@ case class TextLineExtractor(
   val writer = new OutputStreamWriter(new FileOutputStream(textFile), StandardCharsets.UTF_8)
   debugDir.foreach(_.toFile.mkdirs())
 
-  def annotateOneFile(mat: Mat, alto: Page, parentDir: File, baseName: String): Unit = {
+  def annotateOneFile(mat: Mat, alto: Page, parentDir: File, baseName: String, index: Int): Unit = {
     val textLineWithRectangles = alto.textBlocks.flatMap(_.textLinesWithRectangles) ++
       alto.composedBlocks.flatMap(_.textBlocks.flatMap(_.textLinesWithRectangles))
 
@@ -78,7 +78,7 @@ object TextLineExtractor {
     val extension = options.extension()
 
     val textLineExtractor = TextLineExtractor(corpusPath, outPath, debugDir, options.keepStructure(), options.maxFiles.toOption, extension, fileList,
-      textSimplifier, altoFinder)
+      textSimplifier, altoFinder=altoFinder)
     textLineExtractor.annotate()
   }
 
