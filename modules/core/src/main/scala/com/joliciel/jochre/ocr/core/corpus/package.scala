@@ -17,6 +17,9 @@ package object corpus {
     /** The last baseline of a paragraph */
     case object FinalBaseLine extends YoloObjectType
 
+    /** A single word */
+    case object Word extends YoloObjectType
+
     /** A separator between two words */
     case object WordSeparator extends YoloObjectType
 

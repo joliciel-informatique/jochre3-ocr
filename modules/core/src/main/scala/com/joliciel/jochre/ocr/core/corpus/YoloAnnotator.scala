@@ -89,6 +89,14 @@ case class YoloAnnotator(
 
         val baseLineBoxTyped = baseLineBox.copy(yoloClass = baseLineType)
 
+        val wordBoxes = textLine.words.map{ word =>
+          YoloBox(YoloObjectType.Word,
+            xCenter = word.rectangle.xCenter.toDouble / width,
+            yCenter = word.rectangle.yCenter.toDouble / height,
+            width = word.rectangle.width.toDouble / width,
+            height = word.rectangle.height.toDouble / height)
+        }
+
         val wordSeparatorBoxes = textLine.spaces.map { space =>
           YoloBox(YoloObjectType.WordSeparator,
             xCenter = (space.rectangle.left.toDouble + (space.rectangle.width.toDouble / 2.0)) / width,
@@ -109,7 +117,7 @@ case class YoloAnnotator(
             }
           }
         }
-        val allBoxes = Seq(baseLineBox, baseLineBoxTyped) ++ wordSeparatorBoxes ++ letterSeparatorBoxes
+        val allBoxes = Seq(baseLineBox, baseLineBoxTyped) ++ wordBoxes ++ wordSeparatorBoxes ++ letterSeparatorBoxes
         allBoxes.filter(box => objectTypeSet.contains(box.yoloClass))
       }
     }
@@ -144,6 +152,7 @@ case class YoloAnnotator(
             case YoloObjectType.BaseLine => Color.BLUE
             case YoloObjectType.NonFinalBaseLine => Color.BLUE
             case YoloObjectType.FinalBaseLine => Color.RED
+            case YoloObjectType.Word => Color.YELLOW
             case YoloObjectType.WordSeparator => Color.YELLOW
             case YoloObjectType.LetterSeparator => Color.MAGENTA
           }

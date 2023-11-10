@@ -16,6 +16,9 @@ object ImageLabel {
     val right: Int = left + width
     val bottom: Int = top + height
 
+    val xCenter: Int = (left + right) / 2
+    val yCenter: Int = (top + bottom) / 2
+
     def contains(that: Rectangle): Boolean = left <= that.left && top <= that.top &&
       left + width >= that.left + that.width && top + height >= that.top + that.height
 
