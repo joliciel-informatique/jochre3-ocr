@@ -36,6 +36,8 @@ case class TextBlock(rectangle: Rectangle, textLines: Seq[TextLine]) extends Blo
     </TextBlock>
 
   def allWords: Seq[Word] = textLines.flatMap(_.words)
+
+  override def compare(that: Block): Int = this.rectangle.compare(that.rectangle)
 }
 
 object TextBlock {

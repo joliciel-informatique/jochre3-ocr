@@ -19,17 +19,21 @@ case class Page(
     })
   }
 
-  val textBlocks: Seq[TextBlock] = blocks.collect{
+  lazy val textBlocks: Seq[TextBlock] = blocks.collect{
     case textBlock: TextBlock => textBlock
   }
 
-  val composedBlocks: Seq[ComposedBlock] = blocks.collect {
+  lazy val composedBlocks: Seq[ComposedBlock] = blocks.collect {
     case composedBlock: ComposedBlock => composedBlock
   }
 
-  val illustrations: Seq[Illustration] = blocks.collect {
+  lazy val illustrations: Seq[Illustration] = blocks.collect {
     case illustration: Illustration => illustration
   }
+
+  lazy val allTextBoxes: Seq[TextBlock] = (composedBlocks.flatMap(_.textBlocks) ++ textBlocks).sorted
+
+  lazy val allTextLines: Seq[TextLine] = (textBlocks.flatMap(_.textLines) ++ composedBlocks.flatMap(_.textBlocks.flatMap(_.textLines))).sorted
 
   def rotate(): Page = {
     this.rotate(ImageInfo(width, height, 0-rotation))

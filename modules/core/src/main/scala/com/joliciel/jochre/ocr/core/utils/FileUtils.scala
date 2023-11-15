@@ -5,7 +5,7 @@ import java.net.URI
 import scala.io.Source
 import scala.util.matching.Regex
 
-object FileUtils {
+trait FileUtils {
   def removeFileExtension(filename: String, removeAllExtensions: Boolean = true): String = {
     if (filename == null || filename.isEmpty) return filename
     val extPattern = "(?<!^)[.]" + (if (removeAllExtensions) ".*" else "[^.]*$")
@@ -28,3 +28,5 @@ object FileUtils {
   def recursiveListImages(dir: File): Vector[URI] =
     recursiveListFiles(dir, ".*\\.jpg|.*\\.png|.*\\.jpeg".r).map(_.toURI).sortBy(_.getPath).toVector
 }
+
+object FileUtils extends FileUtils

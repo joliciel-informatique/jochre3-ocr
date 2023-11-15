@@ -4,13 +4,14 @@ import com.joliciel.jochre.ocr.core.model.ImageLabel.Line
 
 import scala.xml.{Elem, Node}
 
-case class TextLine(baseLine: Line, wordsAndSpaces: Seq[WordOrSpace]) extends PageElement {
+case class TextLine(baseLine: Line, wordsAndSpaces: Seq[WordOrSpace]) extends PageElement with Ordered[TextLine] {
   lazy val content: String = wordsAndSpaces.map{
     case Word(rectangle, _, _) => rectangle.label
     case Space(_) => " "
   }.mkString
 
   lazy val words: Seq[Word] = wordsAndSpaces.collect{ case w: Word => w }
+  lazy val spaces: Seq[Space] = wordsAndSpaces.collect{ case s: Space => s }
 
   override def translate(xDiff: Int, yDiff: Int): TextLine =
     TextLine(baseLine.translate(xDiff, yDiff), wordsAndSpaces.map(_.translate(xDiff, yDiff)).collect{ case wordOrSpace: WordOrSpace => wordOrSpace })
@@ -23,6 +24,9 @@ case class TextLine(baseLine: Line, wordsAndSpaces: Seq[WordOrSpace]) extends Pa
               BASELINE={f"${baseLine.x1},${baseLine.y1} ${baseLine.x2},${baseLine.y2}"}>
       {wordsAndSpaces.map(_.toXml())}
     </TextLine>
+
+  override def compare(that: TextLine): Int =
+    this.baseLine.compare(that.baseLine)
 }
 
 object TextLine {

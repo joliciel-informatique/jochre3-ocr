@@ -16,6 +16,9 @@ object ImageLabel {
     val right: Int = left + width
     val bottom: Int = top + height
 
+    val xCenter: Int = (left + right) / 2
+    val yCenter: Int = (top + bottom) / 2
+
     def contains(that: Rectangle): Boolean = left <= that.left && top <= that.top &&
       left + width >= that.left + that.width && top + height >= that.top + that.height
 
@@ -59,7 +62,7 @@ object ImageLabel {
     def apply(label: String, rotatedRect: RotatedRect): Rectangle =
       Rectangle(label, rotatedRect.boundingRect().x, rotatedRect.boundingRect().y, rotatedRect.boundingRect().width, rotatedRect.boundingRect.height)
 
-    def fromXML(label: String, node: Node): Rectangle = Rectangle(label, left=(node \@ "HPOS").toInt, top=(node \@ "VPOS").toInt, width=(node \@ "WIDTH").toInt, height = (node \@ "HEIGHT").toInt)
+    def fromXML(label: String, node: Node): Rectangle = Rectangle(label, left=(node \@ "HPOS").toInt, top=(node \@ "VPOS").toInt, width=(node \@ "WIDTH").toInt, height = (node \@ "HEIGHT").toIntOption.getOrElse(1))
   }
 
   case class Line(label: String, x1: Int, y1: Int, x2: Int, y2: Int) extends ImageLabel with Ordered[Line] {
@@ -110,7 +113,7 @@ object ImageLabel {
           val (x2, y2) = imageInfo.rotate(right, y1)
           // I can't explain why right gives better results than x2 here.
           // Hopefully this only affects the strange case of Jochre2 with a single int value for the BASELINE
-          (x1, y1, right, y2)
+          (x1, y1, x2, y2)
         case None =>
           val sets = baseLineText.split(' ')
           if (sets.length==1) {

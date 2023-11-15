@@ -17,6 +17,8 @@ case class Word(rectangle: Rectangle, glyphs: Seq[Glyph], confidence: Double) ex
             CONTENT={rectangle.label} WC={confidence.roundTo(2).toString}>
       {glyphs.map(_.toXml())}
     </String>
+
+  override def compare(that: WordOrSpace): Int = this.rectangle.left.compare(that.rectangle.left)
 }
 
 object Word {
