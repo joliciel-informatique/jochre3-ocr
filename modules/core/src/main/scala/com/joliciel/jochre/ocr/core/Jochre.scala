@@ -67,6 +67,7 @@ trait AbstractJochre extends Jochre with OpenCvUtils with XmlImplicits {
   }
 
   def processImage(mat: Mat, outputDir: Option[Path], fileName: String): Task[Elem] = {
+    log.info(f"Processing image $fileName of size ${mat.cols()}X${mat.rows()}")
     val outputLocation = outputDir.map(OutputLocation(_, fileName))
     val baseName = FileUtils.removeFileExtension(fileName)
     for {
