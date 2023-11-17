@@ -18,6 +18,8 @@ case class ComposedBlock(rectangle: Rectangle, textBlocks: Seq[TextBlock]) exten
     </ComposedBlock>
 
   lazy val allWords: Seq[Word] = textBlocks.flatMap(_.allWords)
+
+  override def compare(that: Block): Int = this.rectangle.compare(that.rectangle)
 }
 
 object ComposedBlock {

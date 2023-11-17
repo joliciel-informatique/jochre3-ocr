@@ -6,6 +6,24 @@ import com.joliciel.jochre.ocr.core.segmentation.BlockType
 import scala.xml.{Elem, Node}
 
 case class TextBlock(rectangle: Rectangle, textLines: Seq[TextLine]) extends Block {
+  lazy val textLinesWithRectangles: Seq[(TextLine, Rectangle)] = {
+    val optionalTextLinesAfter = textLines.drop(1).map(Some(_)) :+ None
+
+    val surroundedTextLines = textLines.zip(optionalTextLinesAfter)
+    val rectangles = surroundedTextLines.foldLeft(Seq.empty[Rectangle]) { case (rectangles, (current, after)) =>
+      val lastRectangle = rectangles.lastOption
+      val top = lastRectangle.map(_.bottom).getOrElse(rectangle.top)
+      val height = after.map { after =>
+        val distanceToTop = current.baseLine.y1 - top
+        val distanceToNext = after.baseLine.y1 - current.baseLine.y1
+        distanceToTop + (distanceToNext * 0.25).toInt
+      }.getOrElse(rectangle.bottom - top)
+      val myRectangle = Rectangle(current.content, current.baseLine.x1, top, current.baseLine.x2 - current.baseLine.x1, height)
+      rectangles :+ myRectangle
+    }
+    textLines.zip(rectangles)
+  }
+
   override def translate(xDiff: Int, yDiff: Int): TextBlock =
     TextBlock(rectangle.translate(xDiff, yDiff), textLines.map(_.translate(xDiff, yDiff)))
 
@@ -18,6 +36,8 @@ case class TextBlock(rectangle: Rectangle, textLines: Seq[TextLine]) extends Blo
     </TextBlock>
 
   def allWords: Seq[Word] = textLines.flatMap(_.words)
+
+  override def compare(that: Block): Int = this.rectangle.compare(that.rectangle)
 }
 
 object TextBlock {

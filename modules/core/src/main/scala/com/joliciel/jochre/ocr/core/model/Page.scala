@@ -19,8 +19,28 @@ case class Page(
     })
   }
 
+  lazy val textBlocks: Seq[TextBlock] = blocks.collect{
+    case textBlock: TextBlock => textBlock
+  }
+
+  lazy val composedBlocks: Seq[ComposedBlock] = blocks.collect {
+    case composedBlock: ComposedBlock => composedBlock
+  }
+
+  lazy val illustrations: Seq[Illustration] = blocks.collect {
+    case illustration: Illustration => illustration
+  }
+
+  lazy val allTextBoxes: Seq[TextBlock] = (composedBlocks.flatMap(_.textBlocks) ++ textBlocks).sorted
+
+  lazy val allTextLines: Seq[TextLine] = (textBlocks.flatMap(_.textLines) ++ composedBlocks.flatMap(_.textBlocks.flatMap(_.textLines))).sorted
+
   def rotate(): Page = {
     this.rotate(ImageInfo(width, height, 0-rotation))
+  }
+
+  def unrotate(): Page = {
+    this.rotate(ImageInfo(width, height, rotation))
   }
 
   override def rotate(imageInfo: ImageInfo): Page = {
@@ -45,7 +65,12 @@ object Page {
     val height = (page \@ "HEIGHT").toInt
     val width = (page \@ "WIDTH").toInt
     val physicalPageNumber = (page \@ "PHYSICAL_IMG_NR").toIntOption.getOrElse(0)
-    val rotation = (page \@ "ROTATION").toDouble
+    val rotationStr = (page \@ "ROTATION")
+    val rotation = if (!rotationStr.isEmpty) {
+      rotationStr.toDouble
+    } else {
+      (page \\ "TextBlock").headOption.map(_ \@ "ROTATION").getOrElse("0").toDouble
+    }
     val imageInfo = ImageInfo(width, height, rotation)
     val printSpace = (page \ "PrintSpace").head
     val language = (page \@"LANG")

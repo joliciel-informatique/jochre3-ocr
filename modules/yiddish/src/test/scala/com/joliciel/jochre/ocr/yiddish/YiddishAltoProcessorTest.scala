@@ -10,7 +10,7 @@ import scala.xml.transform.RuleTransformer
 class YiddishAltoProcessorTest extends AnyFlatSpec with Matchers {
   private val yiddishConfig: YiddishConfig = YiddishConfig.fromConfig
 
-  "A YiddishAltoProcessor" should "correctly add alternatives" in {
+  "getAlternatives" should "correctly add alternatives" in {
     val yiddishAltoProcessor = YiddishAltoProcessor(yiddishConfig)
     yiddishAltoProcessor.getAlternatives("מעהר") shouldEqual Set(
       AltoAlternative(YiddishAltoProcessor.Purpose.YIVO.entryName, "מער"),
@@ -64,6 +64,32 @@ class YiddishAltoProcessorTest extends AnyFlatSpec with Matchers {
       AltoAlternative(YiddishAltoProcessor.Purpose.YIVO.entryName, "אַטאָם"),
       AltoAlternative(YiddishAltoProcessor.Purpose.Roman.entryName, "atom")
     )
+  }
+
+  "process" should "keep spaces" in {
+    val yiddishAltoProcessor = YiddishAltoProcessor(yiddishConfig)
+
+    val alto = <Page>
+      <Paragraph>
+        <String HPOS="10" VPOS="10" WIDTH="80" HEIGHT="80" CONTENT="Jimi" WC="0.8"></String>
+        <SP HPOS="90" VPOS="10" WIDTH="20" HEIGHT="80"></SP>
+        <String  HPOS="110" VPOS="10" WIDTH="80" HEIGHT="80" CONTENT ="Hendrix" WC="0.7"></String>
+      </Paragraph>
+    </Page>
+
+    val actual = yiddishAltoProcessor.process(alto, "Jimi.png")
+
+    val expected = <Page>
+      <Paragraph>
+        <String HPOS="10" VPOS="10" WIDTH="80" HEIGHT="80" CONTENT="Jimi" WC="0.8"></String>
+        <SP HPOS="90" VPOS="10" WIDTH="20" HEIGHT="80"></SP>
+        <String HPOS="110" VPOS="10" WIDTH="80" HEIGHT="80" CONTENT="Hendrix" WC="0.7"></String>
+      </Paragraph>
+    </Page>
+
+    val prettyPrinter = new PrettyPrinter(120, 2)
+
+    prettyPrinter.format(actual) shouldEqual prettyPrinter.format(expected)
   }
 
   it should "reverse numbers" in {

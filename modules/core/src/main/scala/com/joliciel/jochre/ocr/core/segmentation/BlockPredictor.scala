@@ -9,6 +9,7 @@ import sttp.capabilities
 import sttp.capabilities.zio.ZioStreams
 import sttp.client3.httpclient.zio.SttpClient
 import sttp.client3.{SttpBackend, UriContext, asByteArray, basicRequest, multipart}
+import sttp.model.StatusCode
 import zio.{Task, ZIO, ZLayer}
 
 import java.awt.image.BufferedImage
@@ -53,18 +54,23 @@ class BlockPredictor(httpClient: SttpBackend[Task, ZioStreams with capabilities.
       }
       response <- httpClient.send(request)
       labelMap <- ZIO.attempt{
-        response.body match {
-          case Left(exception) => throw new Exception(f"Got error $exception")
-          case Right(byteArray) =>
-            val is = new ByteArrayInputStream(byteArray)
-            val predictedImage = ImageIO.read(is)
-            val imageHeight = image.getHeight
-            val imageWidth = image.getWidth
-            val subImages = (0 until 4).map { i =>
-              predictedImage.getSubimage(0, i * imageHeight, imageWidth, imageHeight)
+        response.code match {
+          case StatusCode.Ok =>
+            response.body match {
+              case Left(exception) => throw new Exception(f"Got error $exception")
+              case Right(byteArray) =>
+                val is = new ByteArrayInputStream(byteArray)
+                val predictedImage = ImageIO.read(is)
+                val imageHeight = image.getHeight
+                val imageWidth = image.getWidth
+                val subImages = (0 until 4).map { i =>
+                  predictedImage.getSubimage(0, i * imageHeight, imageWidth, imageHeight)
+                }
+                val labels = BlockType.values.map(_.entryName)
+                labels.zip(subImages).toMap
             }
-            val labels = BlockType.values.map(_.entryName)
-            labels.zip(subImages).toMap
+          case statusCode =>
+            throw new Exception(s"Could not predict blocks. Status code: ${statusCode.code}. Status text: ${response.statusText}")
         }
       }
     } yield labelMap

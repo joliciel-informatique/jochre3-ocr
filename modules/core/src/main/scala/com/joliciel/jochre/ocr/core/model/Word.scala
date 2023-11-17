@@ -5,7 +5,7 @@ import com.joliciel.jochre.ocr.core.utils.MathImplicits._
 
 import scala.xml.{Elem, Node}
 
-case class Word(rectangle: Rectangle, glyphs: Seq[Glyph], confidence: Double) extends PageElement {
+case class Word(rectangle: Rectangle, glyphs: Seq[Glyph], confidence: Double) extends WordOrSpace {
   override def translate(xDiff: Int, yDiff: Int): Word =
     Word(rectangle.translate(xDiff, yDiff), glyphs.map(_.translate(xDiff, yDiff)), confidence)
 
@@ -17,6 +17,8 @@ case class Word(rectangle: Rectangle, glyphs: Seq[Glyph], confidence: Double) ex
             CONTENT={rectangle.label} WC={confidence.roundTo(2).toString}>
       {glyphs.map(_.toXml())}
     </String>
+
+  override def compare(that: WordOrSpace): Int = this.rectangle.left.compare(that.rectangle.left)
 }
 
 object Word {
