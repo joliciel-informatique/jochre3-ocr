@@ -5,7 +5,5 @@ trait TextSimplifier {
 }
 
 object TextSimplifier {
-  val default: TextSimplifier = new TextSimplifier {
-    override def simplify(text: String): String = text
-  }
+  val default: TextSimplifier = (text: String) => text
 }
