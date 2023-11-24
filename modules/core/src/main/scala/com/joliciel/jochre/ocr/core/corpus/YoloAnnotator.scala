@@ -89,7 +89,7 @@ case class YoloAnnotator(
 
         val baseLineBoxTyped = baseLineBox.copy(yoloClass = baseLineType)
 
-        val wordBoxes = textLine.words.map{ word =>
+        val wordBoxes = textLine.wordsWithHyphenIncluded.map{ word =>
           YoloBox(YoloObjectType.Word,
             xCenter = word.rectangle.xCenter.toDouble / width,
             yCenter = word.rectangle.yCenter.toDouble / height,
@@ -105,10 +105,9 @@ case class YoloAnnotator(
             height = ((baseLineY - textLineRectangle.top.toDouble) * 0.85) / height)
         }
 
-        val letterSeparatorBoxes = textLine.words.flatMap { word =>
+        val letterSeparatorBoxes = textLine.wordsWithHyphenIncluded.flatMap { word =>
           word.glyphs.sorted.zipWithIndex.flatMap { case (glyph, i) =>
             Option.when(i > 0) {
-
               val xCenter = glyph.rectangle.left.toDouble
               val yCenter = (textLineRectangle.top.toDouble + baseLineY) / 2.0
               val separatorHeight = ((baseLineY - textLineRectangle.top.toDouble) * 0.85).toInt

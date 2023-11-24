@@ -8,6 +8,7 @@ import zio.{Config, ZIO, ZLayer}
 case class YiddishConfig(
   lexiconPath: String,
   letterModelPath: String,
+  addHyphenElement: Boolean,
 )
 
 object YiddishConfig {
@@ -15,6 +16,7 @@ object YiddishConfig {
   val fromConfig: YiddishConfig = YiddishConfig(
     config.getString("lexicon-path"),
     config.getString("letter-model-path"),
+    config.getBoolean("add-hyphen-element"),
   )
 
   val yiddishConfig: Config[YiddishConfig] = deriveConfig[YiddishConfig].mapKey(toKebabCase).nested("yiddish")

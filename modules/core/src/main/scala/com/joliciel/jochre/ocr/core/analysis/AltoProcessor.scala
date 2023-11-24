@@ -1,16 +1,19 @@
 package com.joliciel.jochre.ocr.core.analysis
 
+import com.joliciel.jochre.ocr.core.corpus.TextSimplifier
+import com.joliciel.jochre.ocr.core.utils.XmlImplicits
 import com.typesafe.config.ConfigFactory
 
 import java.io.{File, Reader}
 import scala.xml.transform.{RewriteRule, RuleTransformer}
-import scala.xml.{Elem, Node, Text, XML}
+import scala.xml.{Attribute, Elem, Node, Text, XML}
 
-trait AltoProcessor {
+trait AltoProcessor extends XmlImplicits {
   private val config = ConfigFactory.load().getConfig("jochre.ocr")
   val ocrVersion = config.getString("ocr-version")
 
   def removeGlyphs: Boolean = false
+  def textSimplifier: Option[TextSimplifier] = None
 
   def process(altoFile: File, fileName: String): Elem = {
     val elem = XML.loadFile(altoFile)
@@ -47,6 +50,17 @@ trait AltoProcessor {
           }
 
           elem.copy(child = newChildren)
+        case withContent: Elem if withContent.label == "String" || withContent.label == "Glyph" || withContent.label == "HYP" =>
+          textSimplifier.map{ textSimplifier =>
+            val content = withContent \@ "CONTENT"
+            val simplifiedContent = textSimplifier.simplify(content)
+            val newAttributes = for (attr <- withContent.attributes) yield attr match {
+              case attr@Attribute("CONTENT", _, _) =>
+                attr.goodCopy(value = simplifiedContent)
+              case other => other
+            }
+            withContent.copy(attributes = newAttributes)
+          }.getOrElse(withContent)
         case node => node
       }
     }

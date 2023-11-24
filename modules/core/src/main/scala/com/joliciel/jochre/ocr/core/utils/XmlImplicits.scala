@@ -1,6 +1,6 @@
 package com.joliciel.jochre.ocr.core.utils
 
-import scala.xml.{Attribute, Elem, MetaData, Node, Null, Text}
+import scala.xml.{Attribute, MetaData, Null, Text}
 
 trait XmlImplicits {
   implicit class AddGoodCopyToAttribute(attr: Attribute) {

@@ -11,7 +11,7 @@ class YiddishAltoProcessorTest extends AnyFlatSpec with Matchers {
   private val yiddishConfig: YiddishConfig = YiddishConfig.fromConfig
 
   "getAlternatives" should "correctly add alternatives" in {
-    val yiddishAltoProcessor = YiddishAltoProcessor(yiddishConfig)
+    val yiddishAltoProcessor = YiddishAltoProcessor(yiddishConfig, textSimplifier = None)
     yiddishAltoProcessor.getAlternatives("מעהר") shouldEqual Set(
       AltoAlternative(YiddishAltoProcessor.Purpose.YIVO.entryName, "מער"),
       AltoAlternative(YiddishAltoProcessor.Purpose.Roman.entryName, "mer")
@@ -24,14 +24,14 @@ class YiddishAltoProcessorTest extends AnyFlatSpec with Matchers {
   }
 
   it should "only add a YIVO alternative if it's different from the original" in {
-    val yiddishAltoProcessor = YiddishAltoProcessor(yiddishConfig)
+    val yiddishAltoProcessor = YiddishAltoProcessor(yiddishConfig, textSimplifier = None)
     yiddishAltoProcessor.getAlternatives("מער") shouldEqual Set(
       AltoAlternative(YiddishAltoProcessor.Purpose.Roman.entryName, "mer")
     )
   }
 
   it should "find first real word if impossible shtumer alef" in {
-    val yiddishAltoProcessor = YiddishAltoProcessor(yiddishConfig)
+    val yiddishAltoProcessor = YiddishAltoProcessor(yiddishConfig, textSimplifier = None)
 
     yiddishAltoProcessor.getAlternatives("אָװנט") shouldEqual Set(
       AltoAlternative(YiddishAltoProcessor.Purpose.Roman.entryName, "ovnt")
@@ -67,7 +67,7 @@ class YiddishAltoProcessorTest extends AnyFlatSpec with Matchers {
   }
 
   "process" should "keep spaces" in {
-    val yiddishAltoProcessor = YiddishAltoProcessor(yiddishConfig)
+    val yiddishAltoProcessor = YiddishAltoProcessor(yiddishConfig, textSimplifier = None)
 
     val alto = <Page>
       <Paragraph>
@@ -93,7 +93,7 @@ class YiddishAltoProcessorTest extends AnyFlatSpec with Matchers {
   }
 
   it should "reverse numbers" in {
-    val yiddishAltoProcessor = YiddishAltoProcessor(yiddishConfig)
+    val yiddishAltoProcessor = YiddishAltoProcessor(yiddishConfig, textSimplifier = None)
     val alto = <Page>
       <Paragraph>
         <String CONTENT="Jimi">
@@ -136,7 +136,7 @@ class YiddishAltoProcessorTest extends AnyFlatSpec with Matchers {
   }
 
   it should "split on punctuation" in {
-    val yiddishAltoProcessor = YiddishAltoProcessor(yiddishConfig)
+    val yiddishAltoProcessor = YiddishAltoProcessor(yiddishConfig, textSimplifier = None)
     val alto = <Page>
       <Paragraph>
         <String HPOS="10" VPOS="10" WIDTH="80" HEIGHT="80" CONTENT="-a,.bc." WC="0.8">
@@ -168,7 +168,7 @@ class YiddishAltoProcessorTest extends AnyFlatSpec with Matchers {
     prettyPrinter.format(actual) shouldEqual prettyPrinter.format(expected)
   }
 
-  "punctuationSplitRule" should "calculate coordinates correctly when splitting punctutation" in {
+  "punctuationSplitRule" should "calculate coordinates correctly when splitting punctuation" in {
     val original = {
       <alto>
         <String HPOS="1248" VPOS="1387" WIDTH="47" HEIGHT="42" CONTENT="A." WC="0.5">
@@ -187,6 +187,51 @@ class YiddishAltoProcessorTest extends AnyFlatSpec with Matchers {
         <String HPOS="1248" VPOS="1415" WIDTH="12" HEIGHT="14" CONTENT="." WC="0.1">
           <Glyph HPOS="1248" VPOS="1415" WIDTH="12" HEIGHT="14" CONTENT="." GC="0.1"></Glyph>
         </String>
+      </alto>
+
+    val prettyPrinter = new PrettyPrinter(80, 2)
+    prettyPrinter.format(actual) shouldEqual prettyPrinter.format(expected)
+  }
+
+  "addHyphenRule" should "split off hyphens at the end of a text line" in {
+    val original = {
+      <alto>
+        <TextLine HPOS="0" VPOS="10" WIDTH="90" HEIGHT="100">
+          <String HPOS="0" VPOS="10" WIDTH="40" HEIGHT="100" CONTENT="Jimi" WC="0.5">
+            <Glyph HPOS="0" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="J" GC="0.5"></Glyph>
+            <Glyph HPOS="10" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="i" GC="0.5"></Glyph>
+            <Glyph HPOS="20" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="m" GC="0.5"></Glyph>
+            <Glyph HPOS="30" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="i" GC="0.5"></Glyph>
+          </String>
+          <SP HPOS="40" VPOS="10" WIDTH="10" HEIGHT="100"></SP>
+          <String HPOS="50" VPOS="10" WIDTH="40" HEIGHT="100" CONTENT="Hen־" WC="0.5">
+            <Glyph HPOS="50" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="H" GC="0.5"></Glyph>
+            <Glyph HPOS="60" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="e" GC="0.5"></Glyph>
+            <Glyph HPOS="70" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="n" GC="0.5"></Glyph>
+            <Glyph HPOS="80" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="־" GC="0.5"></Glyph>
+          </String>
+        </TextLine>
+      </alto>
+    }
+    val transform = new RuleTransformer(YiddishAltoProcessor.addHyphenRule)
+    val actual = transform(original).asInstanceOf[Elem]
+    val expected =
+      <alto>
+        <TextLine HPOS="0" VPOS="10" WIDTH="90" HEIGHT="100">
+          <String HPOS="0" VPOS="10" WIDTH="40" HEIGHT="100" CONTENT="Jimi" WC="0.5">
+            <Glyph HPOS="0" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="J" GC="0.5"></Glyph>
+            <Glyph HPOS="10" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="i" GC="0.5"></Glyph>
+            <Glyph HPOS="20" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="m" GC="0.5"></Glyph>
+            <Glyph HPOS="30" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="i" GC="0.5"></Glyph>
+          </String>
+          <SP HPOS="40" VPOS="10" WIDTH="10" HEIGHT="100"></SP>
+          <String HPOS="50" VPOS="10" WIDTH="30" HEIGHT="100" CONTENT="Hen" WC="0.5">
+            <Glyph HPOS="50" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="H" GC="0.5"></Glyph>
+            <Glyph HPOS="60" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="e" GC="0.5"></Glyph>
+            <Glyph HPOS="70" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="n" GC="0.5"></Glyph>
+          </String>
+          <HYP HPOS="80" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="־"></HYP>
+        </TextLine>
       </alto>
 
     val prettyPrinter = new PrettyPrinter(80, 2)
