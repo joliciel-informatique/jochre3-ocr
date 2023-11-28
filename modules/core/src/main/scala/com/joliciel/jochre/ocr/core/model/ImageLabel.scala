@@ -36,7 +36,7 @@ object ImageLabel {
       val minTop = math.min(this.top, that.top)
       val maxRight = math.max(this.right, that.right)
       val maxBottom = math.max(this.bottom, that.bottom)
-      Rectangle(label, minLeft, minTop, maxRight - minLeft, maxBottom - minTop)
+      Rectangle(f"${this.label}${that.label}", minLeft, minTop, maxRight - minLeft, maxBottom - minTop)
     }
 
     private def areaOfIntersection(that: Rectangle): Double = intersection(that).map(_.area.toDouble).getOrElse(0.0)

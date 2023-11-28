@@ -15,15 +15,23 @@ case class TextLine(baseLine: Line, wordsAndSpaces: Seq[WordOrSpace]) extends Pa
   lazy val spaces: Seq[Space] = wordsAndSpaces.collect{ case s: Space => s }
   lazy val hyphen: Option[Hyphen] = wordsAndSpaces.collectFirst{ case h: Hyphen => h }
 
-  lazy val wordsWithHyphenIncluded: Seq[Word] = {
+  lazy val wordsWithHyphenIncluded: Seq[Word] =
     hyphen.map{ hyphen =>
-      val lastWord = words.last
-      val newRectangle = lastWord.rectangle.union(hyphen.rectangle).copy(label = f"${lastWord.content}${hyphen.content}")
-      val newGlyphs = lastWord.glyphs :+ Glyph(hyphen.rectangle, 0.5)
-      val lastWordWithHyphen = Word(newRectangle, newGlyphs, lastWord.confidence)
+      val lastWordWithHyphen = words.last.combineWith(hyphen)
       words.init :+ lastWordWithHyphen
     }.getOrElse(words)
-  }
+
+  /** A sequence of words in which any words not separated by white space have been combined into a single word */
+  lazy val combinedWords: Seq[Word] = wordsAndSpaces.foldLeft(Seq.empty[Word] -> true){ case ((combinedWords, newWord), wordOrSpace) =>
+    (newWord, wordOrSpace) match {
+      case (true, word:Word) => (combinedWords :+ word) -> false
+      case (false, word:Word) => (combinedWords.init :+ combinedWords.last.combineWith(word)) -> false
+      case (true, hyphen: Hyphen) => (combinedWords :+ hyphen.toWord) -> false
+      case (false, hyphen: Hyphen) => (combinedWords.init :+ combinedWords.last.combineWith(hyphen)) -> false
+      case (_, _: Space) => combinedWords -> true
+      case (_, other) => throw new Exception(f"Should never happen, what is $other")
+    }
+  }._1
 
   override def translate(xDiff: Int, yDiff: Int): TextLine =
     TextLine(baseLine.translate(xDiff, yDiff), wordsAndSpaces.map(_.translate(xDiff, yDiff)).collect{ case wordOrSpace: WordOrSpace => wordOrSpace })

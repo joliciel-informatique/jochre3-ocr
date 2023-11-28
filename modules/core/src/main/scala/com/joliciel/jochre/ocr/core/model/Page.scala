@@ -1,5 +1,6 @@
 package com.joliciel.jochre.ocr.core.model
 
+import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
 import com.joliciel.jochre.ocr.core.utils.MathImplicits._
 
 import scala.xml.{Elem, Node}
@@ -34,6 +35,18 @@ case class Page(
   lazy val allTextBoxes: Seq[TextBlock] = (composedBlocks.flatMap(_.textBlocks) ++ textBlocks).sorted
 
   lazy val allTextLines: Seq[TextLine] = (textBlocks.flatMap(_.textLines) ++ composedBlocks.flatMap(_.textBlocks.flatMap(_.textLines))).sorted
+
+  lazy val combinedWords: Seq[Word] = blocks.flatMap{
+    case textBlock: TextBlock => textBlock.combinedWords
+    case composedBlock: ComposedBlock => composedBlock.combinedWords
+    case _: Illustration => Seq.empty
+  }
+
+  lazy val textLinesWithRectangles: Seq[(TextLine, Rectangle)] = blocks.flatMap {
+    case textBlock: TextBlock => textBlock.textLinesWithRectangles
+    case composedBlock: ComposedBlock => composedBlock.textLinesWithRectangles
+    case _: Illustration => Seq.empty
+  }
 
   def rotate(): Page = {
     this.rotate(ImageInfo(width, height, 0-rotation))

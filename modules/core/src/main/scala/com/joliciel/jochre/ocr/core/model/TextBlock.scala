@@ -24,6 +24,8 @@ case class TextBlock(rectangle: Rectangle, textLines: Seq[TextLine]) extends Blo
     textLines.zip(rectangles)
   }
 
+  lazy val combinedWords: Seq[Word] = textLines.flatMap(_.combinedWords)
+
   override def translate(xDiff: Int, yDiff: Int): TextBlock =
     TextBlock(rectangle.translate(xDiff, yDiff), textLines.map(_.translate(xDiff, yDiff)))
 

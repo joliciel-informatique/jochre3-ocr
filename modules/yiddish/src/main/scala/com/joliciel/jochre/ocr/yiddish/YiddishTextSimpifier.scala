@@ -32,7 +32,7 @@ object YiddishTextSimpifier extends TextSimplifier {
   private val otherSymbol = """[▼◦№]""".r
 
   private val latinAlphabet = """[a-zA-Z]""".r
-  private val cyrillicAlphabet = """[А-яЁё]""".r
+  private val cyrillicAlphabet = """[А-яЁёѣі]""".r
 
   override def simplify(text: String): String = {
     text
