@@ -6,6 +6,7 @@ import com.joliciel.jochre.ocr.core.utils.MathImplicits._
 import scala.xml.{Elem, Node}
 
 case class Word(rectangle: Rectangle, glyphs: Seq[Glyph], confidence: Double) extends WordOrSpace {
+  val content = rectangle.label
   override def translate(xDiff: Int, yDiff: Int): Word =
     Word(rectangle.translate(xDiff, yDiff), glyphs.map(_.translate(xDiff, yDiff)), confidence)
 

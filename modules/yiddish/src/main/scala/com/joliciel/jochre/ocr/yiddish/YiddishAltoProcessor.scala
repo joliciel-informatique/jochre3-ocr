@@ -2,6 +2,7 @@ package com.joliciel.jochre.ocr.yiddish
 
 import com.joliciel.jochre.lexicon.{Lexicon, TextFileLexicon}
 import com.joliciel.jochre.ocr.core.analysis.{AltoAlternative, AltoProcessor}
+import com.joliciel.jochre.ocr.core.corpus.TextSimplifier
 import com.joliciel.jochre.ocr.core.utils.XmlImplicits
 import com.joliciel.jochre.ocr.yiddish.YiddishAltoProcessor.Purpose
 import com.joliciel.yivoTranscriber.YivoTranscriber
@@ -13,8 +14,7 @@ import scala.util.Using
 import scala.xml.transform.RewriteRule
 import scala.xml.{Attribute, Elem, Node}
 
-case class YiddishAltoProcessor(yiddishConfig: YiddishConfig) extends AltoProcessor with XmlImplicits {
-
+case class YiddishAltoProcessor(yiddishConfig: YiddishConfig, override val textSimplifier: Option[TextSimplifier] = Some(YiddishTextSimpifier)) extends AltoProcessor with XmlImplicits {
   private val yivoTranscriber = new YivoTranscriber()
   private val lexicon: Lexicon = {
     Using(new ZipInputStream(new FileInputStream(yiddishConfig.lexiconPath))) { zis =>
@@ -64,8 +64,10 @@ case class YiddishAltoProcessor(yiddishConfig: YiddishConfig) extends AltoProces
   }
 
   override val getSpecificRules: Seq[RewriteRule] = Seq(
-    YiddishAltoProcessor.punctuationSplitRule, YiddishAltoProcessor.reverseNumberRule
-  )
+    Option.when(yiddishConfig.addHyphenElement)(YiddishAltoProcessor.addHyphenRule),
+    Some(YiddishAltoProcessor.punctuationSplitRule),
+    Some(YiddishAltoProcessor.reverseNumberRule),
+  ).flatten
 
   override val removeGlyphs: Boolean = true
 }
@@ -87,7 +89,7 @@ object YiddishAltoProcessor extends XmlImplicits {
     override def transform(node: Node): Seq[Node] = node match {
       case altoString: Elem if altoString.label == "String" =>
         val content = altoString \@ "CONTENT"
-        val confidence = Option.when(!(altoString \@ "WC").isEmpty)((altoString \@ "WC").toDouble).getOrElse(0)
+        val confidence = Option.when(!(altoString \@ "WC").isEmpty)((altoString \@ "WC").toDouble).getOrElse(0.0)
         if (punctuationAndNotRegex.findFirstIn(content).isDefined) {
           // split by punctuation
           val glyphs = altoString \ "Glyph"
@@ -110,48 +112,7 @@ object YiddishAltoProcessor extends XmlImplicits {
             }
           }
           val wordNodes = words.map { glyphSeq =>
-            val content = glyphSeq.map(glyph => (glyph \@ "CONTENT")).mkString("")
-            val vpos = glyphSeq.map(glyph => (glyph \@ "VPOS")).map(s => if (s.isEmpty) {
-              0
-            } else {
-              Integer.parseInt(s)
-            })
-            val hpos = glyphSeq.map(glyph => (glyph \@ "HPOS")).map(s => if (s.isEmpty) {
-              0
-            } else {
-              Integer.parseInt(s)
-            })
-            val heights = glyphSeq.map(glyph => (glyph \@ "HEIGHT")).map(s => if (s.isEmpty) {
-              0
-            } else {
-              Integer.parseInt(s)
-            })
-            val widths = glyphSeq.map(glyph => (glyph \@ "WIDTH")).map(s => if (s.isEmpty) {
-              0
-            } else {
-              Integer.parseInt(s)
-            })
-
-            val bottom = vpos.zip(heights).map { case (top, height) => top + height }.max
-            val right = hpos.zip(widths).map { case (right, width) => right + width }.max
-            val top = vpos.min
-            val left = hpos.min
-            val height = bottom - top
-            val width = right - left
-
-            val glyphConfidence = glyphSeq.map(glyph => (glyph \@ "GC")).map(s => if (s.isEmpty) {
-              0
-            } else {
-              s.toDouble
-            }).max
-            val myConfidence = if (glyphSeq.size > 1) {
-              confidence
-            } else {
-              glyphConfidence
-            }
-            <String HPOS={left.toString} VPOS={top.toString} WIDTH={width.toString} HEIGHT={height.toString} CONTENT={content} WC={myConfidence.toString}>
-              {glyphSeq}
-            </String>
+            glyphsToString(glyphSeq, confidence)
           }
           wordNodes
         } else {
@@ -159,6 +120,51 @@ object YiddishAltoProcessor extends XmlImplicits {
         }
       case other => other
     }
+  }
+
+  private def glyphsToString(glyphSeq: Seq[Node], confidence: Double): Node = {
+    val content = glyphSeq.map(glyph => (glyph \@ "CONTENT")).mkString("")
+    val vpos = glyphSeq.map(glyph => (glyph \@ "VPOS")).map(s => if (s.isEmpty) {
+      0
+    } else {
+      Integer.parseInt(s)
+    })
+    val hpos = glyphSeq.map(glyph => (glyph \@ "HPOS")).map(s => if (s.isEmpty) {
+      0
+    } else {
+      Integer.parseInt(s)
+    })
+    val heights = glyphSeq.map(glyph => (glyph \@ "HEIGHT")).map(s => if (s.isEmpty) {
+      0
+    } else {
+      Integer.parseInt(s)
+    })
+    val widths = glyphSeq.map(glyph => (glyph \@ "WIDTH")).map(s => if (s.isEmpty) {
+      0
+    } else {
+      Integer.parseInt(s)
+    })
+
+    val bottom = vpos.zip(heights).map { case (top, height) => top + height }.max
+    val right = hpos.zip(widths).map { case (right, width) => right + width }.max
+    val top = vpos.min
+    val left = hpos.min
+    val height = bottom - top
+    val width = right - left
+
+    val glyphConfidence = glyphSeq.map(glyph => (glyph \@ "GC")).map(s => if (s.isEmpty) {
+      0
+    } else {
+      s.toDouble
+    }).max
+    val myConfidence = if (glyphSeq.size > 1) {
+      confidence
+    } else {
+      glyphConfidence
+    }
+    <String HPOS={left.toString} VPOS={top.toString} WIDTH={width.toString} HEIGHT={height.toString} CONTENT={content} WC={myConfidence.toString}>
+      {glyphSeq}
+    </String>
   }
 
   private val numberRegex = raw"\d+\.?\d+".r
@@ -177,6 +183,47 @@ object YiddishAltoProcessor extends XmlImplicits {
           altoString.copy(attributes = newAttributes)
         } else {
           altoString
+        }
+      case other => other
+    }
+  }
+
+  private val hyphenRegex = raw"^(.+)([-־])$$".r
+  val addHyphenRule = new RewriteRule {
+    override def transform(node: Node): Seq[Node] = node match {
+      case textLine: Elem if textLine.label == "TextLine" =>
+        val children = textLine \ "_"
+        val hyphenNodes = children.last match {
+          case altoString: Elem if altoString.label == "String" =>
+            val content = altoString \@ "CONTENT"
+            val confidence = Option.when(!(altoString \@ "WC").isEmpty)((altoString \@ "WC").toDouble).getOrElse(0.0)
+            content match {
+              case hyphenRegex(_, _) =>
+                val glyphs = altoString \ "Glyph"
+                val stringGlyphs = glyphs.init
+                val hyphenGlyph = glyphs.last
+                val stringElemWithoutHyphen = glyphsToString(stringGlyphs, confidence)
+                val hyphenAttributes = (for (attr <- hyphenGlyph.attributes) yield attr match {
+                  case attr@Attribute("GC", _, _) =>
+                    None
+                  case other => Some(other)
+                }).flatten
+                val hyphenElem = (<HYP></HYP>).copy(attributes = hyphenAttributes)
+                Seq(stringElemWithoutHyphen, hyphenElem)
+              case _ =>
+                Seq.empty
+            }
+          case _ =>
+            Seq.empty
+        }
+        if (hyphenNodes.size > 0) {
+          val newChildren = children.init ++ hyphenNodes
+          val newTextLine = (<TextLine>
+            {newChildren}
+          </TextLine>).copy(attributes = textLine.attributes)
+          newTextLine
+        } else {
+          textLine
         }
       case other => other
     }
