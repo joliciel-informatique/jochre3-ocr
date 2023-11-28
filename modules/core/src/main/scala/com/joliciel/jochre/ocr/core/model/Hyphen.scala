@@ -16,6 +16,9 @@ case class Hyphen(rectangle: Rectangle) extends WordOrSpace {
     </HYP>
 
   override def compare(that: WordOrSpace): Int = this.rectangle.left.compare(that.rectangle.left)
+
+  def toWord: Word =
+    Word(this.rectangle, Seq(Glyph(this.rectangle, 0.5)), 0.5)
 }
 
 object Hyphen {
