@@ -9,8 +9,7 @@ import scala.xml.transform.{RewriteRule, RuleTransformer}
 import scala.xml.{Attribute, Elem, Node, Text, XML}
 
 trait AltoProcessor extends XmlImplicits {
-  private val config = ConfigFactory.load().getConfig("jochre.ocr")
-  val ocrVersion = config.getString("ocr-version")
+  val ocrVersion = sys.env.get("JOCHRE3_OCR_VERSION").getOrElse("0.0.1-SNAPSHOT")
 
   def removeGlyphs: Boolean = false
   def textSimplifier: Option[TextSimplifier] = None
@@ -37,17 +36,11 @@ trait AltoProcessor extends XmlImplicits {
     val basicRule = new RewriteRule {
       override def transform(node: Node): Seq[Node] = node match {
         case elem: Elem if elem.label == "softwareVersion" =>
-          val newChildren = elem.child.map{
-            case _: Text => Text(ocrVersion)
-            case other => other
-          }
+          val newChildren = Text(ocrVersion)
 
           elem.copy(child = newChildren)
         case elem: Elem if elem.label == "fileName" =>
-          val newChildren = elem.child.map {
-            case _: Text => Text(fileName)
-            case other => other
-          }
+          val newChildren = Text(fileName)
 
           elem.copy(child = newChildren)
         case withContent: Elem if withContent.label == "String" || withContent.label == "Glyph" || withContent.label == "HYP" =>

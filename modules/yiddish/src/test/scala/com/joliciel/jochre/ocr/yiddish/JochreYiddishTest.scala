@@ -6,6 +6,7 @@ import zio.test.junit.JUnitRunnableSpec
 import zio.test.{Spec, TestAspect, TestEnvironment, assertTrue}
 
 import javax.imageio.ImageIO
+import scala.xml.Text
 
 object JochreYiddishTest extends JUnitRunnableSpec {
   override def spec: Spec[TestEnvironment with Scope, Any] = suite("JochreYiddishTest")(
@@ -16,6 +17,9 @@ object JochreYiddishTest extends JUnitRunnableSpec {
         jochreYiddish <- ZIO.service[Jochre]
         alto <- jochreYiddish.processImage(image, None, "yiddish_sample.jpg")
       } yield {
+        val altoFileName = (alto \\ "fileName").head.child.collect{case text: Text => text}.map(_.text).head
+        assertTrue(altoFileName == "yiddish_sample.jpg")
+
         val content = (alto \\ "String").map(node => node \@ "CONTENT").mkString(" ")
         assertTrue(content == "מאַמע - לשון")
 
