@@ -21,14 +21,14 @@ import scala.util.Using
 case class YoloAnnotator(
   corpusDir: Path,
   outDir: Path,
-  debugDir: Option[Path] = None,
+  debugDir: Option[String] = None,
   keepStructure: Boolean = false,
   maxFiles: Option[Int] = None,
   extension: String = "png",
   fileList: Option[Set[String]] = None,
   task: YoloTask,
   objectsToInclude: Seq[YoloObjectType],
-  yamlFile: Option[Path] = None,
+  yamlFileName: Option[String] = None,
   validationOneEvery: Option[Int] = None,
   altoFinder: AltoFinder = AltoFinder.default) extends CorpusAnnotator {
 
@@ -42,8 +42,9 @@ case class YoloAnnotator(
   private def df(d: Double): String = String.format("%.6f", d)
   private def pad(i: Int): String = String.format("%-2s", i)
 
-  yamlFile.foreach{ yamlFile =>
-    Using(new OutputStreamWriter(new FileOutputStream(yamlFile.toFile), StandardCharsets.UTF_8)) { writer =>
+  yamlFileName.foreach{ yamlFileName =>
+    val yamlFile = new File(outDir.toFile, yamlFileName)
+    Using(new OutputStreamWriter(new FileOutputStream(yamlFile), StandardCharsets.UTF_8)) { writer =>
       writer.write("path: /some/path # dataset root dir\n")
       writer.write("train: images/train # train images (relative to 'path')\n")
       writer.write("val: images/val # validation images (relative to 'path')\n")
@@ -89,12 +90,22 @@ case class YoloAnnotator(
 
         val baseLineBoxTyped = baseLineBox.copy(yoloClass = baseLineType)
 
-        val wordBoxes = textLine.words.map{ word =>
+        val wordBoxes = textLine.combinedWords.map{ word =>
           YoloBox(YoloObjectType.Word,
             xCenter = word.rectangle.xCenter.toDouble / width,
             yCenter = word.rectangle.yCenter.toDouble / height,
             width = word.rectangle.width.toDouble / width,
             height = word.rectangle.height.toDouble / height)
+        }
+
+        val glyphBoxes = textLine.combinedWords.flatMap { word =>
+          word.glyphs.map { glyph =>
+            YoloBox(YoloObjectType.Glyph,
+              xCenter = glyph.rectangle.xCenter.toDouble / width,
+              yCenter = glyph.rectangle.yCenter.toDouble / height,
+              width = glyph.rectangle.width.toDouble / width,
+              height = glyph.rectangle.height.toDouble / height)
+          }
         }
 
         val wordSeparatorBoxes = textLine.spaces.map { space =>
@@ -105,19 +116,18 @@ case class YoloAnnotator(
             height = ((baseLineY - textLineRectangle.top.toDouble) * 0.85) / height)
         }
 
-        val letterSeparatorBoxes = textLine.words.flatMap { word =>
+        val letterSeparatorBoxes = textLine.combinedWords.flatMap { word =>
           word.glyphs.sorted.zipWithIndex.flatMap { case (glyph, i) =>
             Option.when(i > 0) {
-
               val xCenter = glyph.rectangle.left.toDouble
               val yCenter = (textLineRectangle.top.toDouble + baseLineY) / 2.0
               val separatorHeight = ((baseLineY - textLineRectangle.top.toDouble) * 0.85).toInt
               val separatorWidth = (lineThickness * width).toInt
-              YoloBox(YoloObjectType.LetterSeparator, xCenter, yCenter, separatorWidth , separatorHeight)
+              YoloBox(YoloObjectType.GlyphSeparator, xCenter, yCenter, separatorWidth , separatorHeight)
             }
           }
         }
-        val allBoxes = Seq(baseLineBox, baseLineBoxTyped) ++ wordBoxes ++ wordSeparatorBoxes ++ letterSeparatorBoxes
+        val allBoxes = Seq(baseLineBox, baseLineBoxTyped) ++ wordBoxes ++ glyphBoxes ++ wordSeparatorBoxes ++ letterSeparatorBoxes
         allBoxes.filter(box => objectTypeSet.contains(box.yoloClass))
       }
     }
@@ -138,7 +148,9 @@ case class YoloAnnotator(
 
     debugDir.foreach{ debugDir =>
       val imageFileName = f"${baseName}-annotation.${extension}"
-      val imageFile = new File(debugDir.toFile, imageFileName)
+      val debugParentDir = new File(outDir.toFile, debugDir)
+      debugParentDir.mkdirs()
+      val imageFile = new File(debugParentDir, imageFileName)
       log.debug(f"Writing debug image to $imageFile")
       val image = new BufferedImage(width.toInt, height.toInt, BufferedImage.TYPE_INT_RGB)
       val graphics = image.createGraphics
@@ -146,15 +158,21 @@ case class YoloAnnotator(
       val originalImage = toBufferedImage(mat)
       graphics.drawImage(originalImage, 0, 0, null)
       graphics.setComposite(AlphaComposite.SrcOver.derive(0.5f))
-      yoloBoxes.foreach {
-        case YoloBox(yoloClass, xCenter, yCenter, boxWidth, boxHeight) =>
-          val color = yoloClass match {
-            case YoloObjectType.BaseLine => Color.BLUE
-            case YoloObjectType.NonFinalBaseLine => Color.BLUE
-            case YoloObjectType.FinalBaseLine => Color.RED
-            case YoloObjectType.Word => Color.YELLOW
-            case YoloObjectType.WordSeparator => Color.YELLOW
-            case YoloObjectType.LetterSeparator => Color.MAGENTA
+      yoloBoxes.zipWithIndex.foreach {
+        case (YoloBox(yoloClass, xCenter, yCenter, boxWidth, boxHeight), i) =>
+          val colors = yoloClass match {
+            case YoloObjectType.BaseLine => (Color.BLUE, Color.GREEN)
+            case YoloObjectType.NonFinalBaseLine => (Color.BLUE, Color.GREEN)
+            case YoloObjectType.FinalBaseLine => (Color.RED, Color.ORANGE)
+            case YoloObjectType.Word => (Color.YELLOW, Color.ORANGE)
+            case YoloObjectType.WordSeparator => (Color.YELLOW, Color.ORANGE)
+            case YoloObjectType.Glyph => (Color.YELLOW, Color.ORANGE)
+            case YoloObjectType.GlyphSeparator => (Color.BLUE, Color.GREEN)
+          }
+          val color = if (i % 2 == 0) {
+            colors._1
+          } else {
+            colors._2
           }
           graphics.setColor(color)
           val xPoints = Array(xCenter - boxWidth / 2.0, xCenter - boxWidth / 2.0, xCenter + boxWidth / 2.0, xCenter + boxWidth / 2.0).map(_ * width).map(_.toInt)
@@ -223,12 +241,12 @@ object YoloAnnotator {
     val task: ScallopOption[String] = opt[String](required = true, descr = s"The annotation task among: ${YoloTask.values.map(_.entryName).mkString(", ")}")
     val corpusDir: ScallopOption[String] = opt[String](required = true, descr = "The directory containing original images and labels in Alto4 format")
     val outDir: ScallopOption[String] = opt[String](required = true, descr = "The directory where the processed images will be placed")
-    val debugDir: ScallopOption[String] = opt[String](required = false, descr = "A directory where to write debug images")
+    val debugDir: ScallopOption[String] = opt[String](required = false, descr = "A directory where to write debug images, relative to the out-dir")
     val keepStructure: ScallopOption[Boolean] = opt[Boolean](descr = "If present, keep the sub-directory structure within the out-dir")
     val maxFiles = opt[Int](descr = "If present, only transform this many files at most")
     val extension: ScallopOption[String] = choice(Seq("png", "jpg"), default = Some("png"))
     val fileList: ScallopOption[String] = opt[String](required = false, descr = "If present, limit the files to this list only")
-    val yamlFile: ScallopOption[String] = opt[String](required = false, descr = "If present, the file to which we write the YOLO YAML configuration")
+    val yamlFile: ScallopOption[String] = opt[String](required = false, descr = "If present, the file to which we write the YOLO YAML configuration, placed in the out-dir")
     val validationOneEvery: ScallopOption[Int] = opt[Int](required = false, descr = "If present, add train/val sub-directories and mark one out of every n files for validation")
     val objectsToInclude: ScallopOption[List[String]] = opt[List[String]](required = true, descr = f"A comma-separated list from ${YoloObjectType.values.map(_.entryName).mkString(", ")}")
     verify()
@@ -242,20 +260,11 @@ object YoloAnnotator {
     val outDir = new File(options.outDir())
     outDir.mkdirs()
     val outPath = outDir.toPath
-    val debugDir = options.debugDir.toOption.map{
-      debugDir =>
-        val debugDirFile = new File(debugDir)
-        debugDirFile.mkdirs()
-        debugDirFile.toPath
-    }
+    val debugDir = options.debugDir.toOption
 
     val fileList = options.fileList.toOption.map(FileUtils.readFile(_).toSet)
     val extension = options.extension()
-    val yamlFile = options.yamlFile.toOption.map{ yamlFilePath =>
-      val yamlFile = new File(yamlFilePath)
-      yamlFile.getParentFile.mkdirs()
-      yamlFile.toPath
-    }
+    val yamlFile = options.yamlFile.toOption
 
     val validationOneEvery = options.validationOneEvery.toOption
 

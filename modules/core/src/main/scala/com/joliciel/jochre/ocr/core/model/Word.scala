@@ -6,6 +6,7 @@ import com.joliciel.jochre.ocr.core.utils.MathImplicits._
 import scala.xml.{Elem, Node}
 
 case class Word(rectangle: Rectangle, glyphs: Seq[Glyph], confidence: Double) extends WordOrSpace {
+  val content = rectangle.label
   override def translate(xDiff: Int, yDiff: Int): Word =
     Word(rectangle.translate(xDiff, yDiff), glyphs.map(_.translate(xDiff, yDiff)), confidence)
 
@@ -19,6 +20,14 @@ case class Word(rectangle: Rectangle, glyphs: Seq[Glyph], confidence: Double) ex
     </String>
 
   override def compare(that: WordOrSpace): Int = this.rectangle.left.compare(that.rectangle.left)
+
+  def combineWith(that: Word): Word = Word(this.rectangle.union(that.rectangle), this.glyphs ++ that.glyphs, Math.sqrt(this.confidence * that.confidence))
+
+  def combineWith(hyphen: Hyphen): Word = {
+    val newRectangle = this.rectangle.union(hyphen.rectangle)
+    val newGlyphs = this.glyphs :+ Glyph(hyphen.rectangle, 0.5)
+    Word(newRectangle, newGlyphs, this.confidence)
+  }
 }
 
 object Word {

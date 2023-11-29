@@ -31,6 +31,14 @@ object ImageLabel {
       Option.when(maxTop < minBottom && maxLeft < minRight)(Rectangle(label, maxLeft, maxTop, minRight - maxLeft, minBottom - maxTop))
     }
 
+    def union(that: Rectangle): Rectangle = {
+      val minLeft = math.min(this.left, that.left)
+      val minTop = math.min(this.top, that.top)
+      val maxRight = math.max(this.right, that.right)
+      val maxBottom = math.max(this.bottom, that.bottom)
+      Rectangle(f"${this.label}${that.label}", minLeft, minTop, maxRight - minLeft, maxBottom - minTop)
+    }
+
     private def areaOfIntersection(that: Rectangle): Double = intersection(that).map(_.area.toDouble).getOrElse(0.0)
 
     private def areaOfUnion(that: Rectangle): Double = {

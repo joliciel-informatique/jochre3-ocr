@@ -10,7 +10,7 @@ import java.io.{File, FileOutputStream, OutputStreamWriter}
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 
-case class TextLineExtractor(
+case class WordExtractor(
   corpusDir: Path,
   outDir: Path,
   debugDir: Option[Path] = None,
@@ -23,19 +23,19 @@ case class TextLineExtractor(
 ) extends CorpusAnnotator with OpenCvUtils {
   private val log = LoggerFactory.getLogger(getClass)
 
-  val textFile = new File(outDir.toFile, "line-to-text.txt")
+  val textFile = new File(outDir.toFile, "word-to-text.txt")
   val writer = new OutputStreamWriter(new FileOutputStream(textFile), StandardCharsets.UTF_8)
   debugDir.foreach(_.toFile.mkdirs())
 
   def annotateOneFile(mat: Mat, alto: Page, parentDir: File, baseName: String, index: Int): Unit = {
     debugDir.foreach(debugDir => saveImage(mat, new File(debugDir.toFile, f"${baseName}_rotated.png").getPath))
 
-    alto.textLinesWithRectangles.zipWithIndex.map { case ((textLine, rectangle), i) =>
-      log.debug(f"Next textLine: $rectangle")
-      val cropped = crop(mat, rectangle)
-      val content = textSimplifier.simplify(textLine.content)
+    alto.combinedWords.zipWithIndex.map { case (word, i) =>
+      log.debug(f"Next word: $word")
+      val cropped = crop(mat, word.rectangle)
+      val content = textSimplifier.simplify(word.content)
 
-      val fileNameBase = f"${baseName}_${"%03d".format(i)}"
+      val fileNameBase = f"${baseName}_${"%04d".format(i)}"
       val imageFileName = f"${fileNameBase}.${extension}"
 
       writer.write(f"${imageFileName}\t${content}\n")
@@ -50,8 +50,8 @@ case class TextLineExtractor(
   }
 }
 
-object TextLineExtractor {
-  class TextLineExtractorCLI(arguments: Seq[String]) extends ScallopConf(arguments) {
+object WordExtractor {
+  class WordExtractorCLI(arguments: Seq[String]) extends ScallopConf(arguments) {
     val corpusDir: ScallopOption[String] = opt[String](required = true, descr = "The directory containing original images and labels in Alto4 format")
     val outDir: ScallopOption[String] = opt[String](required = true, descr = "The directory where the processed images will be placed")
     val debugDir: ScallopOption[String] = opt[String](required = false, descr = "A directory where to write debug images")
@@ -63,7 +63,7 @@ object TextLineExtractor {
   }
 
   def execute(args: Array[String], textSimplifier: TextSimplifier = TextSimplifier.default, altoFinder: AltoFinder = AltoFinder.default): Unit = {
-    val options = new TextLineExtractorCLI(args.toIndexedSeq)
+    val options = new WordExtractorCLI(args.toIndexedSeq)
 
     val corpusDir = new File(options.corpusDir())
     val corpusPath = corpusDir.toPath
@@ -74,9 +74,9 @@ object TextLineExtractor {
     val fileList = options.fileList.toOption.map(FileUtils.readFile(_).toSet)
     val extension = options.extension()
 
-    val textLineExtractor = TextLineExtractor(corpusPath, outPath, debugDir, options.keepStructure(), options.maxFiles.toOption, extension, fileList,
+    val extractor = WordExtractor(corpusPath, outPath, debugDir, options.keepStructure(), options.maxFiles.toOption, extension, fileList,
       textSimplifier, altoFinder=altoFinder)
-    textLineExtractor.annotate()
+    extractor.annotate()
   }
 
   def main(args: Array[String]): Unit = {

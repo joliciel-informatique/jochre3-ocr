@@ -1,16 +1,18 @@
 package com.joliciel.jochre.ocr.core.analysis
 
+import com.joliciel.jochre.ocr.core.corpus.TextSimplifier
+import com.joliciel.jochre.ocr.core.utils.XmlImplicits
 import com.typesafe.config.ConfigFactory
 
 import java.io.{File, Reader}
 import scala.xml.transform.{RewriteRule, RuleTransformer}
-import scala.xml.{Elem, Node, Text, XML}
+import scala.xml.{Attribute, Elem, Node, Text, XML}
 
-trait AltoProcessor {
-  private val config = ConfigFactory.load().getConfig("jochre.ocr")
-  val ocrVersion = config.getString("ocr-version")
+trait AltoProcessor extends XmlImplicits {
+  val ocrVersion = sys.env.get("JOCHRE3_OCR_VERSION").getOrElse("0.0.1-SNAPSHOT")
 
   def removeGlyphs: Boolean = false
+  def textSimplifier: Option[TextSimplifier] = None
 
   def process(altoFile: File, fileName: String): Elem = {
     val elem = XML.loadFile(altoFile)
@@ -34,19 +36,24 @@ trait AltoProcessor {
     val basicRule = new RewriteRule {
       override def transform(node: Node): Seq[Node] = node match {
         case elem: Elem if elem.label == "softwareVersion" =>
-          val newChildren = elem.child.map{
-            case _: Text => Text(ocrVersion)
-            case other => other
-          }
+          val newChildren = Text(ocrVersion)
 
           elem.copy(child = newChildren)
         case elem: Elem if elem.label == "fileName" =>
-          val newChildren = elem.child.map {
-            case _: Text => Text(fileName)
-            case other => other
-          }
+          val newChildren = Text(fileName)
 
           elem.copy(child = newChildren)
+        case withContent: Elem if withContent.label == "String" || withContent.label == "Glyph" || withContent.label == "HYP" =>
+          textSimplifier.map{ textSimplifier =>
+            val content = withContent \@ "CONTENT"
+            val simplifiedContent = textSimplifier.simplify(content)
+            val newAttributes = for (attr <- withContent.attributes) yield attr match {
+              case attr@Attribute("CONTENT", _, _) =>
+                attr.goodCopy(value = simplifiedContent)
+              case other => other
+            }
+            withContent.copy(attributes = newAttributes)
+          }.getOrElse(withContent)
         case node => node
       }
     }
