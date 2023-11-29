@@ -20,11 +20,16 @@ package object corpus {
     /** A single word */
     case object Word extends YoloObjectType
 
+    /**
+     * A single glyph
+     */
+    case object Glyph extends YoloObjectType
+
     /** A separator between two words */
     case object WordSeparator extends YoloObjectType
 
     /** A separator between two glyphs */
-    case object LetterSeparator extends YoloObjectType
+    case object GlyphSeparator extends YoloObjectType
   }
 
   case class YoloBox(yoloClass: YoloObjectType, xCenter: Double, yCenter: Double, width: Double, height: Double)
