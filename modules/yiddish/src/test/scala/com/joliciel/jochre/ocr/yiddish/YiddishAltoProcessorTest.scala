@@ -237,4 +237,49 @@ class YiddishAltoProcessorTest extends AnyFlatSpec with Matchers {
     val prettyPrinter = new PrettyPrinter(80, 2)
     prettyPrinter.format(actual) shouldEqual prettyPrinter.format(expected)
   }
+
+  it should "correctly handle strange glyphs with two letters" in {
+    // Note we write HPOS elements as if the text was right-to-left
+    val original = {
+      <alto>
+        <TextLine HPOS="10" VPOS="10" WIDTH="90" HEIGHT="100">
+          <String HPOS="70" VPOS="10" WIDTH="40" HEIGHT="100" CONTENT="Jimi" WC="0.5">
+            <Glyph HPOS="100" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="J" GC="0.5"></Glyph>
+            <Glyph HPOS="90" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="i" GC="0.5"></Glyph>
+            <Glyph HPOS="80" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="m" GC="0.5"></Glyph>
+            <Glyph HPOS="70" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="i" GC="0.5"></Glyph>
+          </String>
+          <SP HPOS="60" VPOS="10" WIDTH="20" HEIGHT="100"></SP>
+          <String HPOS="10" VPOS="10" WIDTH="40" HEIGHT="100" CONTENT="Hen־" WC="0.5">
+            <Glyph HPOS="40" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="H" GC="0.5"></Glyph>
+            <Glyph HPOS="30" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="e" GC="0.5"></Glyph>
+            <Glyph HPOS="10" VPOS="10" WIDTH="20" HEIGHT="100" CONTENT="n־" GC="0.5"></Glyph>
+          </String>
+        </TextLine>
+      </alto>
+    }
+    val transform = new RuleTransformer(YiddishAltoProcessor.addHyphenRule)
+    val actual = transform(original).asInstanceOf[Elem]
+    val expected =
+      <alto>
+        <TextLine HPOS="10" VPOS="10" WIDTH="90" HEIGHT="100">
+          <String HPOS="70" VPOS="10" WIDTH="40" HEIGHT="100" CONTENT="Jimi" WC="0.5">
+            <Glyph HPOS="100" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="J" GC="0.5"></Glyph>
+            <Glyph HPOS="90" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="i" GC="0.5"></Glyph>
+            <Glyph HPOS="80" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="m" GC="0.5"></Glyph>
+            <Glyph HPOS="70" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="i" GC="0.5"></Glyph>
+          </String>
+          <SP HPOS="60" VPOS="10" WIDTH="20" HEIGHT="100"></SP>
+          <String HPOS="20" VPOS="10" WIDTH="30" HEIGHT="100" CONTENT="Hen" WC="0.5">
+            <Glyph HPOS="40" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="H" GC="0.5"></Glyph>
+            <Glyph HPOS="30" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="e" GC="0.5"></Glyph>
+            <Glyph HPOS="20" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="n" GC="0.5"></Glyph>
+          </String>
+          <HYP HPOS="10" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="־"></HYP>
+        </TextLine>
+      </alto>
+
+    val prettyPrinter = new PrettyPrinter(80, 2)
+    prettyPrinter.format(actual) shouldEqual prettyPrinter.format(expected)
+  }
 }
