@@ -12,6 +12,10 @@ case class Illustration(rectangle: Rectangle) extends Block {
   override def rotate(imageInfo: ImageInfo): Illustration =
     Illustration(rectangle.rotate(imageInfo))
 
+  override def rescale(scale: Double): Illustration = this.copy(
+    rectangle = this.rectangle.rescale(scale)
+  )
+
   override def toXml(id: String): Elem =
     <Illustration ID={id} HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString}>
     </Illustration>

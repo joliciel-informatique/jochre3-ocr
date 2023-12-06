@@ -13,6 +13,10 @@ case class Glyph(rectangle: Rectangle, confidence: Double) extends PageElement w
   override def rotate(imageInfo: ImageInfo): Glyph =
     Glyph(rectangle.rotate(imageInfo), confidence)
 
+  override def rescale(scale: Double): Glyph = this.copy(
+    rectangle = this.rectangle.rescale(scale)
+  )
+
   override def toXml(id: String): Elem =
     <Glyph HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString}
            CONTENT={rectangle.label} GC={confidence.roundTo(2).toString}>

@@ -12,6 +12,11 @@ case class ComposedBlock(rectangle: Rectangle, textBlocks: Seq[TextBlock]) exten
   override def rotate(imageInfo: ImageInfo): ComposedBlock =
     ComposedBlock(rectangle.rotate(imageInfo), textBlocks.map(_.rotate(imageInfo)))
 
+  override def rescale(scale: Double): ComposedBlock = this.copy(
+    rectangle = this.rectangle.rescale(scale),
+    textBlocks = this.textBlocks.map(_.rescale(scale)).collect { case tb: TextBlock => tb }
+  )
+
   override def toXml(id: String): Elem =
     <ComposedBlock ID={id} HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString}>
       {textBlocks.zipWithIndex.map{ case (textBlock, i) => textBlock.toXml(f"${id}_T${i}")}}

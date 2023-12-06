@@ -13,6 +13,11 @@ case class Word(rectangle: Rectangle, glyphs: Seq[Glyph], confidence: Double) ex
   override def rotate(imageInfo: ImageInfo): Word =
     Word(rectangle.rotate(imageInfo), glyphs.map(_.rotate(imageInfo)), confidence)
 
+  override def rescale(scale: Double): Word = this.copy(
+    rectangle = this.rectangle.rescale(scale),
+    glyphs = this.glyphs.map(_.rescale(scale)).collect { case g: Glyph => g }
+  )
+
   override def toXml(id: String): Elem =
     <String HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString}
             CONTENT={rectangle.label} WC={confidence.roundTo(2).toString}>

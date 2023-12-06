@@ -25,6 +25,8 @@ package object model {
 
     def rotate(imageInfo: ImageInfo): PageElement
 
+    def rescale(scale: Double): PageElement
+
     def toXml(id: String = ""): Elem
   }
 
