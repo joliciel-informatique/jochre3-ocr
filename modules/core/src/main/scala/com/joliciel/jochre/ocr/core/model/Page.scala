@@ -48,6 +48,19 @@ case class Page(
     case _: Illustration => Seq.empty
   }
 
+  lazy val printArea: Rectangle = {
+    val minLeft = this.blocks.map(_.rectangle.left).minOption.getOrElse(0)
+    val minTop = this.blocks.map(_.rectangle.top).minOption.getOrElse(0)
+    val maxRight = this.blocks.map(_.rectangle.right).maxOption.getOrElse(width)
+    val maxBottom = this.blocks.map(_.rectangle.bottom).maxOption.getOrElse(height)
+    Rectangle("",
+      left = minLeft,
+      top = minTop,
+      width = maxRight - minLeft,
+      height = maxBottom - minTop
+    )
+  }
+
   def rotate(): Page = {
     this.rotate(ImageInfo(width, height, 0-rotation))
   }
@@ -60,6 +73,22 @@ case class Page(
     this.copy(blocks = blocks.map(_.rotate(imageInfo)).collect {
       case block: Block => block
     })
+  }
+
+  override def rescale(scale: Double): Page = {
+    this.copy(blocks = blocks.map(_.rescale(scale)).collect {
+      case block: Block => block
+    })
+  }
+
+  def crop(rectangle: Rectangle): Page = {
+    this.copy(
+      height = rectangle.height,
+      width = rectangle.width,
+      blocks = this.blocks.map(
+        _.translate(0 - rectangle.left, 0 - rectangle.top))
+        .collect{ case b: Block => b}
+    )
   }
 
   override def toXml(idToIgnore: String): Elem =

@@ -32,6 +32,11 @@ case class TextBlock(rectangle: Rectangle, textLines: Seq[TextLine]) extends Blo
   override def rotate(imageInfo: ImageInfo): TextBlock =
     TextBlock(rectangle.rotate(imageInfo), textLines.map(_.rotate(imageInfo)))
 
+  override def rescale(scale: Double): TextBlock = this.copy(
+    rectangle = this.rectangle.rescale(scale),
+    textLines = this.textLines.map(_.rescale(scale)).collect { case tl: TextLine => tl }
+  )
+
   override def toXml(id: String): Elem =
     <TextBlock ID={id} HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString} >
       {textLines.map(_.toXml())}

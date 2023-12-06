@@ -7,9 +7,13 @@ import scala.xml.{Elem, Node}
 case class Hyphen(rectangle: Rectangle) extends WordOrSpace {
   val content = rectangle.label
 
-  override def translate(xDiff: Int, yDiff: Int): PageElement = Hyphen(rectangle.translate(xDiff, yDiff))
+  override def translate(xDiff: Int, yDiff: Int): Hyphen = Hyphen(rectangle.translate(xDiff, yDiff))
 
-  override def rotate(imageInfo: ImageInfo): PageElement = Hyphen(rectangle.rotate(imageInfo))
+  override def rotate(imageInfo: ImageInfo): Hyphen = Hyphen(rectangle.rotate(imageInfo))
+
+  override def rescale(scale: Double): Hyphen = this.copy(
+    rectangle = this.rectangle.rescale(scale)
+  )
 
   override def toXml(id: String): Elem =
     <HYP HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString} CONTENT={rectangle.label}>
