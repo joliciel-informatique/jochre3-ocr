@@ -3,6 +3,8 @@ package com.joliciel.jochre.ocr.yiddish
 import com.joliciel.jochre.lexicon.{Lexicon, TextFileLexicon}
 import com.joliciel.jochre.ocr.core.analysis.{AltoAlternative, AltoProcessor}
 import com.joliciel.jochre.ocr.core.corpus.TextSimplifier
+import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
+import com.joliciel.jochre.ocr.core.model.{Glyph, Hyphen}
 import com.joliciel.jochre.ocr.core.utils.XmlImplicits
 import com.joliciel.jochre.ocr.yiddish.YiddishAltoProcessor.Purpose
 import com.joliciel.yivoTranscriber.YivoTranscriber
@@ -201,15 +203,47 @@ object YiddishAltoProcessor extends XmlImplicits {
               case hyphenRegex(_, _) =>
                 val glyphs = altoString \ "Glyph"
                 val stringGlyphs = glyphs.init
-                val hyphenGlyph = glyphs.last
-                val stringElemWithoutHyphen = glyphsToString(stringGlyphs, confidence)
-                val hyphenAttributes = (for (attr <- hyphenGlyph.attributes) yield attr match {
-                  case attr@Attribute("GC", _, _) =>
-                    None
-                  case other => Some(other)
-                }).flatten
-                val hyphenElem = (<HYP></HYP>).copy(attributes = hyphenAttributes)
-                Seq(stringElemWithoutHyphen, hyphenElem)
+                val lastGlyph = glyphs.last
+                val hyphenGlyphContent = lastGlyph \@ "CONTENT"
+                val (letterGlyph, hyphenGlyph) = if (hyphenGlyphContent.length==1) {
+                  None -> Glyph.fromXML(lastGlyph)
+                } else {
+                  // In some cases the last glyph contains several letters
+                  // We separate the hyphen from the remaining letters - these will be added to the preceding word
+                  val numLetters = hyphenGlyphContent.length
+                  val hyphen = Glyph.fromXML(lastGlyph)
+                  val width = hyphen.rectangle.width
+                  val widthHyphen = width / numLetters
+                  val widthLetters = widthHyphen * (numLetters -1)
+                  // Note: left here only works for right-to-left text (Yiddish)
+                  val letterGlyph = hyphen.copy(rectangle = hyphen.rectangle.copy(
+                    label = hyphenGlyphContent.substring(0, numLetters - 1),
+                    left = hyphen.rectangle.left + widthHyphen,
+                    width = widthLetters
+                  ))
+                  val hyphenGlyph = hyphen.copy(rectangle = hyphen.rectangle.copy(
+                    label = hyphenGlyphContent.substring(numLetters - 1),
+                    width = widthHyphen
+                  ))
+                  Some(letterGlyph) -> hyphenGlyph
+                }
+
+                val newStringGlyphs = letterGlyph.map{glyph => stringGlyphs :+ glyph.toXml()}.getOrElse(stringGlyphs)
+
+                if (newStringGlyphs.isEmpty) {
+                  Seq.empty
+                } else {
+                  val stringElemWithoutHyphen = glyphsToString(newStringGlyphs, confidence)
+                  val hyphenAttributes = (for (attr <- hyphenGlyph.toXml().attributes) yield attr match {
+                    case Attribute("GC", _, _) =>
+                      None
+                    case attr@Attribute("CONTENT", _, _) =>
+                      Some(attr.goodCopy(value = hyphenGlyph.content))
+                    case other => Some(other)
+                  }).flatten
+                  val hyphenElem = (<HYP></HYP>).copy(attributes = hyphenAttributes)
+                  Seq(stringElemWithoutHyphen, hyphenElem)
+                }
               case _ =>
                 Seq.empty
             }
