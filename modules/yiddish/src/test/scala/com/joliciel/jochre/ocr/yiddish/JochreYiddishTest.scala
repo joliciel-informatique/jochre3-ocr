@@ -1,6 +1,9 @@
 package com.joliciel.jochre.ocr.yiddish
 
 import com.joliciel.jochre.ocr.core.Jochre
+import com.joliciel.jochre.ocr.core.segmentation.{BlockOnlySegmenterService, BlockPredictorService}
+import com.joliciel.jochre.ocr.core.text.BlockTextGuesserService
+import sttp.client3.httpclient.zio.HttpClientZioBackend
 import zio._
 import zio.test.junit.JUnitRunnableSpec
 import zio.test.{Spec, TestAspect, TestEnvironment, assertTrue}
@@ -27,5 +30,10 @@ object JochreYiddishTest extends JUnitRunnableSpec {
         assertTrue(wcs.forall(_>0.0))
       }
     }
-  ).provideLayer(JochreYiddish.jochreYiddishLayer) @@ TestAspect.sequential
+  ).provide(HttpClientZioBackend.layer(),
+      Jochre2Analyzer.live,
+      BlockPredictorService.live,
+      BlockOnlySegmenterService.live,
+      BlockTextGuesserService.live,
+      JochreYiddish.jochreYiddishLayer) @@ TestAspect.sequential
 }

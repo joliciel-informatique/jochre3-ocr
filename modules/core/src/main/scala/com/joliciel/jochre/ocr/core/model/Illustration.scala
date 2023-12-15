@@ -25,6 +25,6 @@ case class Illustration(rectangle: Rectangle) extends Block {
 
 object Illustration {
   def fromXML(node: Node): Illustration = {
-    Illustration(Rectangle.fromXML(BlockType.Illustration.entryName, node))
+    Illustration(Rectangle.fromXML(BlockType.Image.entryName, node))
   }
 }

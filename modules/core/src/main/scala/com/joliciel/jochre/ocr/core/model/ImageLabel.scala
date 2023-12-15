@@ -6,10 +6,14 @@ import java.awt
 import scala.xml.Node
 
 sealed trait ImageLabel {
-  val label: String
+  def label: String
 }
 
 object ImageLabel {
+  case class PredictedRectangle(rectangle: Rectangle, confidence: Double) extends ImageLabel {
+    override val label: String = rectangle.label
+  }
+
   case class Rectangle(label: String, left: Int, top: Int, width: Int, height: Int) extends ImageLabel with Ordered[Rectangle] {
     val area: Int = width * height
 
@@ -47,9 +51,20 @@ object ImageLabel {
 
     def iou(that: Rectangle): Double = areaOfIntersection(that) / areaOfUnion(that)
 
-    import scala.math.Ordered.orderingToOrdered
-
-    def compare(that: Rectangle): Int = (this.top, this.left, this.width, this.height, this.label) compare (that.top, that.left, that.width, that.height, that.label)
+    def compare(that: Rectangle): Int = {
+      // We'll assume right-to-left for now
+      if (this.left >= that.right) return -1
+      if (this.right < that.left) return 1
+      if (this.top < that.top) return -1
+      if (that.top < this.top) return 1
+      if (this.bottom < that.bottom) return -1
+      if (that.bottom < this.bottom) return 1
+      if (this.right > that.right) return -1
+      if (that.right > this.right) return 1
+      if (this.left < that.left) return 1
+      if (that.left < this.left) return -1
+      this.label.compareTo(that.label)
+    }
 
     def rescale(scale: Double): Rectangle =
       Rectangle(label, (left.toDouble * scale).toInt, (top.toDouble * scale).toInt, (width.toDouble * scale).toInt, (height.toDouble * scale).toInt)

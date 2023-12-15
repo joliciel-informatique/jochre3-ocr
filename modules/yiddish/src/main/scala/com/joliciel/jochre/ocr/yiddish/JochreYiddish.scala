@@ -1,8 +1,9 @@
 package com.joliciel.jochre.ocr.yiddish
 
 import com.joliciel.jochre.ocr.core.{AbstractJochre, Jochre}
-import com.joliciel.jochre.ocr.core.analysis.{AltoProcessor, TextAnalyzer}
-import com.joliciel.jochre.ocr.core.segmentation.BlockPredictorService
+import com.joliciel.jochre.ocr.core.analysis.{AltoTransformer, TextAnalyzer}
+import com.joliciel.jochre.ocr.core.segmentation.{BlockOnlySegmenterService, BlockPredictorService, SegmenterService}
+import com.joliciel.jochre.ocr.core.text.{BlockTextGuesserService, TextGuesserService}
 import org.rogach.scallop.{ScallopConf, ScallopOption}
 import sttp.client3.httpclient.zio.HttpClientZioBackend
 import zio._
@@ -10,15 +11,16 @@ import zio._
 import java.nio.file.Path
 
 object JochreYiddish extends ZIOAppDefault {
-  private case class JochreYiddishImpl(blockPredictorService: BlockPredictorService) extends AbstractJochre {
-    override val textAnalyzer: TextAnalyzer = Jochre2Analyzer
-    override val altoProcessor: AltoProcessor = YiddishAltoProcessor()
+  private case class JochreYiddishImpl(segmenterService: SegmenterService, textGuesserService: TextGuesserService) extends AbstractJochre {
+    override val altoTransformer: AltoTransformer = YiddishAltoTransformer()
   }
 
-  private val blockPredictorServiceLayer = HttpClientZioBackend.layer() >>>
-    BlockPredictorService.live
-  val jochreYiddishLayer: ZLayer[Any, Throwable, Jochre] = blockPredictorServiceLayer >>>
-    ZLayer.fromFunction(JochreYiddishImpl(_))
+  val jochreYiddishLayer: ZLayer[SegmenterService with TextGuesserService, Throwable, Jochre] = ZLayer {
+    for {
+      segmenterService <- ZIO.service[SegmenterService]
+      textGuesserService <- ZIO.service[TextGuesserService]
+    } yield (JochreYiddishImpl(segmenterService, textGuesserService))
+  }
 
   class JochreYiddishCLI(arguments: Seq[String]) extends ScallopConf(arguments) {
     val inputDir: ScallopOption[String] = opt[String](required = true)
@@ -41,6 +43,11 @@ object JochreYiddish extends ZIOAppDefault {
     for {
       args <- getArgs
       result <- app(args).provide(
+        HttpClientZioBackend.layer(),
+        Jochre2Analyzer.live,
+        BlockPredictorService.live,
+        BlockOnlySegmenterService.live,
+        BlockTextGuesserService.live,
         jochreYiddishLayer
       )
     } yield result

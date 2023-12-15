@@ -1,7 +1,7 @@
 package com.joliciel.jochre.ocr.core.segmentation
 
 import com.joliciel.jochre.ocr.core.model.ImageLabel
-import com.joliciel.jochre.ocr.core.utils.{OpenCvUtils, OutputLocation}
+import com.joliciel.jochre.ocr.core.utils.{ImageUtils, OutputLocation}
 import org.bytedeco.opencv.global.opencv_imgproc
 import org.bytedeco.opencv.opencv_core.{AbstractScalar, Mat, Point}
 import org.slf4j.LoggerFactory
@@ -9,39 +9,38 @@ import zio.{Task, ZIO}
 
 import java.awt.image.BufferedImage
 
-trait SegmentationPredictor[T <: ImageLabel] extends OpenCvUtils {
-  def mat: Mat
-  def fileName: String
-  def outputLocation: Option[OutputLocation]
-  def detector: ImageLabelDetector[T]
-  def extension: String
-  def predictor: BufferedImage => Task[Map[String, BufferedImage]]
+trait SegmentationPredictor[T <: ImageLabel] {
+  def predict(): Task[Seq[T]]
+}
+
+trait SegmentationPredictorBase[T <: ImageLabel] extends SegmentationPredictor[T] with ImageUtils {
+  private[segmentation] def mat: Mat
+  private[segmentation] def fileName: String
+  private[segmentation] def outputLocation: Option[OutputLocation]
+  private[segmentation] def extension: String
+  private[segmentation] def predictor: BufferedImage => Task[Seq[T]]
 
   private val log = LoggerFactory.getLogger(getClass)
 
+  private[segmentation] def transform(): Mat
+
   def predict(): Task[Seq[T]] = {
     for {
-      bufferedImage <- ZIO.attempt(toBufferedImage(mat))
-      prediction <- predictor(bufferedImage)
-      imageLabels <- ZIO.attempt{
-        val imageLabels = prediction.view
-          .map { case (label, image) =>
-            val mat = fromBufferedImage(image)
-            outputLocation.foreach { outputLocation =>
-              //ImageIO.write(image, "png", new FileOutputStream(outputLocation.resolve(f"_${label}${extension}").toFile))
-              saveImage(mat, outputLocation.resolve(f"_${label}_mat.png").toString)
-            }
-            val detected = detector.detect(mat, label)
-            detected
-          }.toSeq
-          .flatten
-
-        imageLabels.zipWithIndex.foreach { case (imageLabel, i) => log.debug(s"Label $i: ${imageLabel}") }
+      bufferedImage <- ZIO.attempt{
+        val transformed = transform()
+        toBufferedImage(transformed)
+      }
+      predictions <- predictor(bufferedImage)
+      _ <- ZIO.attempt{
+        predictions.zipWithIndex.foreach { case (imageLabel, i) => log.debug(s"Label $i: ${imageLabel}") }
 
         outputLocation.foreach { outputLocation =>
           val labelled: Mat = toRGB(mat.clone())
 
-          imageLabels.foreach {
+          predictions.foreach {
+            case ImageLabel.PredictedRectangle(ImageLabel.Rectangle(label, left, top, width, height), _) =>
+              opencv_imgproc.rectangle(labelled, new Point(left, top), new Point(left + width, top + height), AbstractScalar.RED)
+              opencv_imgproc.putText(labelled, label, new Point(left + width + 2, top + height + 20), opencv_imgproc.FONT_HERSHEY_DUPLEX, 3, AbstractScalar.GREEN)
             case ImageLabel.Rectangle(label, left, top, width, height) =>
               opencv_imgproc.rectangle(labelled, new Point(left, top), new Point(left + width, top + height), AbstractScalar.RED)
               opencv_imgproc.putText(labelled, label, new Point(left + width + 2, top + height + 20), opencv_imgproc.FONT_HERSHEY_DUPLEX, 3, AbstractScalar.GREEN)
@@ -52,8 +51,7 @@ trait SegmentationPredictor[T <: ImageLabel] extends OpenCvUtils {
 
           saveImage(labelled, outputLocation.resolve("_labels.png").toString)
         }
-        imageLabels
       }
-    } yield imageLabels
+    } yield predictions
   }
 }

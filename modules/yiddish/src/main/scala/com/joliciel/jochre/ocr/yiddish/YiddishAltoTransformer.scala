@@ -1,12 +1,12 @@
 package com.joliciel.jochre.ocr.yiddish
 
 import com.joliciel.jochre.lexicon.{Lexicon, TextFileLexicon}
-import com.joliciel.jochre.ocr.core.analysis.{AltoAlternative, AltoProcessor}
+import com.joliciel.jochre.ocr.core.analysis.{AltoAlternative, AltoTransformer}
 import com.joliciel.jochre.ocr.core.corpus.TextSimplifier
 import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
 import com.joliciel.jochre.ocr.core.model.{Glyph, Hyphen}
 import com.joliciel.jochre.ocr.core.utils.XmlImplicits
-import com.joliciel.jochre.ocr.yiddish.YiddishAltoProcessor.Purpose
+import com.joliciel.jochre.ocr.yiddish.YiddishAltoTransformer.Purpose
 import com.joliciel.yivoTranscriber.YivoTranscriber
 import enumeratum._
 
@@ -16,7 +16,7 @@ import scala.util.Using
 import scala.xml.transform.RewriteRule
 import scala.xml.{Attribute, Elem, Node}
 
-case class YiddishAltoProcessor(yiddishConfig: YiddishConfig, override val textSimplifier: Option[TextSimplifier] = Some(YiddishTextSimpifier)) extends AltoProcessor with XmlImplicits {
+case class YiddishAltoTransformer(yiddishConfig: YiddishConfig, override val textSimplifier: Option[TextSimplifier] = Some(YiddishTextSimpifier)) extends AltoTransformer with XmlImplicits {
   private val yivoTranscriber = new YivoTranscriber()
   private val lexicon: Lexicon = {
     Using(new ZipInputStream(new FileInputStream(yiddishConfig.lexiconPath))) { zis =>
@@ -66,15 +66,15 @@ case class YiddishAltoProcessor(yiddishConfig: YiddishConfig, override val textS
   }
 
   override val getSpecificRules: Seq[RewriteRule] = Seq(
-    Option.when(yiddishConfig.addHyphenElement)(YiddishAltoProcessor.addHyphenRule),
-    Some(YiddishAltoProcessor.punctuationSplitRule),
-    Some(YiddishAltoProcessor.reverseNumberRule),
+    Option.when(yiddishConfig.addHyphenElement)(YiddishAltoTransformer.addHyphenRule),
+    Some(YiddishAltoTransformer.punctuationSplitRule),
+    Some(YiddishAltoTransformer.reverseNumberRule),
   ).flatten
 
   override val removeGlyphs: Boolean = true
 }
 
-object YiddishAltoProcessor extends XmlImplicits {
+object YiddishAltoTransformer extends XmlImplicits {
   sealed trait Purpose extends EnumEntry
 
   object Purpose extends Enum[Purpose] {
@@ -264,5 +264,5 @@ object YiddishAltoProcessor extends XmlImplicits {
   }
 
   val yiddishConfig: YiddishConfig = YiddishConfig.fromConfig
-  def apply(): YiddishAltoProcessor = YiddishAltoProcessor(yiddishConfig)
+  def apply(): YiddishAltoTransformer = YiddishAltoTransformer(yiddishConfig)
 }

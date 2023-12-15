@@ -2,13 +2,15 @@ package com.joliciel.jochre.ocr.core.analysis
 
 import com.joliciel.jochre.ocr.core.corpus.TextSimplifier
 import com.joliciel.jochre.ocr.core.utils.XmlImplicits
-import com.typesafe.config.ConfigFactory
 
 import java.io.{File, Reader}
 import scala.xml.transform.{RewriteRule, RuleTransformer}
 import scala.xml.{Attribute, Elem, Node, Text, XML}
 
-trait AltoProcessor extends XmlImplicits {
+/**
+ * Given Alto XML as input, transforms it to produce appropriate output, including in particular the possibility of adding String alternatives.
+ */
+trait AltoTransformer extends XmlImplicits {
   val ocrVersion = sys.env.get("JOCHRE3_OCR_VERSION").getOrElse("0.0.1-SNAPSHOT")
 
   def removeGlyphs: Boolean = false

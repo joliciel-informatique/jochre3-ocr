@@ -5,12 +5,12 @@ import org.scalatest.matchers.should.Matchers
 
 import scala.xml.PrettyPrinter
 
-class AltoProcessorTest extends AnyFlatSpec
+class AltoTransformerTest extends AnyFlatSpec
   with Matchers
 {
   "addAlternativesToFile" should "add alternatives to an alto file" in {
     val fileName = "JimiHendrix.png"
-    val sillyAltoProcessor = new AltoProcessor {
+    val sillyAltoProcessor = new AltoTransformer {
       override val removeGlyphs: Boolean = true
       override def getAlternatives(content: String): Set[AltoAlternative] = Set(
         AltoAlternative("X", f"X_${content}"),
