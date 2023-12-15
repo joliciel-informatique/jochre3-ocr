@@ -7,67 +7,67 @@ import org.scalatest.matchers.should.Matchers
 import scala.xml.{Elem, PrettyPrinter}
 import scala.xml.transform.RuleTransformer
 
-class YiddishAltoProcessorTest extends AnyFlatSpec with Matchers {
+class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
   private val yiddishConfig: YiddishConfig = YiddishConfig.fromConfig
 
   "getAlternatives" should "correctly add alternatives" in {
-    val yiddishAltoProcessor = YiddishAltoProcessor(yiddishConfig, textSimplifier = None)
+    val yiddishAltoProcessor = YiddishAltoTransformer(yiddishConfig, textSimplifier = None)
     yiddishAltoProcessor.getAlternatives("מעהר") shouldEqual Set(
-      AltoAlternative(YiddishAltoProcessor.Purpose.YIVO.entryName, "מער"),
-      AltoAlternative(YiddishAltoProcessor.Purpose.Roman.entryName, "mer")
+      AltoAlternative(YiddishAltoTransformer.Purpose.YIVO.entryName, "מער"),
+      AltoAlternative(YiddishAltoTransformer.Purpose.Roman.entryName, "mer")
     )
 
     yiddishAltoProcessor.getAlternatives("בלײ") shouldEqual Set(
-      AltoAlternative(YiddishAltoProcessor.Purpose.YIVO.entryName, "בלײַ"),
-      AltoAlternative(YiddishAltoProcessor.Purpose.Roman.entryName, "blay")
+      AltoAlternative(YiddishAltoTransformer.Purpose.YIVO.entryName, "בלײַ"),
+      AltoAlternative(YiddishAltoTransformer.Purpose.Roman.entryName, "blay")
     )
   }
 
   it should "only add a YIVO alternative if it's different from the original" in {
-    val yiddishAltoProcessor = YiddishAltoProcessor(yiddishConfig, textSimplifier = None)
+    val yiddishAltoProcessor = YiddishAltoTransformer(yiddishConfig, textSimplifier = None)
     yiddishAltoProcessor.getAlternatives("מער") shouldEqual Set(
-      AltoAlternative(YiddishAltoProcessor.Purpose.Roman.entryName, "mer")
+      AltoAlternative(YiddishAltoTransformer.Purpose.Roman.entryName, "mer")
     )
   }
 
   it should "find first real word if impossible shtumer alef" in {
-    val yiddishAltoProcessor = YiddishAltoProcessor(yiddishConfig, textSimplifier = None)
+    val yiddishAltoProcessor = YiddishAltoTransformer(yiddishConfig, textSimplifier = None)
 
     yiddishAltoProcessor.getAlternatives("אָװנט") shouldEqual Set(
-      AltoAlternative(YiddishAltoProcessor.Purpose.Roman.entryName, "ovnt")
+      AltoAlternative(YiddishAltoTransformer.Purpose.Roman.entryName, "ovnt")
     )
 
     yiddishAltoProcessor.getAlternatives("אַבי") shouldEqual Set(
-      AltoAlternative(YiddishAltoProcessor.Purpose.Roman.entryName, "abi")
+      AltoAlternative(YiddishAltoTransformer.Purpose.Roman.entryName, "abi")
     )
 
     yiddishAltoProcessor.getAlternatives("אײראָפּע") shouldEqual Set(
-      AltoAlternative(YiddishAltoProcessor.Purpose.Roman.entryName, "eyrope")
+      AltoAlternative(YiddishAltoTransformer.Purpose.Roman.entryName, "eyrope")
     )
 
     yiddishAltoProcessor.getAlternatives("א") shouldEqual Set(
-      AltoAlternative(YiddishAltoProcessor.Purpose.YIVO.entryName, "אַ"),
-      AltoAlternative(YiddishAltoProcessor.Purpose.Roman.entryName, "a")
+      AltoAlternative(YiddishAltoTransformer.Purpose.YIVO.entryName, "אַ"),
+      AltoAlternative(YiddishAltoTransformer.Purpose.Roman.entryName, "a")
     )
 
     yiddishAltoProcessor.getAlternatives("װאסער") shouldEqual Set(
-      AltoAlternative(YiddishAltoProcessor.Purpose.YIVO.entryName, "װאַסער"),
-      AltoAlternative(YiddishAltoProcessor.Purpose.Roman.entryName, "vaser")
+      AltoAlternative(YiddishAltoTransformer.Purpose.YIVO.entryName, "װאַסער"),
+      AltoAlternative(YiddishAltoTransformer.Purpose.Roman.entryName, "vaser")
     )
 
     yiddishAltoProcessor.getAlternatives("איבערמאכן") shouldEqual Set(
-      AltoAlternative(YiddishAltoProcessor.Purpose.YIVO.entryName, "איבערמאַכן"),
-      AltoAlternative(YiddishAltoProcessor.Purpose.Roman.entryName, "ibermakhn")
+      AltoAlternative(YiddishAltoTransformer.Purpose.YIVO.entryName, "איבערמאַכן"),
+      AltoAlternative(YiddishAltoTransformer.Purpose.Roman.entryName, "ibermakhn")
     )
 
     yiddishAltoProcessor.getAlternatives("אטאם") shouldEqual Set(
-      AltoAlternative(YiddishAltoProcessor.Purpose.YIVO.entryName, "אַטאָם"),
-      AltoAlternative(YiddishAltoProcessor.Purpose.Roman.entryName, "atom")
+      AltoAlternative(YiddishAltoTransformer.Purpose.YIVO.entryName, "אַטאָם"),
+      AltoAlternative(YiddishAltoTransformer.Purpose.Roman.entryName, "atom")
     )
   }
 
   "process" should "keep spaces" in {
-    val yiddishAltoProcessor = YiddishAltoProcessor(yiddishConfig, textSimplifier = None)
+    val yiddishAltoProcessor = YiddishAltoTransformer(yiddishConfig, textSimplifier = None)
 
     val alto = <Page>
       <Paragraph>
@@ -93,7 +93,7 @@ class YiddishAltoProcessorTest extends AnyFlatSpec with Matchers {
   }
 
   it should "reverse numbers" in {
-    val yiddishAltoProcessor = YiddishAltoProcessor(yiddishConfig, textSimplifier = None)
+    val yiddishAltoProcessor = YiddishAltoTransformer(yiddishConfig, textSimplifier = None)
     val alto = <Page>
       <Paragraph>
         <String CONTENT="Jimi">
@@ -136,7 +136,7 @@ class YiddishAltoProcessorTest extends AnyFlatSpec with Matchers {
   }
 
   it should "split on punctuation" in {
-    val yiddishAltoProcessor = YiddishAltoProcessor(yiddishConfig, textSimplifier = None)
+    val yiddishAltoProcessor = YiddishAltoTransformer(yiddishConfig, textSimplifier = None)
     val alto = <Page>
       <Paragraph>
         <String HPOS="10" VPOS="10" WIDTH="80" HEIGHT="80" CONTENT="-a,.bc." WC="0.8">
@@ -177,7 +177,7 @@ class YiddishAltoProcessorTest extends AnyFlatSpec with Matchers {
         </String>
       </alto>
     }
-    val transform = new RuleTransformer(YiddishAltoProcessor.punctuationSplitRule)
+    val transform = new RuleTransformer(YiddishAltoTransformer.punctuationSplitRule)
     val actual = transform(original).asInstanceOf[Elem]
     val expected =
       <alto>
@@ -213,7 +213,7 @@ class YiddishAltoProcessorTest extends AnyFlatSpec with Matchers {
         </TextLine>
       </alto>
     }
-    val transform = new RuleTransformer(YiddishAltoProcessor.addHyphenRule)
+    val transform = new RuleTransformer(YiddishAltoTransformer.addHyphenRule)
     val actual = transform(original).asInstanceOf[Elem]
     val expected =
       <alto>
@@ -258,7 +258,7 @@ class YiddishAltoProcessorTest extends AnyFlatSpec with Matchers {
         </TextLine>
       </alto>
     }
-    val transform = new RuleTransformer(YiddishAltoProcessor.addHyphenRule)
+    val transform = new RuleTransformer(YiddishAltoTransformer.addHyphenRule)
     val actual = transform(original).asInstanceOf[Elem]
     val expected =
       <alto>

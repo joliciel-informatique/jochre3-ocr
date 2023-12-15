@@ -2,9 +2,11 @@ package com.joliciel.jochre.ocr.yiddish
 
 import com.joliciel.jochre.graphics.SegmentationException
 import com.joliciel.jochre.ocr.core.analysis.TextAnalyzer
+import com.joliciel.jochre.ocr.yiddish.YiddishConfig.yiddishConfig
 import com.joliciel.jochre.yiddish.JochreYiddish
 import com.typesafe.config.ConfigFactory
 import org.slf4j.LoggerFactory
+import zio.{Config, ZIO, ZLayer}
 
 import java.awt.image.BufferedImage
 import java.io.StringWriter
@@ -44,4 +46,6 @@ object Jochre2Analyzer extends TextAnalyzer {
       writer.close()
     }
   }
+
+  val live: ZLayer[Any, Config.Error, TextAnalyzer] = ZLayer.succeed(Jochre2Analyzer)
 }

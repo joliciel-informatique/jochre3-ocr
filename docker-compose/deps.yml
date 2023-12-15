@@ -1,5 +1,5 @@
 version: '3.7'
 services:
   yolo-dla:
-    image: registry.gitlab.com/jochre/yolo-dla-server:0.0.1-SNAPSHOT
+    image: registry.gitlab.com/jochre/yolo-dla-server:0.0.2
     

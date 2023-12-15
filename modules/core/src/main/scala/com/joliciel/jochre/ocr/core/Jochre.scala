@@ -1,11 +1,12 @@
 package com.joliciel.jochre.ocr.core
 
-import com.joliciel.jochre.ocr.core.analysis.{AltoProcessor, TextAnalyzer}
-import com.joliciel.jochre.ocr.core.model.{ComposedBlock, Illustration, Page, TextBlock}
+import com.joliciel.jochre.ocr.core.analysis.AltoTransformer
+import com.joliciel.jochre.ocr.core.model.{ComposedBlock, TextBlock}
 import com.joliciel.jochre.ocr.core.output.Alto4Writer
-import com.joliciel.jochre.ocr.core.segmentation.{BlockPredictorService, IllustrationSegment, ImageSegmentExtractor, TextSegment}
+import com.joliciel.jochre.ocr.core.segmentation.SegmenterService
+import com.joliciel.jochre.ocr.core.text.TextGuesserService
 import com.joliciel.jochre.ocr.core.transform.{BoxTransform, Deskewer, GrayscaleTransform, ResizeImageAndKeepAspectRatio, Scale, SkewAngle}
-import com.joliciel.jochre.ocr.core.utils.{FileUtils, OpenCvUtils, OutputLocation, XmlImplicits}
+import com.joliciel.jochre.ocr.core.utils.{FileUtils, ImageUtils, OutputLocation, XmlImplicits}
 import com.typesafe.config.ConfigFactory
 import org.bytedeco.opencv.opencv_core.Mat
 import org.slf4j.LoggerFactory
@@ -23,28 +24,19 @@ trait Jochre {
   def processImage(mat: Mat, outputDir: Option[Path], fileName: String): Task[Elem]
 }
 
-trait AbstractJochre extends Jochre with OpenCvUtils with XmlImplicits {
+trait AbstractJochre extends Jochre with ImageUtils with XmlImplicits {
   private val log = LoggerFactory.getLogger(getClass)
-  private val config = ConfigFactory.load().getConfig("jochre.ocr")
-  private val longerSide: Int = config.getInt("corpus-transform.longer-side")
-  private val boxImages: Boolean = config.getBoolean("corpus-transform.box-images")
 
-  def blockPredictorService: BlockPredictorService
-  def textAnalyzer: TextAnalyzer
-  def altoProcessor: AltoProcessor
+  def altoTransformer: AltoTransformer
+  def segmenterService: SegmenterService
+  def textGuesserService: TextGuesserService
 
   private val transforms = List(
     // change to grayscale
     Some(new GrayscaleTransform()),
 
-    // resize the image
-    Some(new ResizeImageAndKeepAspectRatio(longerSide)),
-
     // deskew the image
     Some(new Deskewer()),
-
-    // box the image if required
-    Option.when(boxImages)(new BoxTransform(longerSide)),
   ).flatten
 
   def process(inputDir: Path, outputDir: Option[Path], maxImages: Option[Int]): Task[Seq[Elem]] = {
@@ -92,37 +84,12 @@ trait AbstractJochre extends Jochre with OpenCvUtils with XmlImplicits {
           case _ => None
         }.flatten.headOption.getOrElse(1.0)
 
-      blockPredictor <- blockPredictorService.getBlockPredictor(transformed, fileName, outputLocation)
-      // detect blocks
-      segments <- blockPredictor.predict()
-        .mapAttempt{labeledRectangles =>
-          // re-scale coordinates
-          val rescaledRectangles = labeledRectangles.map(_.rescale(1 / scale))
-
-          val uprightImage = this.unrotate(skewAngle, mat)
-
-          val imageSegmentExtractor = ImageSegmentExtractor(uprightImage, rescaledRectangles, outputLocation)
-          imageSegmentExtractor.segments
-        }
+      segmenter <- segmenterService.getSegmenter()
+      segmented <- segmenter.segment(transformed, fileName, outputLocation)
+      textGuesser <- textGuesserService.getTextGuesser()
+      pageWithContent <- textGuesser.guess(segmented, transformed, fileName, outputLocation)
       alto <- ZIO.attempt{
-        // analyze OCR in text blocks
-        val blocks = segments.map{
-          case TextSegment(block, subImage) =>
-            // Analyze OCR on each text segment and extract the analyzed blocks
-            log.debug(f"About to perform OCR analysis for text segment $block")
-            textAnalyzer.analyze(subImage).map { altoXml =>
-              val jochreSubImage = Page.fromXML(altoXml)
-              val translatedSubImage = jochreSubImage.rotate().translate(block.left, block.top)
-              log.debug(f"OCR analysis complete for $block")
-              translatedSubImage.blocks
-            }.getOrElse(Seq.empty)
-          case IllustrationSegment(block) =>
-            Seq(Illustration(block))
-        }.flatten.sortBy(_.rectangle)
-
-        log.debug(f"Found ${blocks.size} blocks")
-
-        val allConfidences = blocks.flatMap{
+        val allConfidences = pageWithContent.blocks.flatMap{
           case composedBlock:ComposedBlock => composedBlock.allWords
           case textBlock:TextBlock => textBlock.allWords
           case _ => Seq()
@@ -134,18 +101,14 @@ trait AbstractJochre extends Jochre with OpenCvUtils with XmlImplicits {
           allConfidences.sum / allConfidences.size
         }
 
-        val page = Page(
+        val page = pageWithContent.copy(
           id = baseName,
-          height = mat.rows(),
-          width = mat.cols(),
-          physicalPageNumber = 1,
           rotation = skewAngle,
           language = "yi",
           confidence = meanConfidence,
-          blocks = blocks
         )
 
-        val rotatedPage = page.rotate()
+        val rotatedPage = page.rescale(1.0 / scale).rotate()
 
         val alto4Writer = Alto4Writer(rotatedPage, fileName)
         val alto = alto4Writer.alto
@@ -164,7 +127,7 @@ trait AbstractJochre extends Jochre with OpenCvUtils with XmlImplicits {
           }
         }
 
-        val fixedAlto = altoProcessor.process(alto, fileName)
+        val fixedAlto = altoTransformer.process(alto, fileName)
 
         outputLocation.foreach { outputLocation =>
           val altoFile = outputLocation.resolve("_fixed_alto4.xml").toFile

@@ -1,14 +1,14 @@
 package com.joliciel.jochre.ocr.core.corpus
 
 import com.joliciel.jochre.ocr.core.model.Page
-import com.joliciel.jochre.ocr.core.utils.{FileUtils, OpenCvUtils}
+import com.joliciel.jochre.ocr.core.utils.{FileUtils, ImageUtils}
 import org.bytedeco.opencv.opencv_core.Mat
 import org.slf4j.LoggerFactory
 
 import java.io.File
 import java.nio.file.Path
 
-trait CorpusAnnotator extends FileUtils with OpenCvUtils {
+trait CorpusAnnotator extends FileUtils with ImageUtils {
   def altoFinder: AltoFinder
   def corpusDir: Path
   def outDir: Path

@@ -3,7 +3,7 @@ package com.joliciel.jochre.ocr.core.corpus
 import com.joliciel.jochre.ocr.core.corpus.YoloAnnotator.YoloTask
 import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
 import com.joliciel.jochre.ocr.core.model.Page
-import com.joliciel.jochre.ocr.core.utils.{FileUtils, OpenCvUtils}
+import com.joliciel.jochre.ocr.core.utils.{FileUtils, ImageUtils}
 import com.typesafe.config.ConfigFactory
 import enumeratum._
 import org.bytedeco.opencv.opencv_core.Mat
@@ -30,7 +30,7 @@ case class YoloAnnotator(
   objectsToInclude: Seq[YoloObjectType],
   yamlFileName: Option[String] = None,
   validationOneEvery: Option[Int] = None,
-  altoFinder: AltoFinder = AltoFinder.default) extends CorpusAnnotator with OpenCvUtils {
+  altoFinder: AltoFinder = AltoFinder.default) extends CorpusAnnotator with ImageUtils {
 
   import YoloAnnotator._
 
