@@ -1,7 +1,7 @@
 package com.joliciel.jochre.ocr.yiddish
 
 import com.joliciel.jochre.ocr.core.Jochre
-import com.joliciel.jochre.ocr.core.segmentation.{BlockOnlySegmenterService, BlockPredictorService}
+import com.joliciel.jochre.ocr.core.segmentation.{BlockOnlySegmenterService, YoloPredictorService}
 import com.joliciel.jochre.ocr.core.text.BlockTextGuesserService
 import sttp.client3.httpclient.zio.HttpClientZioBackend
 import zio._
@@ -32,7 +32,7 @@ object JochreYiddishTest extends JUnitRunnableSpec {
     }
   ).provide(HttpClientZioBackend.layer(),
       Jochre2Analyzer.live,
-      BlockPredictorService.live,
+      YoloPredictorService.live,
       BlockOnlySegmenterService.live,
       BlockTextGuesserService.live,
       JochreYiddish.jochreYiddishLayer) @@ TestAspect.sequential

@@ -2,7 +2,7 @@ package com.joliciel.jochre.ocr.yiddish
 
 import com.joliciel.jochre.ocr.core.{AbstractJochre, Jochre}
 import com.joliciel.jochre.ocr.core.analysis.{AltoTransformer, TextAnalyzer}
-import com.joliciel.jochre.ocr.core.segmentation.{BlockOnlySegmenterService, BlockPredictorService, SegmenterService}
+import com.joliciel.jochre.ocr.core.segmentation.{BlockOnlySegmenterService, YoloPredictorService, SegmenterService}
 import com.joliciel.jochre.ocr.core.text.{BlockTextGuesserService, TextGuesserService}
 import org.rogach.scallop.{ScallopConf, ScallopOption}
 import sttp.client3.httpclient.zio.HttpClientZioBackend
@@ -45,7 +45,7 @@ object JochreYiddish extends ZIOAppDefault {
       result <- app(args).provide(
         HttpClientZioBackend.layer(),
         Jochre2Analyzer.live,
-        BlockPredictorService.live,
+        YoloPredictorService.live,
         BlockOnlySegmenterService.live,
         BlockTextGuesserService.live,
         jochreYiddishLayer

@@ -8,22 +8,22 @@ import sttp.client3.httpclient.zio.SttpClient
 import zio.{&, Task, ZIO, ZLayer}
 
 object BlockOnlySegmenterService {
-  val live: ZLayer[SttpClient & BlockPredictorService, Nothing, SegmenterService] = ZLayer.fromFunction(BlockOnlySegmenterServiceImpl(_))
+  val live: ZLayer[SttpClient & YoloPredictorService, Nothing, SegmenterService] = ZLayer.fromFunction(BlockOnlySegmenterServiceImpl(_))
 }
 
-private[segmentation] case class BlockOnlySegmenterServiceImpl(blockPredictorService: BlockPredictorService) extends SegmenterService {
+private[segmentation] case class BlockOnlySegmenterServiceImpl(yoloPredictorService: YoloPredictorService) extends SegmenterService {
   def getSegmenter(): Task[BlockOnlySegmenter] = {
-    ZIO.attempt(new BlockOnlySegmenter(blockPredictorService))
+    ZIO.attempt(new BlockOnlySegmenter(yoloPredictorService))
   }
 }
 
 /**
  * Given an image, creates a page with top-level blocks only (text blocks, illustrations).
  */
-private[segmentation] class BlockOnlySegmenter(blockPredictorService: BlockPredictorService) extends Segmenter {
+private[segmentation] class BlockOnlySegmenter(yoloPredictorService: YoloPredictorService) extends Segmenter {
   override def segment(mat: Mat, fileName: String, outputLocation: Option[OutputLocation]): Task[Page] = {
     for {
-      blockPredictor <- blockPredictorService.getBlockPredictor(mat, fileName, outputLocation)
+      blockPredictor <- yoloPredictorService.getYoloPredictor(YoloPredictionType.Blocks, mat, fileName, outputLocation)
       annotations <- blockPredictor.predict()
       page <- ZIO.attempt{
         val blocks = annotations.flatMap{

@@ -2,6 +2,7 @@ package com.joliciel.jochre.ocr.core.model
 
 import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
 import com.joliciel.jochre.ocr.core.utils.MathImplicits._
+import org.bytedeco.opencv.opencv_core.Mat
 
 import scala.xml.{Elem, Node}
 
@@ -48,6 +49,8 @@ case class Page(
     case _: Illustration => Seq.empty
   }
 
+  val rectangle: Rectangle = Rectangle("", 0, 0, width, height)
+
   lazy val printArea: Rectangle = {
     val minLeft = this.blocks.map(_.rectangle.left).minOption.getOrElse(0)
     val minTop = this.blocks.map(_.rectangle.top).minOption.getOrElse(0)
@@ -58,6 +61,31 @@ case class Page(
       top = minTop,
       width = maxRight - minLeft,
       height = maxBottom - minTop
+    )
+  }
+  
+  def croppedPrintArea(cropMargin: Double): Rectangle = {
+    val xMargin = (width.toDouble * cropMargin).toInt
+    val yMargin = (height.toDouble * cropMargin).toInt
+
+    val newLeft = if (printArea.left - xMargin < 0) { 0 } else { printArea.left - xMargin }
+    val newTop = if (printArea.top - yMargin < 0) { 0 } else { printArea.top - yMargin }
+    val newWidth = printArea.width + (2 * xMargin)
+    val newHeight = printArea.height + (2 * yMargin)
+
+    Rectangle("",
+      left = newLeft,
+      top = newTop,
+      width = if (newLeft + newWidth > width) {
+        width - newLeft
+      } else {
+        newWidth
+      },
+      height = if (newTop + newHeight > height) {
+        height - newTop
+      } else {
+        newHeight
+      },
     )
   }
 
@@ -98,6 +126,10 @@ case class Page(
         {blocks.zipWithIndex.map{ case (block, i) => block.toXml(f"${id}_B${i}")}}
       </PrintSpace>
     </Page>
+
+  override def draw(mat: Mat): Unit = {
+    this.blocks.map(_.draw(mat))
+  }
 }
 
 object Page {

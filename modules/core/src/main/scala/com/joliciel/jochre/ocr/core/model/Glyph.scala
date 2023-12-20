@@ -2,6 +2,7 @@ package com.joliciel.jochre.ocr.core.model
 
 import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
 import com.joliciel.jochre.ocr.core.utils.MathImplicits._
+import org.bytedeco.opencv.opencv_core.Mat
 
 import scala.xml.{Elem, Node}
 
@@ -22,7 +23,9 @@ case class Glyph(rectangle: Rectangle, confidence: Double) extends PageElement w
            CONTENT={rectangle.label} GC={confidence.roundTo(2).toString}>
     </Glyph>
 
-  override def compare(that: Glyph): Int = this.rectangle.left.compare(that.rectangle.left)
+  override def compare(that: Glyph): Int = this.rectangle.horizontalCompare(that.rectangle)
+
+  override def draw(mat: Mat): Unit = {}
 }
 
 object Glyph {

@@ -11,7 +11,7 @@ import zio.test.{Spec, TestEnvironment, assertTrue}
 import java.nio.file.Path
 import javax.imageio.ImageIO
 
-object BlockPredictorTest extends JUnitRunnableSpec with ImageUtils {
+object YoloPredictorTest extends JUnitRunnableSpec with ImageUtils {
   override def spec: Spec[TestEnvironment with Scope, Any] = suite("BlockPredictor")(
     test("predict blocks") {
       val image = ImageIO.read(getClass.getResourceAsStream("/images/nybc200089_0011_deskewered.jpg"))
@@ -23,8 +23,8 @@ object BlockPredictorTest extends JUnitRunnableSpec with ImageUtils {
       outputPath.toFile.mkdirs()
       val outputLocation = Some(OutputLocation(outputPath, "nybc200089_0011"))
       for {
-        blockPredictorService <- ZIO.service[BlockPredictorService]
-        blockPredictor <- blockPredictorService.getBlockPredictor(mat, fileName, outputLocation)
+        yoloPredictorService <- ZIO.service[YoloPredictorService]
+        blockPredictor <- yoloPredictorService.getYoloPredictor(YoloPredictionType.Blocks, mat, fileName, outputLocation)
         result <- blockPredictor.predict()
       } yield {
         val expected = Seq(
@@ -38,6 +38,6 @@ object BlockPredictorTest extends JUnitRunnableSpec with ImageUtils {
       }
     }
   ).provide(
-    HttpClientZioBackend.layer() >>> BlockPredictorService.live
+    HttpClientZioBackend.layer() >>> YoloPredictorService.live
   )
 }
