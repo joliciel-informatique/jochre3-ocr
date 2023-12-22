@@ -1,6 +1,9 @@
 package com.joliciel.jochre.ocr.core.model
 
 import com.joliciel.jochre.ocr.core.model.ImageLabel.Line
+import org.bytedeco.opencv.global.opencv_imgproc
+import org.bytedeco.opencv.global.opencv_imgproc.LINE_8
+import org.bytedeco.opencv.opencv_core.{AbstractScalar, Mat, Point}
 
 import scala.xml.{Elem, Node}
 
@@ -52,6 +55,12 @@ case class TextLine(baseLine: Line, wordsAndSpaces: Seq[WordOrSpace]) extends Pa
 
   override def compare(that: TextLine): Int =
     this.baseLine.compare(that.baseLine)
+
+  override def draw(mat: Mat): Unit = {
+    opencv_imgproc.line(mat, new Point(baseLine.x1, baseLine.y1), new Point(baseLine.x2, baseLine.y2), AbstractScalar.BLUE,
+      3, LINE_8, 0)
+    this.wordsAndSpaces.map(_.draw(mat))
+  }
 }
 
 object TextLine {

@@ -1,6 +1,7 @@
 package com.joliciel.jochre.ocr.core
 
 import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
+import org.bytedeco.opencv.opencv_core.Mat
 
 import scala.xml.Elem
 
@@ -28,6 +29,8 @@ package object model {
     def rescale(scale: Double): PageElement
 
     def toXml(id: String = ""): Elem
+
+    def draw(mat: Mat): Unit
   }
 
   trait Block extends PageElement with Ordered[Block] {

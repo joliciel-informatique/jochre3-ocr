@@ -70,21 +70,7 @@ case class YoloAnnotator(
     // Class numbers should be zero-indexed (start with 0).
 
     val (croppedAlto, croppedMat) = if (cropToPrintArea) {
-      val xMargin = (alto.width.toDouble * cropMargin).toInt
-      val yMargin = (alto.height.toDouble * cropMargin).toInt
-
-      val newLeft = if (alto.printArea.left - xMargin < 0) { 0 } else { alto.printArea.left - xMargin }
-      val newTop = if (alto.printArea.top - yMargin < 0) { 0 } else { alto.printArea.top - yMargin }
-      val newWidth = alto.printArea.width + (2 * xMargin)
-      val newHeight = alto.printArea.height + (2 * yMargin)
-
-      val cropRectangle = Rectangle("",
-        left = newLeft,
-        top = newTop,
-        width = if (newLeft + newWidth > alto.width) { alto.width - newLeft } else { newWidth },
-        height = if (newTop + newHeight > alto.height) { alto.height - newTop } else { newHeight },
-      )
-
+      val cropRectangle = alto.croppedPrintArea(cropMargin)
       val croppedAlto = alto.crop(cropRectangle)
       val croppedMat = crop(mat, cropRectangle)
       croppedAlto -> croppedMat

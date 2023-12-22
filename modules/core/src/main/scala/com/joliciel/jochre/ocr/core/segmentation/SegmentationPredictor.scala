@@ -49,7 +49,7 @@ trait SegmentationPredictorBase[T <: ImageLabel] extends SegmentationPredictor[T
               opencv_imgproc.putText(labelled, label, new Point(x2 + 20, y2 + 5), opencv_imgproc.FONT_HERSHEY_DUPLEX, 1, AbstractScalar.GREEN)
           }
 
-          saveImage(labelled, outputLocation.resolve("_labels.png").toString)
+          saveImage(labelled, outputLocation.resolve(extension).toString)
         }
       }
     } yield predictions

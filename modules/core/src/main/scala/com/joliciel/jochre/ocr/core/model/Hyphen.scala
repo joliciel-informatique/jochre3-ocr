@@ -1,6 +1,9 @@
 package com.joliciel.jochre.ocr.core.model
 
 import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
+import org.bytedeco.opencv.global.opencv_imgproc
+import org.bytedeco.opencv.global.opencv_imgproc.LINE_8
+import org.bytedeco.opencv.opencv_core.{AbstractScalar, Mat, Point}
 
 import scala.xml.{Elem, Node}
 
@@ -19,10 +22,15 @@ case class Hyphen(rectangle: Rectangle) extends WordOrSpace {
     <HYP HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString} CONTENT={rectangle.label}>
     </HYP>
 
-  override def compare(that: WordOrSpace): Int = this.rectangle.left.compare(that.rectangle.left)
+  override def compare(that: WordOrSpace): Int = this.rectangle.horizontalCompare(that.rectangle)
 
   def toWord: Word =
     Word(this.rectangle, Seq(Glyph(this.rectangle, 0.5)), 0.5)
+
+  override def draw(mat: Mat): Unit = {
+    opencv_imgproc.rectangle(mat, new Point(rectangle.left, rectangle.top ), new Point(rectangle.left + rectangle.width, rectangle.top + rectangle.height), AbstractScalar.MAGENTA,
+      1, LINE_8, 0)
+  }
 }
 
 object Hyphen {

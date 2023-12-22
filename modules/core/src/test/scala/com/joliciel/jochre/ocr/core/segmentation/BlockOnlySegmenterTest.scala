@@ -13,8 +13,8 @@ import java.nio.file.Path
 import javax.imageio.ImageIO
 
 object BlockOnlySegmenterTest extends JUnitRunnableSpec with ImageUtils {
-  object MockBlockPredictorService extends BlockPredictorService {
-    override def getBlockPredictor(mat: Mat, fileName: String, outputLocation: Option[OutputLocation]): Task[SegmentationPredictor[PredictedRectangle]] = ZIO.attempt {
+  object MockYoloPredictorService extends YoloPredictorService {
+    override def getYoloPredictor(predictionType: YoloPredictionType, mat: Mat, fileName: String, outputLocation: Option[OutputLocation], minConfidence: Option[Double]): Task[SegmentationPredictor[PredictedRectangle]] = ZIO.attempt {
       new SegmentationPredictor[PredictedRectangle] {
         override def predict(): Task[Seq[PredictedRectangle]] = ZIO.attempt(Seq(
           PredictedRectangle(Rectangle(BlockType.TextBox.entryName, 10, 10, 50, 50), 0.9),
@@ -36,8 +36,8 @@ object BlockOnlySegmenterTest extends JUnitRunnableSpec with ImageUtils {
       outputPath.toFile.mkdirs()
       val outputLocation = Some(OutputLocation(outputPath, "nybc200089_0011"))
       for {
-        blockPredictorService <- ZIO.succeed(MockBlockPredictorService)
-        blockOnlySegmenter = new BlockOnlySegmenter(blockPredictorService)
+        yoloPredictorService <- ZIO.succeed(MockYoloPredictorService)
+        blockOnlySegmenter = new BlockOnlySegmenter(yoloPredictorService)
         result <- blockOnlySegmenter.segment(mat, fileName, outputLocation)
       } yield {
         val expected = Seq(

@@ -1,38 +1,39 @@
 package com.joliciel.jochre.ocr.core.segmentation
 
-import com.joliciel.jochre.ocr.core.model.ImageLabel.{PredictedRectangle, Rectangle}
+import com.joliciel.jochre.ocr.core.model.ImageLabel.PredictedRectangle
 import com.joliciel.jochre.ocr.core.transform.ResizeImageAndKeepAspectRatio
 import com.joliciel.jochre.ocr.core.utils.OutputLocation
 import com.typesafe.config.ConfigFactory
-import io.circe.Decoder
 import org.bytedeco.opencv.opencv_core.Mat
 import org.slf4j.LoggerFactory
 import sttp.capabilities
 import sttp.capabilities.zio.ZioStreams
-import sttp.client3.httpclient.zio.SttpClient
 import sttp.client3.circe._
-import sttp.client3.{SttpBackend, UriContext, asByteArray, basicRequest, multipart}
+import sttp.client3.httpclient.zio.SttpClient
+import sttp.client3.{SttpBackend, UriContext, basicRequest, multipart}
 import sttp.model.StatusCode
-import zio.{Scope, Task, ZIO, ZLayer}
+import zio.{Task, ZIO, ZLayer}
 
 import java.awt.image.BufferedImage
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 import javax.imageio.ImageIO
 
-trait BlockPredictorService {
-  def getBlockPredictor(mat: Mat, fileName: String, outputLocation: Option[OutputLocation] = None): Task[SegmentationPredictor[PredictedRectangle]]
+trait YoloPredictorService {
+  def getYoloPredictor(predictionType: YoloPredictionType, mat: Mat, fileName: String, outputLocation: Option[OutputLocation] = None, minConfidence: Option[Double] = None): Task[SegmentationPredictor[PredictedRectangle]]
 }
 
-private[segmentation] case class BlockPredictorServiceImpl(httpClient: SttpBackend[Task, ZioStreams with capabilities.WebSockets]) extends BlockPredictorService {
-  def getBlockPredictor(mat: Mat, fileName: String, outputLocation: Option[OutputLocation] = None): Task[SegmentationPredictor[PredictedRectangle]] =
-    ZIO.attempt(new BlockPredictor(httpClient, mat, fileName, outputLocation))
+private[segmentation] case class YoloPredictorServiceImpl(httpClient: SttpBackend[Task, ZioStreams with capabilities.WebSockets]) extends YoloPredictorService {
+  def getYoloPredictor(predictionType: YoloPredictionType, mat: Mat, fileName: String, outputLocation: Option[OutputLocation] = None, minConfidence: Option[Double] = None): Task[SegmentationPredictor[PredictedRectangle]] =
+    ZIO.attempt(new YoloPredictor(httpClient, predictionType, mat, fileName, outputLocation, minConfidence))
 }
 
-private[segmentation] class BlockPredictor(
+private[segmentation] class YoloPredictor(
   httpClient: SttpBackend[Task, ZioStreams with capabilities.WebSockets],
+  predictionType: YoloPredictionType,
   override val mat: Mat,
   override val fileName: String,
-  override val outputLocation: Option[OutputLocation] = None
+  override val outputLocation: Option[OutputLocation] = None,
+  minConfidence: Option[Double] = None,
 ) extends SegmentationPredictorBase[PredictedRectangle] {
   private val log = LoggerFactory.getLogger(getClass)
 
@@ -40,7 +41,7 @@ private[segmentation] class BlockPredictor(
   private val documentLayoutAnalysisUrl = config.getString("url")
   private val longerSide: Int = config.getInt("longer-side")
 
-  override val extension: String = "_block_prediction.png"
+  override val extension: String = predictionType.extension
 
   import YoloImplicits._
 
@@ -56,14 +57,16 @@ private[segmentation] class BlockPredictor(
         ImageIO.write(image, "png", out)
         val in = new ByteArrayInputStream(out.toByteArray)
 
+        val uri = uri"${documentLayoutAnalysisUrl}/${predictionType.endpoint}?${minConfidence.map(conf => f"min-confidence=${conf}").getOrElse("")}"
+        if (log.isDebugEnabled) log.debug(f"Uri: ${uri}")
         val request = basicRequest
-          .post(uri"${documentLayoutAnalysisUrl}/analyze-blocks")
+          .post(uri)
           .multipartBody(
             multipart("imageFile", in).fileName(fileName)
           )
           .response(asJson[List[YoloResult]])
 
-        if (log.isDebugEnabled()) log.debug(f"Predicting blocks for $fileName")
+        if (log.isDebugEnabled()) log.debug(f"Predicting YOLO ${predictionType.entryName} for $fileName")
         request
       }
       response <- httpClient.send(request)
@@ -75,12 +78,12 @@ private[segmentation] class BlockPredictor(
               case Right(yoloResults) =>
                 yoloResults.map{
                   case yoloResult@YoloResult(_, category, _) =>
-                    val label = BlockType.withYoloName(category).map(_.entryName).getOrElse(throw new Exception(f"Unknown BlockType: $category"))
+                    val label = predictionType.getLabel(category)
                     yoloResult.toPredictedRectangle(label)
                 }
             }
           case statusCode =>
-            throw new Exception(s"Could not predict blocks. Status code: ${statusCode.code}. Status text: ${response.statusText}")
+            throw new Exception(s"Could not predict ${predictionType.entryName}. Status code: ${statusCode.code}. Status text: ${response.statusText}")
         }
       }.mapAttempt{
         _.sortBy(_.rectangle)
@@ -92,6 +95,6 @@ private[segmentation] class BlockPredictor(
   }
 }
 
-object BlockPredictorService {
-  val live: ZLayer[SttpClient, Nothing, BlockPredictorService] = ZLayer.fromFunction(BlockPredictorServiceImpl(_))
+object YoloPredictorService {
+  val live: ZLayer[SttpClient, Nothing, YoloPredictorService] = ZLayer.fromFunction(YoloPredictorServiceImpl(_))
 }
