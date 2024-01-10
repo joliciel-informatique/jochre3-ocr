@@ -126,7 +126,7 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
       </Paragraph>
       <Paragraph>
         <String CONTENT="42" WC="80"></String>
-        <String CONTENT="54.321"></String>
+        <String HPOS="0" VPOS="0" WIDTH="0" HEIGHT="0" CONTENT="54.321" WC="0.0"></String>
       </Paragraph>
     </Page>
 
@@ -188,6 +188,118 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
           <Glyph HPOS="1248" VPOS="1415" WIDTH="12" HEIGHT="14" CONTENT="." GC="0.1"></Glyph>
         </String>
       </alto>
+
+    val prettyPrinter = new PrettyPrinter(80, 2)
+    prettyPrinter.format(actual) shouldEqual prettyPrinter.format(expected)
+  }
+
+  it should "not split on apostrophes for possessives (non-standard)" in {
+    val original = {
+      <alto>
+        <String HPOS="1000" VPOS="1000" WIDTH="100" HEIGHT="42" CONTENT="A‛B" WC="0.5">
+          <Glyph HPOS="1000" VPOS="1000" WIDTH="45" HEIGHT="42" CONTENT="A" GC="0.5"></Glyph>
+          <Glyph HPOS="1045" VPOS="1000" WIDTH="10" HEIGHT="14" CONTENT="‛" GC="0.1"></Glyph>
+          <Glyph HPOS="1055" VPOS="1000" WIDTH="45" HEIGHT="42" CONTENT="B" GC="0.1"></Glyph>
+        </String>
+      </alto>
+    }
+    val transform = new RuleTransformer(YiddishAltoTransformer.punctuationSplitRule)
+    val actual = transform(original).asInstanceOf[Elem]
+    val expected = original
+
+    val prettyPrinter = new PrettyPrinter(80, 2)
+    prettyPrinter.format(actual) shouldEqual prettyPrinter.format(expected)
+  }
+
+  it should "not split on double-quotes for abbreviations (standard)" in {
+    val original = {
+      <alto>
+        <String HPOS="1000" VPOS="1000" WIDTH="100" HEIGHT="42" CONTENT="A“B" WC="0.5">
+          <Glyph HPOS="1000" VPOS="1000" WIDTH="45" HEIGHT="42" CONTENT="A" GC="0.5"></Glyph>
+          <Glyph HPOS="1045" VPOS="1000" WIDTH="10" HEIGHT="14" CONTENT="“" GC="0.1"></Glyph>
+          <Glyph HPOS="1055" VPOS="1000" WIDTH="45" HEIGHT="42" CONTENT="B" GC="0.1"></Glyph>
+        </String>
+      </alto>
+    }
+    val transform = new RuleTransformer(YiddishAltoTransformer.punctuationSplitRule)
+    val actual = transform(original).asInstanceOf[Elem]
+    val expected = original
+
+    val prettyPrinter = new PrettyPrinter(80, 2)
+    prettyPrinter.format(actual) shouldEqual prettyPrinter.format(expected)
+  }
+
+  it should "not split on double-quotes for abbreviations when surrounded by quotes" in {
+    val original = {
+      <alto>
+        <String HPOS="1000" VPOS="1000" WIDTH="60" HEIGHT="42" CONTENT="„AA“B“" WC="0.5">
+          <Glyph HPOS="1000" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="„" GC="0.5"></Glyph>
+          <Glyph HPOS="1010" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="A" GC="0.5"></Glyph>
+          <Glyph HPOS="1020" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="A" GC="0.5"></Glyph>
+          <Glyph HPOS="1030" VPOS="1000" WIDTH="10" HEIGHT="14" CONTENT="“" GC="0.5"></Glyph>
+          <Glyph HPOS="1040" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="B" GC="0.5"></Glyph>
+          <Glyph HPOS="1050" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="“" GC="0.5"></Glyph>
+        </String>
+      </alto>
+    }
+    val transform = new RuleTransformer(YiddishAltoTransformer.punctuationSplitRule)
+    val actual = transform(original).asInstanceOf[Elem]
+    val expected = {
+      <alto>
+        <String HPOS="1000" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="„" WC="0.5">
+          <Glyph HPOS="1000" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="„" GC="0.5"></Glyph>
+        </String>
+        <String HPOS="1010" VPOS="1000" WIDTH="40" HEIGHT="42" CONTENT="AA“B" WC="0.5">
+          <Glyph HPOS="1010" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="A" GC="0.5"></Glyph>
+          <Glyph HPOS="1020" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="A" GC="0.5"></Glyph>
+          <Glyph HPOS="1030" VPOS="1000" WIDTH="10" HEIGHT="14" CONTENT="“" GC="0.5"></Glyph>
+          <Glyph HPOS="1040" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="B" GC="0.5"></Glyph>
+        </String>
+        <String HPOS="1050" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="“" WC="0.5">
+          <Glyph HPOS="1050" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="“" GC="0.5"></Glyph>
+        </String>
+      </alto>
+    }
+
+    val prettyPrinter = new PrettyPrinter(80, 2)
+    prettyPrinter.format(actual) shouldEqual prettyPrinter.format(expected)
+  }
+
+  it should "split on double-quotes for non-abbreviations when surrounded by quotes" in {
+    val original = {
+      <alto>
+        <String HPOS="1000" VPOS="1000" WIDTH="60" HEIGHT="42" CONTENT="„A“BB“" WC="0.5">
+          <Glyph HPOS="1000" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="„" GC="0.5"></Glyph>
+          <Glyph HPOS="1010" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="A" GC="0.5"></Glyph>
+          <Glyph HPOS="1020" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="“" GC="0.5"></Glyph>
+          <Glyph HPOS="1030" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="B" GC="0.5"></Glyph>
+          <Glyph HPOS="1040" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="B" GC="0.5"></Glyph>
+          <Glyph HPOS="1050" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="“" GC="0.5"></Glyph>
+        </String>
+      </alto>
+    }
+    val transform = new RuleTransformer(YiddishAltoTransformer.punctuationSplitRule)
+    val actual = transform(original).asInstanceOf[Elem]
+    val expected = {
+      <alto>
+        <String HPOS="1000" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="„" WC="0.5">
+          <Glyph HPOS="1000" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="„" GC="0.5"></Glyph>
+        </String>
+        <String HPOS="1010" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="A" WC="0.5">
+          <Glyph HPOS="1010" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="A" GC="0.5"></Glyph>
+        </String>
+        <String HPOS="1020" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="“" WC="0.5">
+          <Glyph HPOS="1020" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="“" GC="0.5"></Glyph>
+        </String>
+        <String HPOS="1030" VPOS="1000" WIDTH="20" HEIGHT="42" CONTENT="BB" WC="0.5">
+          <Glyph HPOS="1030" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="B" GC="0.5"></Glyph>
+          <Glyph HPOS="1040" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="B" GC="0.5"></Glyph>
+        </String>
+        <String HPOS="1050" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="“" WC="0.5">
+          <Glyph HPOS="1050" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="“" GC="0.5"></Glyph>
+        </String>
+      </alto>
+    }
 
     val prettyPrinter = new PrettyPrinter(80, 2)
     prettyPrinter.format(actual) shouldEqual prettyPrinter.format(expected)

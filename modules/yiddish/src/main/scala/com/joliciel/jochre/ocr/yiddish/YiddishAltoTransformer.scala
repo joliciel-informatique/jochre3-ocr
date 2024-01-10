@@ -85,8 +85,13 @@ object YiddishAltoTransformer extends XmlImplicits {
     case object Roman extends Purpose
   }
 
-  private val punctuationAndNotRegex = raw"(?U)\p{Punct}[^\p{Punct}\d]|[^\p{Punct}\d]\p{Punct}".r
+  private val punctuationAndNotRegex = raw"(?U)\p{Punct}[^\p{Punct}]|[^\p{Punct}]\p{Punct}".r
   private val punctuationRegex = raw"(?U)\p{Punct}".r
+  private val quoteRegex = raw"""(?U)[‛“'"]""".r
+  private val abbreviationRegex = raw"""(?U)\w+[‛“'"]\w""".r
+
+  private val dotRegex = raw"""(?U)[\.]""".r
+  private val decimalNumberRegex = raw"""(?U)\d+[\.]\d+""".r
   val punctuationSplitRule = new RewriteRule {
     override def transform(node: Node): Seq[Node] = node match {
       case altoString: Elem if altoString.label == "String" =>
@@ -104,8 +109,8 @@ object YiddishAltoTransformer extends XmlImplicits {
                 words :+ Seq(glyph)
               } else {
                 val lastGlyph = words.last.map(_.last)
-                val lastIsPunct = punctuationRegex.matches(lastGlyph \@ "CONTENT")
-                if (lastIsPunct) {
+                val lastWasPunct = punctuationRegex.matches(lastGlyph \@ "CONTENT")
+                if (lastWasPunct) {
                   words :+ Seq(glyph)
                 } else {
                   words.init :+ (words.last :+ glyph)
@@ -113,7 +118,30 @@ object YiddishAltoTransformer extends XmlImplicits {
               }
             }
           }
-          val wordNodes = words.map { glyphSeq =>
+          val contentSeq = words.map(nodes => nodes.map(_ \@ "CONTENT").mkString(""))
+          val contentTriplets = (contentSeq :+ "" :+ "").lazyZip("" +: contentSeq :+ "").lazyZip("" +: "" +: contentSeq).toSeq
+
+          val abbreviationIndexes = contentTriplets.zipWithIndex.flatMap{
+            case ((next, current, prev), i) =>
+              Option.when(
+                (quoteRegex.matches(current) && abbreviationRegex.matches(f"$prev$current$next")) ||
+                  (dotRegex.matches(current) && decimalNumberRegex.matches(f"$prev$current$next"))
+              )(i-1)
+          }.toSet
+
+          val correctedWords = words.zipWithIndex.flatMap{ case(nodes, i) =>
+            if (abbreviationIndexes.contains(i)) {
+              Some(words(i-1) ++ nodes ++ words(i+1))
+            } else if (abbreviationIndexes.contains(i-1)) {
+              None
+            } else if (abbreviationIndexes.contains(i+1)) {
+              None
+            } else {
+              Some(nodes)
+            }
+          }
+
+          val wordNodes = correctedWords.map { glyphSeq =>
             glyphsToString(glyphSeq, confidence)
           }
           wordNodes
