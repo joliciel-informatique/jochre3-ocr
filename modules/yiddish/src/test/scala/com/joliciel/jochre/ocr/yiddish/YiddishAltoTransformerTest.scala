@@ -155,9 +155,8 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
     val expected = <Page>
       <Paragraph>
         <String HPOS="10" VPOS="10" WIDTH="10" HEIGHT="10" CONTENT="-" WC="0.1"></String>
-        <String HPOS="20" VPOS="20" WIDTH="10" HEIGHT="10" CONTENT="a" WC="0.2"></String>
-        <String HPOS="30" VPOS="30" WIDTH="10" HEIGHT="10" CONTENT="," WC="0.3"></String>
-        <String HPOS="40" VPOS="40" WIDTH="10" HEIGHT="10" CONTENT="." WC="0.4"></String>
+        <String HPOS="20" VPOS="20" WIDTH="10" HEIGHT="10" CONTENT="a" WC="0.8"></String>
+        <String HPOS="30" VPOS="30" WIDTH="20" HEIGHT="20" CONTENT=",." WC="0.35"></String>
         <String HPOS="50" VPOS="50" WIDTH="20" HEIGHT="20" CONTENT="bc" WC="0.8"></String>
         <String HPOS="70" VPOS="70" WIDTH="10" HEIGHT="10" CONTENT="." WC="0.7"></String>
       </Paragraph>
@@ -165,6 +164,59 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
 
     val prettyPrinter = new PrettyPrinter(80, 2)
 
+    prettyPrinter.format(actual) shouldEqual prettyPrinter.format(expected)
+  }
+
+  it should "correctly remove non-abbreviation apostrophes from words" in {
+    val yiddishAltoProcessor = YiddishAltoTransformer(yiddishConfig, textSimplifier = None)
+
+    val original = {
+      <alto>
+        <String HPOS="662" VPOS="2992" WIDTH="521" HEIGHT="118" CONTENT="נאָך-פּסח'דיגען" WC="0.87">
+          <Glyph HPOS="1148" VPOS="2993" WIDTH="40" HEIGHT="117" CONTENT="נ" GC="0.7">
+          </Glyph>
+          <Glyph HPOS="1099" VPOS="2993" WIDTH="49" HEIGHT="117" CONTENT="אָ" GC="0.8">
+          </Glyph>
+          <Glyph HPOS="1052" VPOS="2993" WIDTH="47" HEIGHT="117" CONTENT="ך" GC="0.28">
+          </Glyph>
+          <Glyph HPOS="1020" VPOS="2993" WIDTH="32" HEIGHT="117" CONTENT="-" GC="0.97">
+          </Glyph>
+          <Glyph HPOS="971" VPOS="2992" WIDTH="49" HEIGHT="118" CONTENT="פּ" GC="0.82">
+          </Glyph>
+          <Glyph HPOS="920" VPOS="2992" WIDTH="51" HEIGHT="117" CONTENT="ס" GC="0.84">
+          </Glyph>
+          <Glyph HPOS="875" VPOS="2992" WIDTH="45" HEIGHT="117" CONTENT="ח" GC="0.75">
+          </Glyph>
+          <Glyph HPOS="843" VPOS="2992" WIDTH="32" HEIGHT="117" CONTENT="'" GC="0.97">
+          </Glyph>
+          <Glyph HPOS="794" VPOS="2992" WIDTH="49" HEIGHT="117" CONTENT="ד" GC="0.79">
+          </Glyph>
+          <Glyph HPOS="768" VPOS="2992" WIDTH="26" HEIGHT="117" CONTENT="י" GC="0.99">
+          </Glyph>
+          <Glyph HPOS="735" VPOS="2992" WIDTH="33" HEIGHT="117" CONTENT="ג" GC="0.8">
+          </Glyph>
+          <Glyph HPOS="689" VPOS="2992" WIDTH="46" HEIGHT="117" CONTENT="ע" GC="0.98">
+          </Glyph>
+          <Glyph HPOS="658" VPOS="2992" WIDTH="31" HEIGHT="117" CONTENT="ן" GC="0.99">
+          </Glyph>
+        </String>
+      </alto>
+    }
+    val actual = yiddishAltoProcessor.process(original, "Jimi.png")
+    val expected = {
+      <alto>
+        <String HPOS="1052" VPOS="2993" WIDTH="136" HEIGHT="117" CONTENT="נאָך" WC="0.87">
+          <ALTERNATIVE PURPOSE="Roman">nokh</ALTERNATIVE>
+        </String>
+        <String HPOS="1020" VPOS="2993" WIDTH="32" HEIGHT="117" CONTENT="-" WC="0.97"></String>
+        <String HPOS="658" VPOS="2992" WIDTH="362" HEIGHT="118" CONTENT="פּסח'דיגען" WC="0.87">
+          <ALTERNATIVE PURPOSE="Roman">peysekhdikn</ALTERNATIVE>
+          <ALTERNATIVE PURPOSE="YIVO">פּסחדיקן</ALTERNATIVE>
+        </String>
+      </alto>
+    }
+
+    val prettyPrinter = new PrettyPrinter(80, 2)
     prettyPrinter.format(actual) shouldEqual prettyPrinter.format(expected)
   }
 
@@ -177,7 +229,7 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
         </String>
       </alto>
     }
-    val transform = new RuleTransformer(YiddishAltoTransformer.punctuationSplitRule)
+    val transform = new RuleTransformer(YiddishAltoTransformer.punctuationSplitRule())
     val actual = transform(original).asInstanceOf[Elem]
     val expected =
       <alto>
@@ -203,7 +255,7 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
         </String>
       </alto>
     }
-    val transform = new RuleTransformer(YiddishAltoTransformer.punctuationSplitRule)
+    val transform = new RuleTransformer(YiddishAltoTransformer.punctuationSplitRule())
     val actual = transform(original).asInstanceOf[Elem]
     val expected = original
 
@@ -221,7 +273,7 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
         </String>
       </alto>
     }
-    val transform = new RuleTransformer(YiddishAltoTransformer.punctuationSplitRule)
+    val transform = new RuleTransformer(YiddishAltoTransformer.punctuationSplitRule())
     val actual = transform(original).asInstanceOf[Elem]
     val expected = original
 
@@ -242,7 +294,7 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
         </String>
       </alto>
     }
-    val transform = new RuleTransformer(YiddishAltoTransformer.punctuationSplitRule)
+    val transform = new RuleTransformer(YiddishAltoTransformer.punctuationSplitRule())
     val actual = transform(original).asInstanceOf[Elem]
     val expected = {
       <alto>
@@ -265,33 +317,29 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
     prettyPrinter.format(actual) shouldEqual prettyPrinter.format(expected)
   }
 
-  it should "split on double-quotes for non-abbreviations when surrounded by quotes" in {
+  it should "split correctly on multiple punctation and apostrophe" in {
     val original = {
       <alto>
         <String HPOS="1000" VPOS="1000" WIDTH="60" HEIGHT="42" CONTENT="„A“BB“" WC="0.5">
           <Glyph HPOS="1000" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="„" GC="0.5"></Glyph>
           <Glyph HPOS="1010" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="A" GC="0.5"></Glyph>
-          <Glyph HPOS="1020" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="“" GC="0.5"></Glyph>
+          <Glyph HPOS="1020" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="‛" GC="0.5"></Glyph>
           <Glyph HPOS="1030" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="B" GC="0.5"></Glyph>
           <Glyph HPOS="1040" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="B" GC="0.5"></Glyph>
           <Glyph HPOS="1050" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="“" GC="0.5"></Glyph>
         </String>
       </alto>
     }
-    val transform = new RuleTransformer(YiddishAltoTransformer.punctuationSplitRule)
+    val transform = new RuleTransformer(YiddishAltoTransformer.punctuationSplitRule())
     val actual = transform(original).asInstanceOf[Elem]
     val expected = {
       <alto>
         <String HPOS="1000" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="„" WC="0.5">
           <Glyph HPOS="1000" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="„" GC="0.5"></Glyph>
         </String>
-        <String HPOS="1010" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="A" WC="0.5">
+        <String HPOS="1010" VPOS="1000" WIDTH="40" HEIGHT="42" CONTENT="A‛BB" WC="0.5">
           <Glyph HPOS="1010" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="A" GC="0.5"></Glyph>
-        </String>
-        <String HPOS="1020" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="“" WC="0.5">
-          <Glyph HPOS="1020" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="“" GC="0.5"></Glyph>
-        </String>
-        <String HPOS="1030" VPOS="1000" WIDTH="20" HEIGHT="42" CONTENT="BB" WC="0.5">
+          <Glyph HPOS="1020" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="‛" GC="0.5"></Glyph>
           <Glyph HPOS="1030" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="B" GC="0.5"></Glyph>
           <Glyph HPOS="1040" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="B" GC="0.5"></Glyph>
         </String>
@@ -303,6 +351,35 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
 
     val prettyPrinter = new PrettyPrinter(80, 2)
     prettyPrinter.format(actual) shouldEqual prettyPrinter.format(expected)
+  }
+
+  it should "work with an opening double comma" in {
+    val original = {
+      <alto>
+        <String HPOS="659" VPOS="2612" WIDTH="250" HEIGHT="110" CONTENT="„קעני“" WC="0.62">
+          <Glyph HPOS="875" VPOS="2612" WIDTH="34" HEIGHT="110" CONTENT=",," GC="0.83">
+          </Glyph>
+          <Glyph HPOS="811" VPOS="2612" WIDTH="63" HEIGHT="110" CONTENT="ק" GC="0.48">
+          </Glyph>
+          <Glyph HPOS="764" VPOS="2612" WIDTH="46" HEIGHT="110" CONTENT="ע" GC="0.99">
+          </Glyph>
+          <Glyph HPOS="732" VPOS="2612" WIDTH="31" HEIGHT="110" CONTENT="נ" GC="0.87">
+          </Glyph>
+          <Glyph HPOS="698" VPOS="2612" WIDTH="33" HEIGHT="110" CONTENT="י" GC="0.98">
+          </Glyph>
+          <Glyph HPOS="681" VPOS="2612" WIDTH="16" HEIGHT="110" CONTENT="'" GC="0.79">
+          </Glyph>
+          <Glyph HPOS="661" VPOS="2612" WIDTH="19" HEIGHT="110" CONTENT="'" GC="0.93">
+          </Glyph>
+        </String>
+        </alto>
+    }
+    val transform = new RuleTransformer(YiddishAltoTransformer.punctuationSplitRule())
+    val actual = transform(original).asInstanceOf[Elem]
+    val actualWords = (actual \\ "String").map(node => node \@ "CONTENT")
+    val expectedWords = Seq(",,", "קעני", "''")
+
+    actualWords shouldEqual expectedWords
   }
 
   "addHyphenRule" should "split off hyphens at the end of a text line" in {
@@ -325,7 +402,7 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
         </TextLine>
       </alto>
     }
-    val transform = new RuleTransformer(YiddishAltoTransformer.addHyphenRule)
+    val transform = new RuleTransformer(YiddishAltoTransformer.addHyphenRule())
     val actual = transform(original).asInstanceOf[Elem]
     val expected =
       <alto>
@@ -370,7 +447,7 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
         </TextLine>
       </alto>
     }
-    val transform = new RuleTransformer(YiddishAltoTransformer.addHyphenRule)
+    val transform = new RuleTransformer(YiddishAltoTransformer.addHyphenRule())
     val actual = transform(original).asInstanceOf[Elem]
     val expected =
       <alto>

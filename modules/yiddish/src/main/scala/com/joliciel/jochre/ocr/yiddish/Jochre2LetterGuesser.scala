@@ -66,23 +66,12 @@ case class Jochre2LetterGuesser() extends TextGuesser with ImageUtils {
           val glyphToShape = word.glyphs.map { glyph =>
             val baseLeft = glyph.rectangle.left
             val baseTop = glyph.rectangle.top
-            val initialShape = new Shape(jochreImage, baseLeft, baseTop, glyph.rectangle.right, glyph.rectangle.bottom, jochreSession)
+            val initialShape = new Shape(jochreImage, baseLeft, baseTop, glyph.rectangle.right-1, glyph.rectangle.bottom-1, jochreSession)
             // need to calculate actual shape left/top/right/bottom
-            var top: Int = Int.MaxValue
-            var left: Int = Int.MaxValue
-            var bottom: Int = -1
-            var right: Int = -1
-
-            for (x <- 0 until initialShape.getWidth) {
-              for (y <- 0 until initialShape.getHeight) {
-                if (initialShape.isPixelBlack(x, y)) {
-                  if (x < left) left = x
-                  if (y < top) top = y
-                  if (x > right) right = x
-                  if (y > bottom) bottom = y
-                }
-              }
-            }
+            val left = (0 until initialShape.getWidth).find(x => (0 until initialShape.getHeight).find(y => initialShape.isPixelBlack(x,y)).isDefined).getOrElse(-1)
+            val top = (0 until initialShape.getHeight).find(y => (0 until initialShape.getWidth).find(x => initialShape.isPixelBlack(x,y)).isDefined).getOrElse(-1)
+            val right = (0 until initialShape.getWidth).reverse.find(x => (0 until initialShape.getHeight).find(y => initialShape.isPixelBlack(x,y)).isDefined).getOrElse(-1)
+            val bottom = (0 until initialShape.getHeight).reverse.find(y => (0 until initialShape.getWidth).find(x => initialShape.isPixelBlack(x,y)).isDefined).getOrElse(-1)
 
             val shape = Option.when(right>=0)(new Shape(jochreImage, baseLeft+left, baseTop+top, baseLeft+right, baseTop+bottom, jochreSession))
             glyph -> shape
