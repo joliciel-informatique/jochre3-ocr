@@ -195,8 +195,8 @@ object YiddishAltoTransformer extends XmlImplicits {
     override def transform(node: Node): Seq[Node] = node match {
       case textLine: Elem if textLine.label == "TextLine" =>
         val children = textLine \ "_"
-        val hyphenNodes = children.last match {
-          case altoString: Elem if altoString.label == "String" =>
+        val hyphenNodes = children.lastOption match {
+          case Some(altoString: Elem) if altoString.label == "String" =>
             val content = altoString \@ "CONTENT"
             val confidence = Option.when(!(altoString \@ "WC").isEmpty)((altoString \@ "WC").toDouble).getOrElse(0.0)
             content match {

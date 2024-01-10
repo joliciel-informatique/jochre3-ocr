@@ -6,7 +6,17 @@ import com.joliciel.jochre.ocr.core.utils.{ImageUtils, OutputLocation}
 import com.typesafe.config.ConfigFactory
 import org.bytedeco.opencv.opencv_core.Mat
 import org.slf4j.LoggerFactory
-import zio.{Task, ZIO}
+import zio.{Task, ZIO, ZLayer}
+
+object FullYoloSegmenterService {
+  val live: ZLayer[YoloPredictorService, Nothing, SegmenterService] = ZLayer.fromFunction(FullYoloSegmenterServiceImpl(_))
+}
+
+private[segmentation] case class FullYoloSegmenterServiceImpl(yoloPredictorService: YoloPredictorService) extends SegmenterService {
+  def getSegmenter(): Task[FullYoloSegmenter] = {
+    ZIO.attempt(new FullYoloSegmenter(yoloPredictorService))
+  }
+}
 
 private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredictorService) extends Segmenter with ImageUtils {
   private val log = LoggerFactory.getLogger(getClass)
@@ -103,9 +113,9 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
 
         // Place glyphs inside words
         val translatedGlyphPredictions = glyphPredictions.map(p => p.copy(rectangle = p.rectangle.translate(croppedPrintArea.left, croppedPrintArea.top)))
-        //val glyphTestRectangle = Some(Rectangle("", 624, 2874, 430, 144))
+        //val glyphTestRectangle = Some(Rectangle("", 1713, 2280, 300, 144))
         val glyphTestRectangle = None
-        val glyphsToPlace = glyphTestRectangle.map(testRect => translatedGlyphPredictions.filter(_.rectangle.intersection(testRect).isDefined))
+        val glyphsToPlace = glyphTestRectangle.map(testRect => translatedGlyphPredictions.filter(glyph => glyph.rectangle.areaOfIntersection(testRect) / glyph.rectangle.area.toDouble > 0.8))
           .getOrElse(translatedGlyphPredictions)
 
         val textBlockToGlyphMap = placeRectanglesInTextBlocks(textBlocksWithWords, glyphsToPlace, "Glyph")
@@ -120,9 +130,20 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
               textLine.copy(wordsAndSpaces = textLine.wordsAndSpaces.map {
                 case word: Word =>
                   val myGlyphRects = wordToGlyphMap.get(word).getOrElse(Seq.empty)
-                  val myGlyphs = myGlyphRects.map(rect => Glyph(rect.rectangle.copy(label = "", top = word.rectangle.top, height = word.rectangle.height), 1.0))
-                  //TODO: Should we add missing glyphs between detected glyphs? If so, how do decide if it's wide enough?
-                  word.copy(glyphs = myGlyphs)
+                  if (!myGlyphRects.isEmpty) {
+                    // Take average border between two sequential glyphs as their border
+                    val borders = myGlyphRects.zip(myGlyphRects.tail).map {
+                      case (firstRect, secondRect) => (firstRect.rectangle.left + secondRect.rectangle.right) / 2
+                    }
+                    val rightLeftPairs = (myGlyphRects.head.rectangle.right +: borders).zip(borders :+ myGlyphRects.last.rectangle.left)
+
+                    val myGlyphs = rightLeftPairs.map{
+                      case (right, left) => Glyph(Rectangle("", left = left, top = word.rectangle.top, width = right-left, height = word.rectangle.height), 1.0)
+                    }
+                    word.copy(glyphs = myGlyphs)
+                  } else {
+                    word
+                  }
                 case space: Space => space
               })
             } else {
@@ -340,7 +361,7 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
       val (remove, remainder) = tail.span{ other =>
         val areaOfIntersection = head.rectangle.areaOfIntersection(other.rectangle)
         if (log.isTraceEnabled) log.trace(f"Head: ${head.rectangle.coordinates}. Other: ${other.rectangle.coordinates}. areaOfIntersection: $areaOfIntersection. head %%: ${areaOfIntersection / head.rectangle.area}. other %%: ${areaOfIntersection / other.rectangle.area}")
-        areaOfIntersection / head.rectangle.area > 0.5 || areaOfIntersection / other.rectangle.area > 0.5
+        areaOfIntersection / head.rectangle.area > 0.25 || areaOfIntersection / other.rectangle.area > 0.25
       }
       if (!remove.isEmpty) {
         val group = head +: remove
