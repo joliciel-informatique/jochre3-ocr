@@ -4,11 +4,10 @@ import com.joliciel.jochre.ocr.core.model.ImageLabel.{PredictedRectangle, Rectan
 import com.joliciel.jochre.ocr.core.model.{Illustration, Page, TextBlock}
 import com.joliciel.jochre.ocr.core.utils.OutputLocation
 import org.bytedeco.opencv.opencv_core.Mat
-import sttp.client3.httpclient.zio.SttpClient
-import zio.{&, Task, ZIO, ZLayer}
+import zio.{Task, ZIO, ZLayer}
 
 object BlockOnlySegmenterService {
-  val live: ZLayer[SttpClient & YoloPredictorService, Nothing, SegmenterService] = ZLayer.fromFunction(BlockOnlySegmenterServiceImpl(_))
+  val live: ZLayer[YoloPredictorService, Nothing, SegmenterService] = ZLayer.fromFunction(BlockOnlySegmenterServiceImpl(_))
 }
 
 private[segmentation] case class BlockOnlySegmenterServiceImpl(yoloPredictorService: YoloPredictorService) extends SegmenterService {

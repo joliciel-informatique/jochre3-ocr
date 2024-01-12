@@ -15,5 +15,7 @@ class YiddishTextSimplifierTest extends AnyFlatSpec with Matchers {
     YiddishTextSimpifier.simplify("אֶרֶץ-יִשְׂרָאֵל") shouldEqual "ארץ־יִשׂראל"
     YiddishTextSimpifier.simplify("Hello") shouldEqual "LLLLL"
     YiddishTextSimpifier.simplify("Привет") shouldEqual "CCCCCC"
+    YiddishTextSimpifier.simplify(",,וואָס''") shouldEqual "„װאָס“"
+    YiddishTextSimpifier.simplify("''") shouldEqual "“"
   }
 }
