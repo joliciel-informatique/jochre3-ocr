@@ -20,9 +20,9 @@ private[segmentation] case class BlockOnlySegmenterServiceImpl(yoloPredictorServ
  * Given an image, creates a page with top-level blocks only (text blocks, illustrations).
  */
 private[segmentation] class BlockOnlySegmenter(yoloPredictorService: YoloPredictorService) extends Segmenter {
-  override def segment(mat: Mat, fileName: String, outputLocation: Option[OutputLocation]): Task[Page] = {
+  override def segment(mat: Mat, fileName: String, debugLocation: Option[OutputLocation]): Task[Page] = {
     for {
-      blockPredictor <- yoloPredictorService.getYoloPredictor(YoloPredictionType.Blocks, mat, fileName, outputLocation)
+      blockPredictor <- yoloPredictorService.getYoloPredictor(YoloPredictionType.Blocks, mat, fileName, debugLocation)
       annotations <- blockPredictor.predict()
       page <- ZIO.attempt{
         val blocks = annotations.flatMap{

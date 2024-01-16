@@ -25,7 +25,7 @@ case class Evaluator(
   private val log = LoggerFactory.getLogger(getClass)
   private val analysisTimeName = "AnalysisTime"
 
-  def evaluate(inputDir: Path, outputDir: Option[Path], maxImages: Option[Int]): Task[Seq[EvaluationResult]] = {
+  def evaluate(inputDir: Path, outputDir: Option[Path], debugDir: Option[Path], maxImages: Option[Int]): Task[Seq[EvaluationResult]] = {
     val files = jochre.getImageFilesFromDir(inputDir, maxImages)
     ZIO.foreach(files.zipWithIndex){
       case ((file, mat), i) =>
@@ -33,7 +33,7 @@ case class Evaluator(
         val expected = altoFinder.getAltoPage(file.toPath)
         val startTime = Instant.now()
         for {
-          predicted <- jochre.processImage(mat, outputDir, file.getName)
+          predicted <- jochre.processImage(mat, outputDir, debugDir, file.getName)
           endTime = Instant.now()
           results <- ZIO.foreach(metrics){ metric =>
             ZIO.attempt{

@@ -28,20 +28,20 @@ private[text] class BlockTextGuesser(imageToAltoConverter: ImageToAltoConverter)
    * by assigning content to the resulting page.
    * Assumes the page and image are unrotated and have the same scale, which is the desired scale for analysis.
    */
-  override def guess(page: Page, mat: Mat, fileName: String, outputLocation: Option[OutputLocation]): Task[Page] = {
+  override def guess(page: Page, mat: Mat, fileName: String, debugLocation: Option[OutputLocation]): Task[Page] = {
     for {
       // convert existing blocks to image segments
       segments <- ZIO.attempt {
           // re-scale coordinates
           val rectangles = page.blocks.map(_.rectangle)
-          val imageSegmentExtractor = ImageSegmentExtractor(mat, rectangles, outputLocation)
+          val imageSegmentExtractor = ImageSegmentExtractor(mat, rectangles, debugLocation)
           imageSegmentExtractor.segments
         }
       pageWithContent <- ZIO.foreach(segments.zipWithIndex){
         case (TextSegment(block, subImage), i) =>
           // Analyze OCR on each text segment and extract the analyzed blocks
           log.debug(f"About to perform OCR analysis for text segment $block")
-          outputLocation.foreach { outputLocation =>
+          debugLocation.foreach { outputLocation =>
             saveImage(fromBufferedImage(subImage), outputLocation.resolve(f"_textblock$i.png").toString)
           }
 

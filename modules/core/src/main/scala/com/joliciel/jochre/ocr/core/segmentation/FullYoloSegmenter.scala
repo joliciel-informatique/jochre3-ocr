@@ -27,9 +27,9 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
 
   /** Transform an image into a segmented [[Page]] structure.
    * The page might only be segmented down to a given level (e.g. blocks, lines, strings, or glyphs) */
-  override def segment(mat: Mat, fileName: String, outputLocation: Option[OutputLocation]): Task[Page] = {
+  override def segment(mat: Mat, fileName: String, debugLocation: Option[OutputLocation]): Task[Page] = {
     for {
-      blockPredictor <- yoloPredictorService.getYoloPredictor(YoloPredictionType.Blocks, mat, fileName, outputLocation, Some(0.20))
+      blockPredictor <- yoloPredictorService.getYoloPredictor(YoloPredictionType.Blocks, mat, fileName, debugLocation, Some(0.20))
       blockPredictions <- blockPredictor.predict()
       pageWithBlocks <- ZIO.attempt {
         val blocks = blockPredictions.flatMap {
@@ -68,11 +68,11 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
           mat
         }
       }
-      linePredictor <- yoloPredictorService.getYoloPredictor(YoloPredictionType.Lines, printAreaMat, fileName, outputLocation, Some(0.05))
+      linePredictor <- yoloPredictorService.getYoloPredictor(YoloPredictionType.Lines, printAreaMat, fileName, debugLocation, Some(0.05))
       linePredictions <- linePredictor.predict()
-      wordPredictor <- yoloPredictorService.getYoloPredictor(YoloPredictionType.Words, printAreaMat, fileName, outputLocation, Some(0.05))
+      wordPredictor <- yoloPredictorService.getYoloPredictor(YoloPredictionType.Words, printAreaMat, fileName, debugLocation, Some(0.05))
       wordPredictions <- wordPredictor.predict()
-      glyphPredictor <- yoloPredictorService.getYoloPredictor(YoloPredictionType.Glyphs, printAreaMat, fileName, outputLocation, Some(0.10))
+      glyphPredictor <- yoloPredictorService.getYoloPredictor(YoloPredictionType.Glyphs, printAreaMat, fileName, debugLocation, Some(0.10))
       glyphPredictions <- glyphPredictor.predict()
       page <- ZIO.attempt {
         //TODO: handle case of overlapping text blocks
@@ -81,14 +81,12 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
 
         // Place lines inside blocks
         val translatedLinePredictions = linePredictions.map(p => p.copy(rectangle = p.rectangle.translate(croppedPrintArea.left, croppedPrintArea.top)))
-          .sortBy(_.rectangle)(Rectangle.VerticalOrdering)
-        val linePredictionsNoOverlaps = removeOverlaps(translatedLinePredictions.sortBy(_.rectangle))
-
-        val textBlockToLineMap = placeRectanglesInTextBlocks(textBlocks, linePredictionsNoOverlaps, "TextLine")
+        val textBlockToLineMap = placeRectanglesInTextBlocks(textBlocks, translatedLinePredictions, "TextLine")
 
         val textBlocksWithLines = textBlocks.map{ textBlock =>
-          val myLineRects = textBlockToLineMap.get(textBlock).getOrElse(Seq.empty)
-          val myLines = myLineRects.map(lineRect => TextLine(Line("", textBlock.rectangle.left, lineRect.rectangle.yCenter, textBlock.rectangle.right, lineRect.rectangle.yCenter), Seq.empty))
+          val myLineRects = textBlockToLineMap.get(textBlock).getOrElse(Seq.empty).sortBy(_.rectangle)(Rectangle.VerticalOrdering)
+          val myLineRectsWithoutOverlaps = removeOverlaps(myLineRects)
+          val myLines = myLineRectsWithoutOverlaps.map(lineRect => TextLine(Line("", textBlock.rectangle.left, lineRect.rectangle.yCenter, textBlock.rectangle.right, lineRect.rectangle.yCenter), Seq.empty))
           textBlock.copy(textLines = myLines)
         }
 
@@ -101,9 +99,8 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
           val textLineToWordMap = placeRectanglesInTextLines(textBlock, wordsToInclude, "Word")
 
           textBlock.copy(textLines = textBlock.textLines.map{ textLine =>
-            val myWordRects = textLineToWordMap.get(textLine).getOrElse(Seq.empty).sortBy(_.rectangle)(Rectangle.HorizontalOrdering)
-            val wordsWithoutOverlaps = removeOverlaps(myWordRects)
-            val myWords = wordsWithoutOverlaps.map(rect => Word(rect.rectangle.copy(label=""), Seq.empty, 1.0))
+            val myWordRects = textLineToWordMap.get(textLine).getOrElse(Seq.empty)
+            val myWords = myWordRects.map(rect => Word(rect.rectangle.copy(label=""), Seq.empty, 1.0))
             val wordsAndSpaces = Option.when(myWords.size > 1)(myWords.zip(myWords.tail).flatMap{ case (word, nextWord) =>
               Seq(word, Space(Rectangle("", nextWord.rectangle.right, word.rectangle.top, word.rectangle.left - nextWord.rectangle.right, word.rectangle.height)))
             } :+ myWords.last).getOrElse(myWords)
@@ -113,7 +110,7 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
 
         // Place glyphs inside words
         val translatedGlyphPredictions = glyphPredictions.map(p => p.copy(rectangle = p.rectangle.translate(croppedPrintArea.left, croppedPrintArea.top)))
-        //val glyphTestRectangle = Some(Rectangle("", 1713, 2280, 300, 144))
+        //val glyphTestRectangle = Some(Rectangle("", 2204, 1366, 894, 128))
         val glyphTestRectangle = None
         val glyphsToPlace = glyphTestRectangle.map(testRect => translatedGlyphPredictions.filter(glyph => glyph.rectangle.areaOfIntersection(testRect) / glyph.rectangle.area.toDouble > 0.8))
           .getOrElse(translatedGlyphPredictions)
@@ -166,7 +163,7 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
           blocks = newBlocks
         )
 
-        outputLocation.foreach{ outputLocation =>
+        debugLocation.foreach{ outputLocation =>
           val labelled: Mat = toRGB(mat.clone())
           page.draw(labelled)
           saveImage(labelled, outputLocation.resolve("_full_yolo_seg.png").toString)
@@ -280,7 +277,7 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
 
   private def placeRectanglesInWords(textLine: TextLine, rectangles: Seq[PredictedRectangle]): Map[Word, Seq[PredictedRectangle]] = {
     val (wordMap, _) = rectangles.foldLeft(Map.empty[Word, Seq[PredictedRectangle]] -> Option.empty[Word]) { case ((wordMap, lastWord), rect) =>
-      if (log.isDebugEnabled) log.debug(f"Trying to find word for ${rect.rectangle.coordinates}")
+      if (log.isDebugEnabled) log.debug(f"Trying to find word for glyph ${rect.rectangle.coordinates}")
       // Before binary search, check if glyph is in last recognized container (since glyphs are ordered)
       val container = lastWord.filter(_.rectangle.testHorizontalOverlap(rect.rectangle)==0).map(Some(_))
         .getOrElse {
@@ -291,7 +288,7 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
 
       if (log.isDebugEnabled) log.debug(f"Found container word $container")
       if (container.isEmpty) {
-        if (log.isDebugEnabled) log.debug(f"Couldn't find container word for ${rect.rectangle.coordinates}")
+        if (log.isDebugEnabled) log.debug(f"Couldn't find container word for glyph ${rect.rectangle.coordinates}")
       }
 
       val newWordMap = container.map { container =>

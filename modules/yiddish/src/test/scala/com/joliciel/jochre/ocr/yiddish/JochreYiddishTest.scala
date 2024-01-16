@@ -18,7 +18,7 @@ object JochreYiddishTest extends JUnitRunnableSpec {
       val image = ImageIO.read(inputStream)
       for {
         jochreYiddish <- ZIO.service[Jochre]
-        alto <- jochreYiddish.processImage(image, None, "yiddish_sample.jpg")
+        alto <- jochreYiddish.processImage(image, None, None, "yiddish_sample.jpg")
       } yield {
         val altoFileName = (alto \\ "fileName").head.child.collect{case text: Text => text}.map(_.text).head
         assertTrue(altoFileName == "yiddish_sample.jpg")
@@ -34,5 +34,5 @@ object JochreYiddishTest extends JUnitRunnableSpec {
       }
     }
   ).provide(
-      JochreYiddishBlocksOnly.jochreYiddishLayer) @@ TestAspect.sequential
+      JochreYiddishWithYoloBlocksOnly.jochreYiddishLayer) @@ TestAspect.sequential
 }
