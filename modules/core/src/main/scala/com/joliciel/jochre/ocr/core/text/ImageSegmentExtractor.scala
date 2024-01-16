@@ -9,13 +9,13 @@ import java.awt.image.BufferedImage
 import java.awt.{Color, Graphics2D}
 import javax.imageio.ImageIO
 
-sealed trait ImageSegment {
+private[text] sealed trait ImageSegment {
   def block: ImageLabel.Rectangle
 }
-case class TextSegment(block: ImageLabel.Rectangle, subImage: BufferedImage) extends ImageSegment
-case class IllustrationSegment(block: ImageLabel.Rectangle) extends ImageSegment
+private[text] case class TextSegment(block: ImageLabel.Rectangle, subImage: BufferedImage) extends ImageSegment
+private[text] case class IllustrationSegment(block: ImageLabel.Rectangle) extends ImageSegment
 
-case class ImageSegmentExtractor(image: Mat, blocks: Seq[ImageLabel.Rectangle], outputLocation: Option[OutputLocation] = None) extends ImageUtils {
+private[text] case class ImageSegmentExtractor(image: Mat, blocks: Seq[ImageLabel.Rectangle], outputLocation: Option[OutputLocation] = None) extends ImageUtils {
   val segments: Seq[ImageSegment] = {
     val withoutIllustrations = toBufferedImage(image);
     val graph: Graphics2D = withoutIllustrations.createGraphics

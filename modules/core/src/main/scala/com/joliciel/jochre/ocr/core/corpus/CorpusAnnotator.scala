@@ -8,6 +8,12 @@ import org.slf4j.LoggerFactory
 import java.io.File
 import java.nio.file.Path
 
+/**
+ * Given a corpus of images pre-annotated with Alto, such that the AltoFinder makes it possible to find the equivalent
+ * Alto file, transforms this corpus into another annotated format.
+ * This could involve splitting images (e.g. into individual text lines), and writing the associated annotation into a
+ * file of a given format, as required by a particular downstream tool (e.g. YOLO, TrOCR, etc.).
+ */
 trait CorpusAnnotator extends FileUtils with ImageUtils {
   def altoFinder: AltoFinder
   def corpusDir: Path

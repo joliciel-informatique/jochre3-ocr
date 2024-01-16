@@ -26,6 +26,8 @@ case class Space(rectangle: Rectangle) extends WordOrSpace {
     opencv_imgproc.rectangle(mat, new Point(rectangle.left, rectangle.top), new Point(rectangle.left + rectangle.width, rectangle.top + rectangle.height), AbstractScalar.YELLOW,
       1, LINE_8, 0)
   }
+
+  override val content: String = " "
 }
 
 object Space {

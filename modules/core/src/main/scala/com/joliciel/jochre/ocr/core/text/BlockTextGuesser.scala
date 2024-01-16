@@ -1,26 +1,26 @@
 package com.joliciel.jochre.ocr.core.text
 
-import com.joliciel.jochre.ocr.core.analysis.TextAnalyzer
-import com.joliciel.jochre.ocr.core.model.{Illustration, Page}
+import com.joliciel.jochre.ocr.core.alto.ImageToAltoConverter
+import com.joliciel.jochre.ocr.core.model.{Block, Illustration, Page}
 import com.joliciel.jochre.ocr.core.utils.{ImageUtils, OutputLocation}
 import org.bytedeco.opencv.opencv_core.Mat
 import org.slf4j.LoggerFactory
 import zio.{Task, ZIO, ZLayer}
 
 object BlockTextGuesserService {
-  val live: ZLayer[TextAnalyzer, Nothing, TextGuesserService] = ZLayer.fromFunction(BlockTextGuesserServiceImpl(_))
+  val live: ZLayer[ImageToAltoConverter, Nothing, TextGuesserService] = ZLayer.fromFunction(BlockTextGuesserServiceImpl(_))
 }
 
-private[text] case class BlockTextGuesserServiceImpl(textAnalyzer: TextAnalyzer) extends TextGuesserService {
+private[text] case class BlockTextGuesserServiceImpl(imageToAltoConverter: ImageToAltoConverter) extends TextGuesserService {
   def getTextGuesser(): Task[BlockTextGuesser] = {
-    ZIO.attempt(new BlockTextGuesser(textAnalyzer))
+    ZIO.attempt(new BlockTextGuesser(imageToAltoConverter))
   }
 }
 
 /**
  * A text guesser which applies guessing to a entire pre-segmented blocks, with no additional segmentation inside them.
  */
-private[text] class BlockTextGuesser(textAnalyzer: TextAnalyzer) extends TextGuesser with ImageUtils {
+private[text] class BlockTextGuesser(imageToAltoConverter: ImageToAltoConverter) extends TextGuesser with ImageUtils {
   private val log = LoggerFactory.getLogger(getClass)
 
   /**
@@ -37,32 +37,33 @@ private[text] class BlockTextGuesser(textAnalyzer: TextAnalyzer) extends TextGue
           val imageSegmentExtractor = ImageSegmentExtractor(mat, rectangles, outputLocation)
           imageSegmentExtractor.segments
         }
-      pageWithContent <- ZIO.attempt {
-        // analyze OCR in text blocks
-        val blocks = segments.zipWithIndex.map {
-          case (TextSegment(block, subImage), i) =>
-            // Analyze OCR on each text segment and extract the analyzed blocks
-            log.debug(f"About to perform OCR analysis for text segment $block")
-            outputLocation.foreach { outputLocation =>
-              saveImage(fromBufferedImage(subImage), outputLocation.resolve(f"_textblock$i.png").toString)
-            }
+      pageWithContent <- ZIO.foreach(segments.zipWithIndex){
+        case (TextSegment(block, subImage), i) =>
+          // Analyze OCR on each text segment and extract the analyzed blocks
+          log.debug(f"About to perform OCR analysis for text segment $block")
+          outputLocation.foreach { outputLocation =>
+            saveImage(fromBufferedImage(subImage), outputLocation.resolve(f"_textblock$i.png").toString)
+          }
 
-            textAnalyzer.analyze(subImage).map { altoXml =>
-              val jochreSubImage = Page.fromXML(altoXml)
-              val translatedSubImage = jochreSubImage.translate(block.left, block.top)
-              log.debug(f"OCR analysis complete for $block")
-              translatedSubImage.blocks
-            }.getOrElse(Seq.empty)
-          case (IllustrationSegment(block), _) =>
-            Seq(Illustration(block))
-        }.flatten.sortBy(_.rectangle)
+          imageToAltoConverter.analyze(subImage).map { altoXml =>
+            val jochreSubImage = Page.fromXML(altoXml)
+            val translatedSubImage = jochreSubImage.translate(block.left, block.top)
+            log.debug(f"OCR analysis complete for $block")
+            translatedSubImage.blocks
+          }.catchSome{
+            case _: AnalysisExceptionToIgnore =>
+              ZIO.succeed(Seq.empty[Block])
+          }
+        case (IllustrationSegment(block), _) =>
+          ZIO.succeed(Seq(Illustration(block)))
+      }.mapAttempt(_.map(_.sortBy(_.rectangle)).flatten)
+        .mapAttempt{ blocks =>
+          log.debug(f"Found ${blocks.size} blocks")
 
-        log.debug(f"Found ${blocks.size} blocks")
-
-        page.copy(
-          blocks = blocks
-        )
-      }
+          page.copy(
+            blocks = blocks
+          )
+        }
     } yield pageWithContent
   }
 }

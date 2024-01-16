@@ -1,17 +1,22 @@
 package com.joliciel.jochre.ocr.yiddish
 
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
+import zio._
+import zio.test.junit.JUnitRunnableSpec
+import zio.test.{Spec, TestEnvironment, assertTrue}
 
 import javax.imageio.ImageIO
 
-class Jochre2AnalyzerTest extends AnyFlatSpec with Matchers {
-  "A Jochre2Analyzer" should "analyze an image" in {
-    val inputStream = getClass.getClassLoader.getResourceAsStream("yiddish_sample.jpg")
-    val image = ImageIO.read(inputStream)
-    val alto = Jochre2Analyzer.analyze(image).get
-    val content = (alto \\ "String").map(node => node \@ "CONTENT").mkString(" ")
+object Jochre2AnalyzerTest extends JUnitRunnableSpec {
 
-    content shouldEqual "מאַמע-לשון"
-  }
+  override def spec: Spec[TestEnvironment with Scope, Any] = suite("JochreYiddishTest")(
+    test("analyze an image") {
+      val inputStream = getClass.getClassLoader.getResourceAsStream("yiddish_sample.jpg")
+      val image = ImageIO.read(inputStream)
+      for {
+        alto <- Jochre2Analyzer.analyze(image)
+      } yield {
+        val content = (alto \\ "String").map(node => node \@ "CONTENT").mkString(" ")
+        assertTrue(content == "מאַמע-לשון")
+      }
+   })
 }

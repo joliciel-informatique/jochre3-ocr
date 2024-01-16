@@ -2,7 +2,7 @@ package com.joliciel.jochre.ocr.yiddish
 
 import com.joliciel.jochre.analyser.{BeamSearchImageAnalyser, LetterAssigner, LetterGuessObserver}
 import com.joliciel.jochre.boundaries.{BoundaryDetector, OriginalBoundaryDetector}
-import com.joliciel.jochre.graphics.{ImageStatus, JochreImage, RowOfShapes, Shape, SourceImage}
+import com.joliciel.jochre.graphics.{ImageStatus, RowOfShapes, Shape, SourceImage}
 import com.joliciel.jochre.letterGuesser.LetterGuesser
 import com.joliciel.jochre.letterGuesser.features.{LetterFeature, LetterFeatureParser}
 import com.joliciel.jochre.lexicon.MostLikelyWordChooser

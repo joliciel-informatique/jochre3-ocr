@@ -7,7 +7,7 @@ import org.bytedeco.opencv.opencv_core.Mat
 import scala.xml.{Elem, Node}
 
 case class Glyph(rectangle: Rectangle, confidence: Double) extends PageElement with Ordered[Glyph] {
-  val content = rectangle.label
+  override val content = rectangle.label
   override def translate(xDiff: Int, yDiff: Int): Glyph =
     Glyph(rectangle.translate(xDiff, yDiff), confidence)
 

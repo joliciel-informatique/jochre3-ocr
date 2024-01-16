@@ -36,6 +36,8 @@ case class ComposedBlock(rectangle: Rectangle, textBlocks: Seq[TextBlock]) exten
       2, LINE_8, 0)
     this.textBlocks.map(_.draw(mat))
   }
+
+  override lazy val content: String = textBlocks.map(_.content).mkString("\n")
 }
 
 object ComposedBlock {

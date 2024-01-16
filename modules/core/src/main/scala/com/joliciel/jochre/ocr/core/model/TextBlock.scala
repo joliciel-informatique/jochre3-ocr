@@ -54,6 +54,8 @@ case class TextBlock(rectangle: Rectangle, textLines: Seq[TextLine]) extends Blo
       2, LINE_8, 0)
     this.textLines.map(_.draw(mat))
   }
+
+  override lazy val content: String = textLines.map(_.content).mkString(" ")
 }
 
 object TextBlock {

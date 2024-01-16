@@ -1,10 +1,7 @@
 package com.joliciel.jochre.ocr.yiddish
 
 import com.joliciel.jochre.ocr.core.Jochre
-import com.joliciel.jochre.ocr.core.segmentation.{BlockOnlySegmenterService, YoloPredictorService}
-import com.joliciel.jochre.ocr.core.text.BlockTextGuesserService
 import org.slf4j.LoggerFactory
-import sttp.client3.httpclient.zio.HttpClientZioBackend
 import zio._
 import zio.test.junit.JUnitRunnableSpec
 import zio.test.{Spec, TestAspect, TestEnvironment, assertTrue}

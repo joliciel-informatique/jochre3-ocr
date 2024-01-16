@@ -1,4 +1,4 @@
-package com.joliciel.jochre.ocr.core.analysis
+package com.joliciel.jochre.ocr.core.alto
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

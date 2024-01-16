@@ -1,4 +1,4 @@
-package com.joliciel.jochre.ocr.core.analysis
+package com.joliciel.jochre.ocr.core.alto
 
 import com.joliciel.jochre.ocr.core.corpus.TextSimplifier
 import com.joliciel.jochre.ocr.core.utils.XmlImplicits

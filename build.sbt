@@ -16,6 +16,7 @@ val jochre2Version = "2.6.4"
 val yivoTranscriberVersion = "0.1.2"
 val javaCVVersion = "1.5.9"
 val scallopVersion = "5.0.0"
+val apacheCommonsTextVersion = "1.11.0"
 
 lazy val jochre3OCRVersion = sys.env.get("JOCHRE3_OCR_VERSION")
   .getOrElse{
@@ -110,6 +111,7 @@ lazy val core = project
       "org.rogach" %% "scallop" % scallopVersion,
       "org.bytedeco" % "javacv-platform" % javaCVVersion,
       "org.scala-lang.modules" %% "scala-xml" % scalaXmlVersion,
+      "org.apache.commons" % "commons-text" % apacheCommonsTextVersion,
     ),
     //Compile / packageDoc / mappings := Seq(),
     Compile / packageDoc / publishArtifact := true,
