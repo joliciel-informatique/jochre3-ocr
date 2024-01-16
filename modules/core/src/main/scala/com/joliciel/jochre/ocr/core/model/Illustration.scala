@@ -29,6 +29,8 @@ case class Illustration(rectangle: Rectangle) extends Block {
     opencv_imgproc.rectangle(mat, new Point(rectangle.left - 2, rectangle.top - 2), new Point(rectangle.left + rectangle.width + 4, rectangle.top + rectangle.height + 4), AbstractScalar.MAGENTA,
       2, LINE_8, 0)
   }
+
+  override def content: String = ""
 }
 
 object Illustration {

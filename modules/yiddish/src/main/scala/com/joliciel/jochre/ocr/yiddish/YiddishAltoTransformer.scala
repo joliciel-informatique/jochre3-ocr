@@ -1,7 +1,7 @@
 package com.joliciel.jochre.ocr.yiddish
 
 import com.joliciel.jochre.lexicon.{Lexicon, TextFileLexicon}
-import com.joliciel.jochre.ocr.core.analysis.{AltoAlternative, AltoTransformer}
+import com.joliciel.jochre.ocr.core.alto.{AltoAlternative, AltoTransformer}
 import com.joliciel.jochre.ocr.core.corpus.TextSimplifier
 import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
 import com.joliciel.jochre.ocr.core.model.{Glyph, Hyphen}

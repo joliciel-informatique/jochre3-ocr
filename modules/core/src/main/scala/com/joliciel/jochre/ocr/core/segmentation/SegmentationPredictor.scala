@@ -38,9 +38,11 @@ trait SegmentationPredictorBase[T <: ImageLabel] extends SegmentationPredictor[T
           val labelled: Mat = toRGB(mat.clone())
 
           predictions.foreach {
-            case ImageLabel.PredictedRectangle(ImageLabel.Rectangle(label, left, top, width, height), _) =>
+            case ImageLabel.PredictedRectangle(ImageLabel.Rectangle(label, left, top, width, height), confidence) =>
               opencv_imgproc.rectangle(labelled, new Point(left, top), new Point(left + width, top + height), AbstractScalar.RED)
-              opencv_imgproc.putText(labelled, label, new Point(left + width + 2, top + height + 20), opencv_imgproc.FONT_HERSHEY_DUPLEX, 3, AbstractScalar.GREEN)
+              //opencv_imgproc.putText(labelled, label, new Point(left + width, top + height + 40), opencv_imgproc.FONT_HERSHEY_DUPLEX, 1, AbstractScalar.GREEN)
+              val confidenceForPrint = (confidence * 100).toInt
+              opencv_imgproc.putText(labelled, f"$confidenceForPrint", new Point(left + 2, top + 20), opencv_imgproc.FONT_HERSHEY_DUPLEX, 0.5, AbstractScalar.BLACK)
             case ImageLabel.Rectangle(label, left, top, width, height) =>
               opencv_imgproc.rectangle(labelled, new Point(left, top), new Point(left + width, top + height), AbstractScalar.RED)
               opencv_imgproc.putText(labelled, label, new Point(left + width + 2, top + height + 20), opencv_imgproc.FONT_HERSHEY_DUPLEX, 3, AbstractScalar.GREEN)

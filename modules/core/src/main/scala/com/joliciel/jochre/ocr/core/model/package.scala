@@ -31,6 +31,8 @@ package object model {
     def toXml(id: String = ""): Elem
 
     def draw(mat: Mat): Unit
+
+    def content: String
   }
 
   trait Block extends PageElement with Ordered[Block] {

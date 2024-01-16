@@ -2,6 +2,8 @@ package com.joliciel.jochre.ocr.core.utils
 
 import java.io.File
 import java.net.URI
+import java.nio.charset.StandardCharsets
+import java.nio.file.{Files, Path, Paths}
 import scala.io.Source
 import scala.util.matching.Regex
 
@@ -17,6 +19,10 @@ trait FileUtils {
     val lines = (for (line <- bufferedSource.getLines()) yield line).toList
     bufferedSource.close
     lines
+  }
+
+  def writeFile(path: Path, text: String) = {
+    Files.write(path, text.getBytes(StandardCharsets.UTF_8))
   }
 
   def recursiveListFiles(dir: File, regex: Regex): Array[File] = {

@@ -1,10 +1,7 @@
 package com.joliciel.jochre.ocr.yiddish
 
 import com.joliciel.jochre.ocr.core.Jochre
-import com.joliciel.jochre.ocr.core.segmentation.{BlockOnlySegmenterService, YoloPredictorService}
-import com.joliciel.jochre.ocr.core.text.BlockTextGuesserService
 import org.slf4j.LoggerFactory
-import sttp.client3.httpclient.zio.HttpClientZioBackend
 import zio._
 import zio.test.junit.JUnitRunnableSpec
 import zio.test.{Spec, TestAspect, TestEnvironment, assertTrue}
@@ -21,7 +18,7 @@ object JochreYiddishTest extends JUnitRunnableSpec {
       val image = ImageIO.read(inputStream)
       for {
         jochreYiddish <- ZIO.service[Jochre]
-        alto <- jochreYiddish.processImage(image, None, "yiddish_sample.jpg")
+        alto <- jochreYiddish.processImage(image, None, None, "yiddish_sample.jpg")
       } yield {
         val altoFileName = (alto \\ "fileName").head.child.collect{case text: Text => text}.map(_.text).head
         assertTrue(altoFileName == "yiddish_sample.jpg")
@@ -37,5 +34,5 @@ object JochreYiddishTest extends JUnitRunnableSpec {
       }
     }
   ).provide(
-      JochreYiddishBlocksOnly.jochreYiddishLayer) @@ TestAspect.sequential
+      JochreYiddishWithYoloBlocksOnly.jochreYiddishLayer) @@ TestAspect.sequential
 }

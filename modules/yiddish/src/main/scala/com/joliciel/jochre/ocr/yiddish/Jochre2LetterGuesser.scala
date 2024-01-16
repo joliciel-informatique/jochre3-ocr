@@ -2,7 +2,7 @@ package com.joliciel.jochre.ocr.yiddish
 
 import com.joliciel.jochre.analyser.{BeamSearchImageAnalyser, LetterAssigner, LetterGuessObserver}
 import com.joliciel.jochre.boundaries.{BoundaryDetector, OriginalBoundaryDetector}
-import com.joliciel.jochre.graphics.{ImageStatus, JochreImage, RowOfShapes, Shape, SourceImage}
+import com.joliciel.jochre.graphics.{ImageStatus, RowOfShapes, Shape, SourceImage}
 import com.joliciel.jochre.letterGuesser.LetterGuesser
 import com.joliciel.jochre.letterGuesser.features.{LetterFeature, LetterFeatureParser}
 import com.joliciel.jochre.lexicon.MostLikelyWordChooser
@@ -49,7 +49,7 @@ case class Jochre2LetterGuesser() extends TextGuesser with ImageUtils {
    * Given an image and a pre-segmented [[Page]] structure, attempt to guess the text within the page
    * by assigning content to the resulting page.
    */
-  override def guess(page: Page, mat: Mat, fileName: String, outputLocation: Option[OutputLocation]): Task[Page] = ZIO.attempt{
+  override def guess(page: Page, mat: Mat, fileName: String, debugLocation: Option[OutputLocation]): Task[Page] = ZIO.attempt{
     val jochreSession = jochreYiddish.getJochreSession
     val originalImage = toBufferedImage(mat)
     val jochreImage = new SourceImage(fileName, originalImage, jochreSession)

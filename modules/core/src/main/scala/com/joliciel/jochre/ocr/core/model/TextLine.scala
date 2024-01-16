@@ -8,11 +8,7 @@ import org.bytedeco.opencv.opencv_core.{AbstractScalar, Mat, Point}
 import scala.xml.{Elem, Node}
 
 case class TextLine(baseLine: Line, wordsAndSpaces: Seq[WordOrSpace]) extends PageElement with Ordered[TextLine] {
-  lazy val content: String = wordsAndSpaces.map{
-    case word@Word(_, _, _) => word.content
-    case Space(_) => " "
-    case hyphen@Hyphen(_) => hyphen.content
-  }.mkString
+  override lazy val content: String = wordsAndSpaces.map(_.content).mkString
 
   lazy val words: Seq[Word] = wordsAndSpaces.collect{ case w: Word => w }
   lazy val spaces: Seq[Space] = wordsAndSpaces.collect{ case s: Space => s }

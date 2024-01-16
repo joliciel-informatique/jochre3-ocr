@@ -1,6 +1,6 @@
 package com.joliciel.jochre.ocr.yiddish
 
-import com.joliciel.jochre.ocr.core.analysis.AltoAlternative
+import com.joliciel.jochre.ocr.core.alto.AltoAlternative
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

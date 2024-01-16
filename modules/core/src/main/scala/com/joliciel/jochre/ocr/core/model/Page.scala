@@ -130,6 +130,12 @@ case class Page(
   override def draw(mat: Mat): Unit = {
     this.blocks.map(_.draw(mat))
   }
+
+  override def content: String = this.blocks.map{
+    case composedBlock:ComposedBlock => composedBlock.content
+    case textBlock:TextBlock => f"${textBlock.content}\n"
+    case illustration:Illustration => illustration.content
+  }.mkString
 }
 
 object Page {

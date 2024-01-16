@@ -8,7 +8,7 @@ import org.bytedeco.opencv.opencv_core.{AbstractScalar, Mat, Point}
 import scala.xml.{Elem, Node}
 
 case class Hyphen(rectangle: Rectangle) extends WordOrSpace {
-  val content = rectangle.label
+  override val content = rectangle.label
 
   override def translate(xDiff: Int, yDiff: Int): Hyphen = Hyphen(rectangle.translate(xDiff, yDiff))
 
