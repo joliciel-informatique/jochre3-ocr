@@ -34,7 +34,7 @@ private[segmentation] class BlockOnlySegmenter(yoloPredictorService: YoloPredict
               case BlockType.Image => Some(Illustration(rect))
               case BlockType.Table => None
             }
-        }
+        }.sortBy(_.rectangle)
         Page(
           id = fileName,
           height = mat.rows(),

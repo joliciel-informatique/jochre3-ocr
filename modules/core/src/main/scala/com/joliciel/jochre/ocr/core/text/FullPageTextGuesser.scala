@@ -25,10 +25,13 @@ private[text] class FullPageTextGuesser(imageToAltoConverter: ImageToAltoConvert
 
   override def guess(page: Page, mat: Mat, fileName: String, debugLocation: Option[OutputLocation]): Task[Page] = {
     val image = toBufferedImage(mat)
-    for {
+    (for {
       alto <- imageToAltoConverter.analyze(image)
     } yield {
       Page.fromXML(alto)
+    }).catchSome {
+      case _: AnalysisExceptionToIgnore =>
+        ZIO.succeed(page)
     }
   }
 }
