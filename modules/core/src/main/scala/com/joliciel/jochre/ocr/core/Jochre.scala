@@ -12,8 +12,7 @@ import org.slf4j.LoggerFactory
 import zio.{Task, ZIO}
 
 import java.awt.image.BufferedImage
-import java.io.{File, FileWriter}
-import java.nio.charset.StandardCharsets
+import java.io.File
 import java.nio.file.Path
 import scala.xml.{Elem, PrettyPrinter}
 
@@ -132,20 +131,27 @@ trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImpli
 
         val prettyPrinter = new PrettyPrinter(80, 2)
 
+        val fixedAlto = altoTransformer.process(alto, fileName)
+
         debugLocation.foreach { debugLocation =>
           val altoFile = debugLocation.resolve("_initial_alto4.xml")
           writeFile(altoFile, prettyPrinter.format(alto))
-        }
 
-        val fixedAlto = altoTransformer.process(alto, fileName)
+          val contentFile = debugLocation.resolve("_predicted.txt")
+          writeFile(contentFile, Page.fromXML(fixedAlto).content)
+
+          val transformedLabelled: Mat = toRGB(transformed.clone())
+          page.draw(transformedLabelled)
+          saveImage(transformedLabelled, debugLocation.resolve("_transformed_seg.png").toString)
+
+          val labelled: Mat = toRGB(mat.clone())
+          rotatedPage.draw(labelled)
+          saveImage(labelled, debugLocation.resolve("_seg.png").toString)
+        }
 
         outputLocation.foreach { outputLocation =>
           val altoFile = outputLocation.resolve("_alto4.xml")
           writeFile(altoFile, prettyPrinter.format(fixedAlto))
-        }
-        debugLocation.foreach { debugLocation =>
-          val contentFile = debugLocation.resolve("_predicted.txt")
-          writeFile(contentFile, Page.fromXML(fixedAlto).content)
         }
 
         fixedAlto

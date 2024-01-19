@@ -86,10 +86,9 @@ private[segmentation] class YoloPredictor(
             throw new Exception(s"Could not predict ${predictionType.entryName}. Status code: ${statusCode.code}. Status text: ${response.statusText}")
         }
       }.mapAttempt{
-        _.sortBy(_.rectangle)
-          .map(predictedRectangle =>
-            predictedRectangle.copy(rectangle = predictedRectangle.rectangle.rescale(1.0 / scale.value))
-          )
+        _.map(predictedRectangle =>
+          predictedRectangle.copy(rectangle = predictedRectangle.rectangle.rescale(1.0 / scale.value))
+        )
       }
     } yield predictions
   }

@@ -243,7 +243,7 @@ object YiddishAltoTransformer extends XmlImplicits {
                 val stringGlyphs = glyphs.init
                 val lastGlyph = glyphs.last
                 val hyphenGlyphContent = lastGlyph \@ "CONTENT"
-                val (letterGlyph, hyphenGlyph) = if (hyphenGlyphContent.length==1) {
+                val (letterGlyph, hyphenGlyph) = if (hyphenGlyphContent.length<=1) {
                   None -> Glyph.fromXML(lastGlyph)
                 } else {
                   // In some cases the last glyph contains several letters

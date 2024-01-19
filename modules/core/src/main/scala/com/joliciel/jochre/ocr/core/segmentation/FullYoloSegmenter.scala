@@ -110,7 +110,7 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
 
         // Place glyphs inside words
         val translatedGlyphPredictions = glyphPredictions.map(p => p.copy(rectangle = p.rectangle.translate(croppedPrintArea.left, croppedPrintArea.top)))
-        //val glyphTestRectangle = Some(Rectangle("", 2204, 1366, 894, 128))
+        //val glyphTestRectangle = Some(Rectangle("", 603, 2175, 2505, 540))
         val glyphTestRectangle = None
         val glyphsToPlace = glyphTestRectangle.map(testRect => translatedGlyphPredictions.filter(glyph => glyph.rectangle.areaOfIntersection(testRect) / glyph.rectangle.area.toDouble > 0.8))
           .getOrElse(translatedGlyphPredictions)
@@ -163,11 +163,6 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
           blocks = newBlocks
         )
 
-        debugLocation.foreach{ outputLocation =>
-          val labelled: Mat = toRGB(mat.clone())
-          page.draw(labelled)
-          saveImage(labelled, outputLocation.resolve("_full_yolo_seg.png").toString)
-        }
         page
       }
     } yield page
