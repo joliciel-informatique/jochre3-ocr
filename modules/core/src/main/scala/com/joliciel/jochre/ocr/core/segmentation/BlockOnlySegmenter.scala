@@ -1,7 +1,7 @@
 package com.joliciel.jochre.ocr.core.segmentation
 
 import com.joliciel.jochre.ocr.core.model.ImageLabel.{PredictedRectangle, Rectangle}
-import com.joliciel.jochre.ocr.core.model.{Illustration, Page, TextBlock}
+import com.joliciel.jochre.ocr.core.model.{BlockSorter, Illustration, Page, TextBlock}
 import com.joliciel.jochre.ocr.core.utils.OutputLocation
 import org.bytedeco.opencv.opencv_core.Mat
 import zio.{Task, ZIO, ZLayer}
@@ -20,12 +20,17 @@ private[segmentation] case class BlockOnlySegmenterServiceImpl(yoloPredictorServ
  * Given an image, creates a page with top-level blocks only (text blocks, illustrations).
  */
 private[segmentation] class BlockOnlySegmenter(yoloPredictorService: YoloPredictorService) extends Segmenter {
-  override def segment(mat: Mat, fileName: String, debugLocation: Option[OutputLocation]): Task[Page] = {
+  override def segment(mat: Mat, fileName: String, debugLocation: Option[OutputLocation], testRectangle: Option[Rectangle] = None): Task[Page] = {
     for {
       blockPredictor <- yoloPredictorService.getYoloPredictor(YoloPredictionType.Blocks, mat, fileName, debugLocation)
-      annotations <- blockPredictor.predict()
+      blockPredictions <- blockPredictor.predict()
       page <- ZIO.attempt{
-        val blocks = annotations.flatMap{
+        val sortedBlockPredictions = BlockSorter.sort(blockPredictions)
+          .collect {
+            case p: PredictedRectangle => p
+          }
+
+        val blocks = sortedBlockPredictions.flatMap{
           case PredictedRectangle(rect@Rectangle(label, _, _, _, _), _) =>
             val blockType = BlockType.withName(label)
             blockType match {
@@ -34,7 +39,8 @@ private[segmentation] class BlockOnlySegmenter(yoloPredictorService: YoloPredict
               case BlockType.Image => Some(Illustration(rect))
               case BlockType.Table => None
             }
-        }.sortBy(_.rectangle)
+        }
+
         Page(
           id = fileName,
           height = mat.rows(),

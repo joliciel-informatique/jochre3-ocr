@@ -20,7 +20,7 @@ private[segmentation] object NonSegmenterServiceImpl extends SegmenterService {
  * Given an image, creates an empty page.
  */
 private[segmentation] object NonSegmenter extends Segmenter {
-  override def segment(mat: Mat, fileName: String, debugLocation: Option[OutputLocation]): Task[Page] = {
+  override def segment(mat: Mat, fileName: String, debugLocation: Option[OutputLocation], testRectangle: Option[Rectangle] = None): Task[Page] = {
     for {
       page <- ZIO.attempt{
         Page(

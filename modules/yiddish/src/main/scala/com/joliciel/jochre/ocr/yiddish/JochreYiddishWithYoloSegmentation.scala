@@ -2,6 +2,7 @@ package com.joliciel.jochre.ocr.yiddish
 
 import com.joliciel.jochre.ocr.core.alto.AltoTransformer
 import com.joliciel.jochre.ocr.core.evaluation.{CharacterCount, CharacterErrorRate, Evaluator}
+import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
 import com.joliciel.jochre.ocr.core.segmentation.{FullYoloSegmenterService, SegmenterService, YoloPredictorService}
 import com.joliciel.jochre.ocr.core.text.TextGuesserService
 import com.joliciel.jochre.ocr.core.{AbstractJochre, Jochre}
@@ -39,6 +40,7 @@ object JochreYiddishWithYoloSegmentation extends ZIOAppDefault {
     val debugDir: ScallopOption[String] = opt[String]()
     val maxImages: ScallopOption[Int] = opt[Int](default = Some(0))
     val evalDir: ScallopOption[String] = opt[String]()
+    val testRectangle: ScallopOption[String] = opt[String]()
     verify()
   }
 
@@ -50,6 +52,12 @@ object JochreYiddishWithYoloSegmentation extends ZIOAppDefault {
       evalDir = options.evalDir.toOption.map(Path.of(_))
       debugDir = options.debugDir.toOption.map(Path.of(_))
       maxImages = Option.when(options.maxImages() > 0) (options.maxImages())
+      testRectangle <- ZIO.attempt{
+        options.testRectangle.toOption.map{ rectString =>
+          val ltwh = rectString.split(",").map(_.toInt)
+          Rectangle("", ltwh(0), ltwh(1), ltwh(2), ltwh(3))
+        }
+      }
       _ <- ZIO.attempt{
         evalDir.foreach(_.toFile.mkdirs())
         debugDir.foreach(_.toFile.mkdirs())
@@ -60,13 +68,13 @@ object JochreYiddishWithYoloSegmentation extends ZIOAppDefault {
           val evaluator = Evaluator(jochre, Seq(CharacterErrorRate, CharacterCount), evalDir, textSimplifier = Some(YiddishTextSimpifier))
           val evalWriter = new FileWriter(new File(evalDir.toFile, "eval.tsv"), StandardCharsets.UTF_8)
           for {
-            results <- evaluator.evaluate(inputDir, Some(outDir), debugDir, maxImages)
+            results <- evaluator.evaluate(inputDir, Some(outDir), debugDir, maxImages, testRectangle)
             _ <- ZIO.attempt{evaluator.writeResults(evalWriter, results)}
           } yield {
             results
           }
         }.getOrElse {
-          jochre.process(inputDir, Some(outDir), debugDir, maxImages)
+          jochre.process(inputDir, Some(outDir), debugDir, maxImages, testRectangle)
         }
       }
     } yield ExitCode.success

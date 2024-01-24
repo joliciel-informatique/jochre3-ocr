@@ -29,8 +29,6 @@ case class ComposedBlock(rectangle: Rectangle, textBlocks: Seq[TextBlock]) exten
   lazy val combinedWords: Seq[Word] = textBlocks.flatMap(_.combinedWords)
   lazy val textLinesWithRectangles: Seq[(TextLine, Rectangle)] = textBlocks.flatMap(_.textLinesWithRectangles)
 
-  override def compare(that: Block): Int = this.rectangle.compare(that.rectangle)
-
   override def draw(mat: Mat): Unit = {
     opencv_imgproc.rectangle(mat, new Point(rectangle.left - 4, rectangle.top - 4), new Point(rectangle.left + rectangle.width + 8, rectangle.top + rectangle.height + 8), AbstractScalar.YELLOW,
       2, LINE_8, 0)

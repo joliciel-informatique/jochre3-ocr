@@ -1,6 +1,7 @@
 package com.joliciel.jochre.ocr.core
 
 import com.joliciel.jochre.ocr.core.alto.AltoTransformer
+import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
 import com.joliciel.jochre.ocr.core.model.{ComposedBlock, Page, TextBlock}
 import com.joliciel.jochre.ocr.core.output.Alto4Writer
 import com.joliciel.jochre.ocr.core.segmentation.SegmenterService
@@ -18,9 +19,9 @@ import scala.xml.{Elem, PrettyPrinter}
 
 trait Jochre {
   def getImageFilesFromDir(inputDir: Path, maxImages: Option[Int]): Seq[(File, Mat)]
-  def process(inputDir: Path, outputDir: Option[Path], debugDir: Option[Path], maxImages: Option[Int]): Task[Seq[Elem]]
-  def processImage(bufferedImage: BufferedImage, outputDir: Option[Path], debugDir: Option[Path], fileName: String): Task[Elem]
-  def processImage(mat: Mat, outputDir: Option[Path], debugDir: Option[Path], fileName: String): Task[Elem]
+  def process(inputDir: Path, outputDir: Option[Path], debugDir: Option[Path], maxImages: Option[Int], testRectangle: Option[Rectangle] = None): Task[Seq[Elem]]
+  def processImage(bufferedImage: BufferedImage, outputDir: Option[Path], debugDir: Option[Path], fileName: String, testRectangle: Option[Rectangle]): Task[Elem]
+  def processImage(mat: Mat, outputDir: Option[Path], debugDir: Option[Path], fileName: String, testRectangle: Option[Rectangle]): Task[Elem]
 }
 
 trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImplicits {
@@ -49,22 +50,22 @@ trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImpli
       }
   }
 
-  override def process(inputDir: Path, outputDir: Option[Path], debugDir: Option[Path], maxImages: Option[Int]): Task[Seq[Elem]] = {
+  override def process(inputDir: Path, outputDir: Option[Path], debugDir: Option[Path], maxImages: Option[Int], testRectangle: Option[Rectangle] = None): Task[Seq[Elem]] = {
     val filesAndImages = getImageFilesFromDir(inputDir, maxImages)
 
     ZIO.foreach(filesAndImages.zipWithIndex)
       { case ((inputFile, mat), i) =>
         log.debug(f"Processing file $i: ${inputFile.getPath}")
-        this.processImage(mat, outputDir, debugDir, inputFile.getName)
+        this.processImage(mat, outputDir, debugDir, inputFile.getName, testRectangle)
       }
   }
 
-  override def processImage(bufferedImage: BufferedImage, debugDir: Option[Path], outputDir: Option[Path], fileName: String): Task[Elem] = {
+  override def processImage(bufferedImage: BufferedImage, debugDir: Option[Path], outputDir: Option[Path], fileName: String, testRectangle: Option[Rectangle]): Task[Elem] = {
     val mat = fromBufferedImage(bufferedImage)
-    this.processImage(mat, outputDir, debugDir, fileName)
+    this.processImage(mat, outputDir, debugDir, fileName, testRectangle)
   }
 
-  override def processImage(mat: Mat, outputDir: Option[Path], debugDir: Option[Path], fileName: String): Task[Elem] = {
+  override def processImage(mat: Mat, outputDir: Option[Path], debugDir: Option[Path], fileName: String, testRectangle: Option[Rectangle]): Task[Elem] = {
     log.info(f"Processing image $fileName of size ${mat.cols()}X${mat.rows()}")
 
     val baseName = FileUtils.removeFileExtension(fileName)
@@ -101,7 +102,7 @@ trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImpli
       }
 
       segmenter <- segmenterService.getSegmenter()
-      segmented <- segmenter.segment(transformed, fileName, debugLocation)
+      segmented <- segmenter.segment(transformed, fileName, debugLocation, testRectangle)
       textGuesser <- textGuesserService.getTextGuesser()
       pageWithContent <- textGuesser.guess(segmented, transformed, fileName, debugLocation)
       alto <- ZIO.attempt{

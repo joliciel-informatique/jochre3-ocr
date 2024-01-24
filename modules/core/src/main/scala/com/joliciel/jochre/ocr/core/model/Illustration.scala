@@ -23,8 +23,6 @@ case class Illustration(rectangle: Rectangle) extends Block {
     <Illustration ID={id} HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString}>
     </Illustration>
 
-  override def compare(that: Block): Int = this.rectangle.compare(that.rectangle)
-
   override def draw(mat: Mat): Unit = {
     opencv_imgproc.rectangle(mat, new Point(rectangle.left - 2, rectangle.top - 2), new Point(rectangle.left + rectangle.width + 4, rectangle.top + rectangle.height + 4), AbstractScalar.MAGENTA,
       2, LINE_8, 0)

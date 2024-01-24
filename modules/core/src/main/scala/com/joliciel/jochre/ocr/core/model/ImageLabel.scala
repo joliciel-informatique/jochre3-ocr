@@ -10,15 +10,16 @@ sealed trait ImageLabel {
 }
 
 object ImageLabel {
-  case class PredictedRectangle(rectangle: Rectangle, confidence: Double) extends ImageLabel {
+  case class PredictedRectangle(rectangle: Rectangle, confidence: Double) extends ImageLabel with WithRectangle {
     override val label: String = rectangle.label
   }
 
-  case class Rectangle(label: String, left: Int, top: Int, width: Int, height: Int) extends ImageLabel with Ordered[Rectangle] {
+  case class Rectangle(label: String, override val left: Int, override val top: Int, override val width: Int, height: Int) extends ImageLabel with WithRectangle {
+    val rectangle: Rectangle = this
     val area: Int = width * height
 
-    val right: Int = left + width
-    val bottom: Int = top + height
+    override val right: Int = left + width
+    override val bottom: Int = top + height
 
     val xCenter: Int = (left + right) / 2
     val yCenter: Int = (top + bottom) / 2
@@ -53,7 +54,12 @@ object ImageLabel {
 
     def iou(that: Rectangle): Double = areaOfIntersection(that) / areaOfUnion(that)
 
-    def compare(that: Rectangle): Int = {
+    /**
+     * Note: this compare will fail for complex pages.
+     * Use BlockSorter instead (which tries this compare and, if it fails,
+     * performs a more complex compare).
+     */
+    def simplePageLayoutCompare(that: Rectangle): Int = {
       // We'll assume right-to-left for now
       if (this.left >= that.right) return -1
       if (this.right <= that.left) return 1
@@ -146,6 +152,10 @@ object ImageLabel {
 
     object VerticalOrdering extends Ordering[Rectangle] {
       def compare(a: Rectangle, b: Rectangle) = a.verticalCompare(b)
+    }
+
+    object SimplePageLayoutOrdering extends Ordering[Rectangle] {
+      def compare(a: Rectangle, b: Rectangle) = a.simplePageLayoutCompare(b)
     }
   }
 

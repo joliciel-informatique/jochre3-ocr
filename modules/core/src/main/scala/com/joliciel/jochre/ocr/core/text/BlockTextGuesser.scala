@@ -1,7 +1,7 @@
 package com.joliciel.jochre.ocr.core.text
 
 import com.joliciel.jochre.ocr.core.alto.ImageToAltoConverter
-import com.joliciel.jochre.ocr.core.model.{Block, Illustration, Page}
+import com.joliciel.jochre.ocr.core.model.{Block, BlockSorter, Illustration, Page}
 import com.joliciel.jochre.ocr.core.utils.{ImageUtils, OutputLocation}
 import org.bytedeco.opencv.opencv_core.Mat
 import org.slf4j.LoggerFactory
@@ -56,14 +56,17 @@ private[text] class BlockTextGuesser(imageToAltoConverter: ImageToAltoConverter)
           }
         case (IllustrationSegment(block), _) =>
           ZIO.succeed(Seq(Illustration(block)))
-      }.mapAttempt(_.map(_.sortBy(_.rectangle)).flatten)
-        .mapAttempt{ blocks =>
-          log.debug(f"Found ${blocks.size} blocks")
+      }.mapAttempt{ blocks =>
+        val sortedBlocks = BlockSorter.sort(blocks.flatten)
+          .collect{
+            case b: Block => b
+          }
+        log.debug(f"Found ${sortedBlocks.size} blocks")
 
-          page.copy(
-            blocks = blocks
-          )
-        }
+        page.copy(
+          blocks = sortedBlocks
+        )
+      }
     } yield pageWithContent
   }
 }
