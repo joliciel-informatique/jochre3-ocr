@@ -1,7 +1,7 @@
 package com.joliciel.jochre.ocr.core.model
 
 import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
-import com.joliciel.jochre.ocr.core.utils.MathImplicits._
+import com.joliciel.jochre.ocr.core.utils.MathUtils.MathImplicits._
 import org.bytedeco.opencv.opencv_core.Mat
 
 import scala.xml.{Elem, Node}
@@ -33,7 +33,10 @@ case class Page(
     case illustration: Illustration => illustration
   }
 
-  lazy val allTextBoxes: Seq[TextBlock] = (composedBlocks.flatMap(_.textBlocks) ++ textBlocks).sorted
+  lazy val allTextBoxes: Seq[TextBlock] = BlockSorter.sort(composedBlocks.flatMap(_.textBlocks) ++ textBlocks)
+    .collect{
+      case t:TextBlock => t
+    }
 
   lazy val allTextLines: Seq[TextLine] = (textBlocks.flatMap(_.textLines) ++ composedBlocks.flatMap(_.textBlocks.flatMap(_.textLines))).sorted
 

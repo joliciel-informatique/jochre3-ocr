@@ -1,12 +1,16 @@
 package com.joliciel.jochre.ocr.core.segmentation
 
 import com.joliciel.jochre.ocr.core.model.ImageLabel.{Line, PredictedRectangle, Rectangle}
-import com.joliciel.jochre.ocr.core.model.{Glyph, Illustration, Page, Space, TextBlock, TextLine, Word}
-import com.joliciel.jochre.ocr.core.utils.{ImageUtils, OutputLocation}
+import com.joliciel.jochre.ocr.core.model.{Block, BlockSorter, Glyph, Illustration, Page, Space, TextBlock, TextLine, WithRectangle, Word}
+import com.joliciel.jochre.ocr.core.utils.{ImageUtils, MathUtils, OutputLocation}
 import com.typesafe.config.ConfigFactory
 import org.bytedeco.opencv.opencv_core.Mat
 import org.slf4j.LoggerFactory
 import zio.{Task, ZIO, ZLayer}
+
+import java.io.{FileOutputStream, OutputStreamWriter}
+import java.nio.charset.StandardCharsets
+import scala.util.Using
 
 object FullYoloSegmenterService {
   val live: ZLayer[YoloPredictorService, Nothing, SegmenterService] = ZLayer.fromFunction(FullYoloSegmenterServiceImpl(_))
@@ -27,12 +31,20 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
 
   /** Transform an image into a segmented [[Page]] structure.
    * The page might only be segmented down to a given level (e.g. blocks, lines, strings, or glyphs) */
-  override def segment(mat: Mat, fileName: String, debugLocation: Option[OutputLocation]): Task[Page] = {
+  override def segment(mat: Mat, fileName: String, debugLocation: Option[OutputLocation], testRectangle: Option[Rectangle] = None): Task[Page] = {
     for {
       blockPredictor <- yoloPredictorService.getYoloPredictor(YoloPredictionType.Blocks, mat, fileName, debugLocation, Some(0.20))
       blockPredictions <- blockPredictor.predict()
       pageWithBlocks <- ZIO.attempt {
-        val blocks = blockPredictions.flatMap {
+        val sortedBlockPredictions = BlockSorter.sort(blockPredictions)
+          .collect{
+            case p: PredictedRectangle => p
+          }
+
+        // For now, we simply remove overlaps
+        val sortedWithoutOverlaps = removeOverlapsUnordered(sortedBlockPredictions)
+
+        val blocks = sortedWithoutOverlaps.flatMap {
           case PredictedRectangle(rect@Rectangle(label, _, _, _, _), _) =>
             val blockType = BlockType.withName(label)
             blockType match {
@@ -41,7 +53,7 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
               case BlockType.Image => Some(Illustration(rect))
               case BlockType.Table => None
             }
-        }.sortBy(_.rectangle)
+        }
 
         Page(
           id = fileName,
@@ -75,24 +87,46 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
       glyphPredictor <- yoloPredictorService.getYoloPredictor(YoloPredictionType.Glyphs, printAreaMat, fileName, debugLocation, Some(0.10))
       glyphPredictions <- glyphPredictor.predict()
       page <- ZIO.attempt {
-        //TODO: handle case of overlapping text blocks
         val textBlocks = pageWithBlocks.textBlocks
+        val textBlocksToConsider = testRectangle.map(testRect => textBlocks.filter{ block =>
+          block.rectangle.areaOfIntersection(testRect) / block.rectangle.area.toDouble > 0
+        })
+          .getOrElse(textBlocks)
+
+        debugLocation.foreach{ debugLocation =>
+          val rightLeftCoordsFile = debugLocation.resolve("_right-left.txt")
+          Using(new OutputStreamWriter(new FileOutputStream(rightLeftCoordsFile.toFile), StandardCharsets.UTF_8)) { writer =>
+            val leftCoords = textBlocksToConsider.map(_.rectangle.left).mkString(",")
+            val rightCoords = textBlocksToConsider.map(_.rectangle.right).mkString(",")
+            writer.write(leftCoords)
+            writer.write("\n")
+            writer.write(rightCoords)
+            writer.write("\n")
+            writer.flush()
+          }
+        }
         val illustrations = pageWithBlocks.illustrations
 
         // Place lines inside blocks
         val translatedLinePredictions = linePredictions.map(p => p.copy(rectangle = p.rectangle.translate(croppedPrintArea.left, croppedPrintArea.top)))
-        val textBlockToLineMap = placeRectanglesInTextBlocks(textBlocks, translatedLinePredictions, "TextLine")
+        // lines are rectangles predicted vertically centered around the baseline - we want to move them upwards to place them as much as possible inside the text box
+        val linesBumpedUp = translatedLinePredictions.map(p => p.copy(rectangle = p.rectangle.translate(0, 0 - (p.rectangle.height / 2))))
+        val linesToPlace = testRectangle.map(testRect => linesBumpedUp.filter(line => line.rectangle.areaOfIntersection(testRect) / line.rectangle.area.toDouble > 0))
+          .getOrElse(linesBumpedUp)
+        val textBlockToLineMap = placeRectanglesInTextBlocks(textBlocksToConsider, linesToPlace, "TextLine", minIntersection = 0.01, splitHorizontally = true)
 
-        val textBlocksWithLines = textBlocks.map{ textBlock =>
+        val textBlocksWithLines = textBlocksToConsider.map{ textBlock =>
           val myLineRects = textBlockToLineMap.get(textBlock).getOrElse(Seq.empty).sortBy(_.rectangle)(Rectangle.VerticalOrdering)
           val myLineRectsWithoutOverlaps = removeOverlaps(myLineRects)
-          val myLines = myLineRectsWithoutOverlaps.map(lineRect => TextLine(Line("", textBlock.rectangle.left, lineRect.rectangle.yCenter, textBlock.rectangle.right, lineRect.rectangle.yCenter), Seq.empty))
+          val myLines = myLineRectsWithoutOverlaps.map(lineRect => TextLine(Line("", textBlock.rectangle.left, lineRect.rectangle.bottom, textBlock.rectangle.right, lineRect.rectangle.bottom), Seq.empty))
           textBlock.copy(textLines = myLines)
         }
 
         // Place words inside blocks
         val translatedWordPredictions = wordPredictions.map(p => p.copy(rectangle = p.rectangle.translate(croppedPrintArea.left, croppedPrintArea.top)))
-        val textBlockToWordMap = placeRectanglesInTextBlocks(textBlocksWithLines, translatedWordPredictions, "Word")
+        val wordsToPlace = testRectangle.map(testRect => translatedWordPredictions.filter(word => word.rectangle.areaOfIntersection(testRect) / word.rectangle.area.toDouble > 0.8))
+          .getOrElse(translatedWordPredictions)
+        val textBlockToWordMap = placeRectanglesInTextBlocks(textBlocksWithLines, wordsToPlace, "Word")
 
         val textBlocksWithWords = textBlocksWithLines.map{ textBlock =>
           val wordsToInclude = textBlockToWordMap.get(textBlock).getOrElse(Seq.empty)
@@ -110,9 +144,7 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
 
         // Place glyphs inside words
         val translatedGlyphPredictions = glyphPredictions.map(p => p.copy(rectangle = p.rectangle.translate(croppedPrintArea.left, croppedPrintArea.top)))
-        //val glyphTestRectangle = Some(Rectangle("", 603, 2175, 2505, 540))
-        val glyphTestRectangle = None
-        val glyphsToPlace = glyphTestRectangle.map(testRect => translatedGlyphPredictions.filter(glyph => glyph.rectangle.areaOfIntersection(testRect) / glyph.rectangle.area.toDouble > 0.8))
+        val glyphsToPlace = testRectangle.map(testRect => translatedGlyphPredictions.filter(glyph => glyph.rectangle.areaOfIntersection(testRect) / glyph.rectangle.area.toDouble > 0.8))
           .getOrElse(translatedGlyphPredictions)
 
         val textBlockToGlyphMap = placeRectanglesInTextBlocks(textBlocksWithWords, glyphsToPlace, "Glyph")
@@ -150,7 +182,10 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
           textBlock.copy(textLines = textLinesWithGlyphs)
         }
 
-        val newBlocks = (textBlocksWithGlyphs ++ illustrations).sorted
+        val newBlocks = BlockSorter.sort(textBlocksWithGlyphs ++ illustrations)
+          .collect{
+            case b: Block => b
+          }
 
         val page = Page(
           id = fileName,
@@ -168,7 +203,7 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
     } yield page
   }
 
-  private def placeRectanglesInTextBlocks(textBlocks: Seq[TextBlock], rectangles: Seq[PredictedRectangle], itemType: String): Map[TextBlock, Seq[PredictedRectangle]] = {
+  private def placeRectanglesInTextBlocks(textBlocks: Seq[TextBlock], rectangles: Seq[PredictedRectangle], itemType: String, minIntersection: Double = 0.5, splitHorizontally: Boolean = false): Map[TextBlock, Seq[PredictedRectangle]] = {
     val textBlocksByLeft = textBlocks.sortBy(t => (t.rectangle.left, t.rectangle.width, t.rectangle.top, t.rectangle.height))
     val textBlocksByRight = textBlocks.sortBy(t => (t.rectangle.right, t.rectangle.width, t.rectangle.top, t.rectangle.height)).reverse
     val textBlocksByTop = textBlocks.sortBy(t => (t.rectangle.top, t.rectangle.height, t.rectangle.left, t.rectangle.width))
@@ -181,44 +216,7 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
       // Otherwise, we take the intersection of the sets until we reach 1 or 0.
       if (log.isDebugEnabled) log.debug(f"Trying to find textBlock for $itemType ${rect.rectangle.coordinates}")
 
-      val candidates = {
-        if (log.isDebugEnabled) log.debug("Checking top")
-        val topLimit = findLimit(rect.rectangle, textBlocksByTop, ((candidate, contained) => contained.bottom > candidate.top), 0, textBlocks.size-1, -1)
-        val topCandidates = textBlocksByTop.take(topLimit+1).toSet
-        if (log.isDebugEnabled) log.debug(f"Found top candidates: ${topCandidates.map(_.rectangle.coordinates).mkString(", ")}")
-        if (topCandidates.size > 1) {
-          if (log.isDebugEnabled) log.debug("Checking bottom")
-          val bottomLimit = findLimit(rect.rectangle, textBlocksByBottom, ((candidate, contained) => contained.top < candidate.bottom), 0, textBlocks.size-1, -1)
-          val bottomCandidates = textBlocksByBottom.take(bottomLimit+1).toSet
-          if (log.isDebugEnabled) log.debug(f"Found bottom candidates: ${bottomCandidates.map(_.rectangle.coordinates).mkString(", ")}")
-          val intersection1 = topCandidates.intersect(bottomCandidates)
-          if (intersection1.size > 1) {
-            if (log.isDebugEnabled) log.debug("Checking left")
-            val leftLimit = findLimit(rect.rectangle, textBlocksByLeft, ((candidate, contained) => contained.right > candidate.left), 0, textBlocks.size-1, -1)
-            val leftCandidates = textBlocksByLeft.take(leftLimit+1).toSet
-            if (log.isDebugEnabled) log.debug(f"Found left candidates: ${leftCandidates.map(_.rectangle.coordinates).mkString(", ")}")
-            val intersection2 = intersection1.intersect(leftCandidates)
-            if (intersection2.size > 1) {
-              if (log.isDebugEnabled) log.debug("Checking right")
-              val rightLimit = findLimit(rect.rectangle, textBlocksByRight, ((candidate, contained) => contained.left < candidate.right), 0, textBlocks.size-1, -1)
-              val rightCandidates = textBlocksByRight.take(rightLimit+1).toSet
-              if (log.isDebugEnabled) log.debug(f"Found right candidates: ${rightCandidates.map(_.rectangle.coordinates).mkString(", ")}")
-              val intersection3 = intersection2.intersect(rightCandidates)
-              if (intersection3.size > 0) {
-                intersection3
-              } else {
-                Set.empty[TextBlock]
-              }
-            } else {
-              intersection2
-            }
-          } else {
-            intersection1
-          }
-        } else {
-          topCandidates
-        }
-      }
+      val candidates = getIntersectingBlocks(rect, textBlocksByTop, textBlocksByLeft, textBlocksByBottom, textBlocksByRight)
 
       if (log.isDebugEnabled) {
         log.debug(f"Final candidates: ${candidates.map(_.rectangle.coordinates).mkString(", ")}")
@@ -226,24 +224,90 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
       val candidatesWithIntersection = candidates.map{ candidate =>
         val areaOfIntersection = candidate.rectangle.areaOfIntersection(rect.rectangle)
         val percentageIntersection = areaOfIntersection / rect.rectangle.area.toDouble
-        if (log.isDebugEnabled) log.debug(f"Candidate: ${candidate.rectangle.coordinates}. Percentage intersection: $percentageIntersection")
+        if (log.isDebugEnabled) log.debug(f"Candidate: ${candidate.rectangle.coordinates}. Percentage intersection: $percentageIntersection%.2f")
         candidate -> percentageIntersection
       }.toSeq.sortBy(0 - _._2)
 
-      val mainCandidate = candidatesWithIntersection.headOption
-      val container = mainCandidate.flatMap{ case (mainCandidate, percentageIntersection) =>
-        Option.when(percentageIntersection > 0.5)(mainCandidate)
+      if (splitHorizontally) {
+        val validCandidates = candidatesWithIntersection.filter{
+          case (_, percentageIntersection) => percentageIntersection > minIntersection
+        }.map(_._1)
+
+        val updatedContainers = validCandidates.map{ container =>
+          val currentRectangles = textBlockMap.get(container).getOrElse(Seq.empty)
+          val newLeft = Math.max(rect.rectangle.left, container.rectangle.left)
+          val newRight = Math.min(rect.rectangle.right, container.rectangle.right)
+          val newRectangle = rect.copy(rectangle = Rectangle("",
+            left = newLeft,
+            top = rect.rectangle.top,
+            width = newRight - newLeft,
+            height = rect.rectangle.height
+          ))
+          val newRectangles = currentRectangles :+ newRectangle
+          container -> newRectangles
+        }.toMap
+
+        textBlockMap ++ updatedContainers
+
+      } else {
+        val mainCandidate = candidatesWithIntersection.headOption
+        val container = mainCandidate.flatMap { case (mainCandidate, percentageIntersection) =>
+          Option.when(percentageIntersection > minIntersection)(mainCandidate)
+        }
+        if (log.isDebugEnabled) log.debug(f"Found container block ${container.map(_.rectangle.coordinates)}")
+        if (container.isEmpty) {
+          if (log.isDebugEnabled) log.debug(f"Couldn't find container block for ${rect.rectangle.coordinates}")
+        }
+        container.map { container =>
+          val currentRectangles = textBlockMap.get(container).getOrElse(Seq.empty)
+          val newRectangles = currentRectangles :+ rect
+          textBlockMap + (container -> newRectangles)
+        }.getOrElse(textBlockMap)
       }
-      if (log.isDebugEnabled) log.debug(f"Found container block ${container.map(_.rectangle.coordinates)}")
-      if (container.isEmpty) {
-        if (log.isDebugEnabled) log.debug(f"Couldn't find container block for ${rect.rectangle.coordinates}")
-      }
-      container.map { container =>
-        val currentRectangles = textBlockMap.get(container).getOrElse(Seq.empty)
-        val newRectangles = currentRectangles :+ rect
-        textBlockMap + (container -> newRectangles)
-      }.getOrElse(textBlockMap)
     }
+  }
+
+  private def getIntersectingBlocks[R <: WithRectangle](rect: WithRectangle, topOrdered: Seq[R], leftOrdered: Seq[R], bottomOrdered: Seq[R], rightOrdered: Seq[R]): Set[R] = {
+    val candidates = {
+      if (log.isTraceEnabled) log.trace("Checking top")
+      val topLimit = findLimit(rect.rectangle, topOrdered, ((candidate, contained) => contained.bottom > candidate.top), 0, topOrdered.size - 1, -1)
+      val topCandidates = topOrdered.take(topLimit + 1).toSet
+      if (log.isTraceEnabled) log.trace(f"Found top candidates: ${topCandidates.map(_.rectangle.coordinates).mkString(", ")}")
+      if (topCandidates.size > 1) {
+        if (log.isTraceEnabled) log.trace("Checking bottom")
+        val bottomLimit = findLimit(rect.rectangle, bottomOrdered, ((candidate, contained) => contained.top < candidate.bottom), 0, bottomOrdered.size - 1, -1)
+        val bottomCandidates = bottomOrdered.take(bottomLimit + 1).toSet
+        if (log.isTraceEnabled) log.trace(f"Found bottom candidates: ${bottomCandidates.map(_.rectangle.coordinates).mkString(", ")}")
+        val intersection1 = topCandidates.intersect(bottomCandidates)
+        if (intersection1.size > 1) {
+          if (log.isTraceEnabled) log.trace("Checking left")
+          val leftLimit = findLimit(rect.rectangle, leftOrdered, ((candidate, contained) => contained.right > candidate.left), 0, leftOrdered.size - 1, -1)
+          val leftCandidates = leftOrdered.take(leftLimit + 1).toSet
+          if (log.isTraceEnabled) log.trace(f"Found left candidates: ${leftCandidates.map(_.rectangle.coordinates).mkString(", ")}")
+          val intersection2 = intersection1.intersect(leftCandidates)
+          if (intersection2.size > 1) {
+            if (log.isTraceEnabled) log.trace("Checking right")
+            val rightLimit = findLimit(rect.rectangle, rightOrdered, ((candidate, contained) => contained.left < candidate.right), 0, rightOrdered.size - 1, -1)
+            val rightCandidates = rightOrdered.take(rightLimit + 1).toSet
+            if (log.isTraceEnabled) log.trace(f"Found right candidates: ${rightCandidates.map(_.rectangle.coordinates).mkString(", ")}")
+            val intersection3 = intersection2.intersect(rightCandidates)
+            if (intersection3.size > 0) {
+              intersection3
+            } else {
+              Set.empty[R]
+            }
+          } else {
+            intersection2
+          }
+        } else {
+          intersection1
+        }
+      } else {
+        topCandidates
+      }
+    }
+
+    candidates
   }
 
   private def placeRectanglesInTextLines(textBlock: TextBlock, rectangles: Seq[PredictedRectangle], itemType: String): Map[TextLine, Seq[PredictedRectangle]] = {
@@ -302,12 +366,12 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
    * Find the maximum index which can contain the rectangle, for an ordered sequence guaranteeing that if item i cannot contain the rectangle,
    * item i+1 cannot contain it either. Similarly, if item i can contain the rectangle, item i-1 can contain it as well.
    */
-  private def findLimit(contained: Rectangle, candidates: Seq[TextBlock], canContainTest: (Rectangle, Rectangle) => Boolean, startIndex: Int, endIndex: Int, maxLimit: Int): Int = {
+  private def findLimit[R <: WithRectangle](contained: Rectangle, candidates: Seq[R], canContainTest: (Rectangle, Rectangle) => Boolean, startIndex: Int, endIndex: Int, maxLimit: Int): Int = {
     val testIndex = (startIndex + endIndex) / 2
     val candidate = candidates(testIndex)
     val canContain = canContainTest(candidate.rectangle, contained)
 
-    if (log.isDebugEnabled) log.debug(s"startIndex $startIndex, testIndex $testIndex, endIndex $endIndex, minLimit $maxLimit. Can ${candidate.rectangle.coordinates} contain ${contained.coordinates}? ${canContain}")
+    if (log.isTraceEnabled) log.trace(f"startIndex $startIndex, testIndex $testIndex, endIndex $endIndex, minLimit $maxLimit. Can ${candidate.rectangle.coordinates} contain ${contained.coordinates}? ${canContain}")
 
     val newLimit = if (canContain && testIndex > maxLimit) {
       testIndex
@@ -357,7 +421,7 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
       }
       if (!remove.isEmpty) {
         val group = head +: remove
-        val maxConfidenceRect = argMax(group)(_.confidence).headOption.getOrElse(head)
+        val maxConfidenceRect = MathUtils.argMaxFirst(group)(_.confidence).getOrElse(head)
         if (log.isDebugEnabled) {
           val removed = group.diff(Seq(maxConfidenceRect))
           log.debug(f"Keeping ${maxConfidenceRect.rectangle.coordinates} with confidence ${maxConfidenceRect.confidence}")
@@ -373,10 +437,52 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
       }
   }
 
-  private def argMax[A, B](c: Iterable[A])(f: A => B)(implicit o: Ordering[B]): Iterable[A] = {
-    val max = (c map f).max(o)
-    c filter {
-      f(_) == max
+  private def removeOverlapsUnordered(rects: Seq[PredictedRectangle]): Seq[PredictedRectangle] = {
+    val leftOrdered = rects.sortBy(t => (t.rectangle.left, t.rectangle.width, t.rectangle.top, t.rectangle.height))
+    val rightOrdered = rects.sortBy(t => (t.rectangle.right, t.rectangle.width, t.rectangle.top, t.rectangle.height)).reverse
+    val topOrdered = rects.sortBy(t => (t.rectangle.top, t.rectangle.height, t.rectangle.left, t.rectangle.width))
+    val bottomOrdered = rects.sortBy(t => (t.rectangle.bottom, t.rectangle.height, t.rectangle.left, t.rectangle.width)).reverse
+
+    val toRemove = rects.foldLeft(Set.empty[PredictedRectangle]) { case (toRemove, rect) =>
+      val candidates = getIntersectingBlocks(rect, topOrdered, leftOrdered, bottomOrdered, rightOrdered) - rect
+      val candidatesWithHighIntersection = candidates.filter{ candidate =>
+        val candidateIntersection = candidate.rectangle.percentageIntersection(rect.rectangle)
+        val rectangleIntesection = rect.rectangle.percentageIntersection(candidate.rectangle)
+        candidateIntersection > 0.2 || rectangleIntesection > 0.2
+      }
+      if (log.isTraceEnabled) {
+        if (candidatesWithHighIntersection.size>1) {
+          log.trace(f"For ${rect.rectangle.coordinates} found overlaps (including already removed) with ${candidatesWithHighIntersection.map(_.rectangle.coordinates).mkString(", ")}")
+        }
+      }
+      val notYetRemoved = candidatesWithHighIntersection.diff(toRemove)
+      if (log.isDebugEnabled) {
+        if (notYetRemoved.size > 1) {
+          log.debug(f"For ${rect.rectangle.coordinates} (${rect.confidence}%.2f) found overlaps with ${notYetRemoved.map(r => f"${r.rectangle.coordinates} (${r.confidence}%.2f)").mkString(", ")}")
+        }
+      }
+      val (higherConfidence, lowerConfidence) = notYetRemoved.partition(_.confidence > rect.confidence)
+
+
+      if (higherConfidence.size > 0) {
+        if (log.isDebugEnabled) {
+          log.debug(f"Removing current: ${rect.rectangle.coordinates}")
+        }
+        toRemove + rect
+      } else if (lowerConfidence.size > 0) {
+        if (log.isDebugEnabled) {
+          log.debug(f"Removing others: ${lowerConfidence.map(_.rectangle.coordinates).mkString(", ")}")
+        }
+        toRemove ++ lowerConfidence
+      } else {
+        toRemove
+      }
     }
+
+    if (log.isDebugEnabled) {
+      log.debug(f"Removing overlapping rectangles: ${toRemove.map(_.rectangle.coordinates).mkString(", ")}")
+    }
+
+    rects.filter(!toRemove.contains(_))
   }
 }

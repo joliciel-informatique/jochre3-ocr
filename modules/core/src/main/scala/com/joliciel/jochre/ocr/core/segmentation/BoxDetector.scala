@@ -33,6 +33,6 @@ class BoxDetector(thresh: Int = 240, override val outputLocation: Option[OutputL
     }.sortBy(0 - _.area)
 
     val noContains = rectangles.zipWithIndex.filterNot { case (rect, i) => rectangles.slice(0, i).exists(_.contains(rect)) }.map(_._1)
-    noContains.sorted
+    noContains
   }
 }

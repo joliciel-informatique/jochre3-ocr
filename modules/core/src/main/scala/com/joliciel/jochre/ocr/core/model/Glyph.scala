@@ -1,7 +1,7 @@
 package com.joliciel.jochre.ocr.core.model
 
 import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
-import com.joliciel.jochre.ocr.core.utils.MathImplicits._
+import com.joliciel.jochre.ocr.core.utils.MathUtils.MathImplicits._
 import org.bytedeco.opencv.opencv_core.Mat
 
 import scala.xml.{Elem, Node}

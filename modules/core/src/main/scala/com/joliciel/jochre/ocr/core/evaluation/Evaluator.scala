@@ -2,6 +2,7 @@ package com.joliciel.jochre.ocr.core.evaluation
 
 import com.joliciel.jochre.ocr.core.Jochre
 import com.joliciel.jochre.ocr.core.corpus.{AltoFinder, TextSimplifier}
+import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
 import com.joliciel.jochre.ocr.core.model.Page
 import com.joliciel.jochre.ocr.core.utils.FileUtils
 import org.slf4j.LoggerFactory
@@ -25,7 +26,7 @@ case class Evaluator(
   private val log = LoggerFactory.getLogger(getClass)
   private val analysisTimeName = "AnalysisTime"
 
-  def evaluate(inputDir: Path, outputDir: Option[Path], debugDir: Option[Path], maxImages: Option[Int]): Task[Seq[EvaluationResult]] = {
+  def evaluate(inputDir: Path, outputDir: Option[Path], debugDir: Option[Path], maxImages: Option[Int], testRectangle: Option[Rectangle] = None): Task[Seq[EvaluationResult]] = {
     val files = jochre.getImageFilesFromDir(inputDir, maxImages)
     ZIO.foreach(files.zipWithIndex){
       case ((file, mat), i) =>
@@ -33,7 +34,7 @@ case class Evaluator(
         val expected = altoFinder.getAltoPage(file.toPath)
         val startTime = Instant.now()
         for {
-          predicted <- jochre.processImage(mat, outputDir, debugDir, file.getName)
+          predicted <- jochre.processImage(mat, outputDir, debugDir, file.getName, testRectangle)
           endTime = Instant.now()
           results <- ZIO.foreach(metrics){ metric =>
             ZIO.attempt{
