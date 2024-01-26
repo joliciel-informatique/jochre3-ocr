@@ -13,15 +13,13 @@ import java.nio.file.{Path, Paths}
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
-case class EvaluationResult(file: File, results: Map[String, Double])
-
 case class Evaluator(
   jochre: Jochre,
   metrics: Seq[TextEvaluationMetric],
   evalDir: Path,
   textSimplifier: Option[TextSimplifier] = None,
   altoFinder: AltoFinder = AltoFinder.default
-) extends FileUtils {
+) extends EvaluatorBase with FileUtils {
 
   private val log = LoggerFactory.getLogger(getClass)
   private val analysisTimeName = "AnalysisTime"
@@ -53,26 +51,5 @@ case class Evaluator(
     }
   }
 
-  def writeResults(writer: Writer, results: Seq[EvaluationResult]): Unit = {
-    val metricNames = analysisTimeName +: metrics.map(_.name)
-    val headerLine = metricNames.mkString("\t")
-
-    writer.write(f"File\t$headerLine\n")
-    writer.flush()
-
-    results.foreach{ result =>
-      val resultsPerMetric = metricNames.map(metric => result.results(metric)).map(result => f"$result%.2f").mkString("\t")
-      writer.write(f"${result.file.getName}\t$resultsPerMetric\n")
-      writer.flush()
-    }
-
-    val meanPerMetric = metricNames.map{ metric =>
-      val mean = results.map(_.results(metric)).sum / results.size.toDouble
-      metric -> mean
-    }.toMap
-
-    val meanLine = metricNames.map(metric => meanPerMetric(metric)).map(result => f"$result%.2f").mkString("\t")
-    writer.write(f"Mean\t$meanLine\n")
-    writer.flush()
-  }
+  val metricNames = analysisTimeName +: metrics.map(_.name)
 }
