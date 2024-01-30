@@ -18,9 +18,9 @@ trait CorpusAnnotator extends FileUtils with ImageUtils {
   def altoFinder: AltoFinder
   def corpusDir: Path
   def outDir: Path
-  def keepStructure: Boolean
   def maxFiles: Option[Int]
   def fileList: Option[Set[String]]
+  def keepStructure: Boolean = false
 
   private val log = LoggerFactory.getLogger(getClass)
 

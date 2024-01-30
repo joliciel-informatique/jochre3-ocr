@@ -65,7 +65,7 @@ object JochreYiddishWithYoloSegmentation extends ZIOAppDefault {
       }
       _ <- ZIO.serviceWithZIO[Jochre]{ jochre =>
         evalDir.map{ evalDir =>
-          val evaluator = Evaluator(jochre, Seq(CharacterErrorRate, CharacterCount), evalDir, textSimplifier = Some(YiddishTextSimpifier))
+          val evaluator = Evaluator(jochre, Seq(CharacterErrorRate, CharacterCount), evalDir, textSimplifier = Some(YiddishTextSimpifier(replaceNotYiddishAlphabets = false)))
           val evalWriter = new FileWriter(new File(evalDir.toFile, "eval.tsv"), StandardCharsets.UTF_8)
           for {
             results <- evaluator.evaluate(inputDir, Some(outDir), debugDir, maxImages, testRectangle)
