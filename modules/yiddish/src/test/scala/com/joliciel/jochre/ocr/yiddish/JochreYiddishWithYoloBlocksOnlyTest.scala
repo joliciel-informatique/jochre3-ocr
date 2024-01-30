@@ -9,10 +9,10 @@ import zio.test.{Spec, TestAspect, TestEnvironment, assertTrue}
 import javax.imageio.ImageIO
 import scala.xml.{PrettyPrinter, Text}
 
-object JochreYiddishTest extends JUnitRunnableSpec {
+object JochreYiddishWithYoloBlocksOnlyTest extends JUnitRunnableSpec {
   private val log = LoggerFactory.getLogger(getClass)
 
-  override def spec: Spec[TestEnvironment with Scope, Any] = suite("JochreYiddishTest")(
+  override def spec: Spec[TestEnvironment with Scope, Any] = suite("JochreYiddishWithYoloBlocksOnlyTest")(
     test("analyze an image") {
       val inputStream = getClass.getClassLoader.getResourceAsStream("yiddish_sample.jpg")
       val image = ImageIO.read(inputStream)
