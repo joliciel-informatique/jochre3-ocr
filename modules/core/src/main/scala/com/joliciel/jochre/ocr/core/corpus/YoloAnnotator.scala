@@ -22,7 +22,6 @@ case class YoloAnnotator(
   corpusDir: Path,
   outDir: Path,
   debugDir: Option[String] = None,
-  keepStructure: Boolean = false,
   maxFiles: Option[Int] = None,
   extension: String = "png",
   fileList: Option[Set[String]] = None,
@@ -254,7 +253,6 @@ object YoloAnnotator {
     val corpusDir: ScallopOption[String] = opt[String](required = true, descr = "The directory containing original images and labels in Alto4 format")
     val outDir: ScallopOption[String] = opt[String](required = true, descr = "The directory where the processed images will be placed")
     val debugDir: ScallopOption[String] = opt[String](required = false, descr = "A directory where to write debug images, relative to the out-dir")
-    val keepStructure: ScallopOption[Boolean] = opt[Boolean](descr = "If present, keep the sub-directory structure within the out-dir")
     val maxFiles = opt[Int](descr = "If present, only transform this many files at most")
     val extension: ScallopOption[String] = choice(Seq("png", "jpg"), default = Some("png"))
     val fileList: ScallopOption[String] = opt[String](required = false, descr = "If present, limit the files to this list only")
@@ -283,7 +281,7 @@ object YoloAnnotator {
     val objectsToInclude = options.objectsToInclude.toOption.map(_.map(obj => YoloObjectType.withName(obj))).get
     val task = options.task.toOption.map(YoloTask.withName(_)).get
 
-    val yoloAnnotator = YoloAnnotator(corpusPath, outPath, debugDir, options.keepStructure(), options.maxFiles.toOption, extension, fileList,
+    val yoloAnnotator = YoloAnnotator(corpusPath, outPath, debugDir, options.maxFiles.toOption, extension, fileList,
       task,
       objectsToInclude,
       yamlFile,
