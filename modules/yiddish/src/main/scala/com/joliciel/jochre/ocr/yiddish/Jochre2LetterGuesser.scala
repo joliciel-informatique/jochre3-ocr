@@ -67,11 +67,21 @@ case class Jochre2LetterGuesser() extends TextGuesser with ImageUtils {
             val baseLeft = glyph.rectangle.left
             val baseTop = glyph.rectangle.top
             val initialShape = new Shape(jochreImage, baseLeft, baseTop, glyph.rectangle.right-1, glyph.rectangle.bottom-1, jochreSession)
+
+            // Workaround for rare ArrayIndexOutOfBoundsException in Jochre 2
+            def isPixelBlack(x: Int, y: Int): Boolean = try {
+              initialShape.isPixelBlack(x, y)
+            } catch {
+              case e: ArrayIndexOutOfBoundsException =>
+                log.error(f"Failure testing if pixel is black", e)
+                false
+            }
+
             // need to calculate actual shape left/top/right/bottom
-            val left = (0 until initialShape.getWidth).find(x => (0 until initialShape.getHeight).find(y => initialShape.isPixelBlack(x,y)).isDefined).getOrElse(-1)
-            val top = (0 until initialShape.getHeight).find(y => (0 until initialShape.getWidth).find(x => initialShape.isPixelBlack(x,y)).isDefined).getOrElse(-1)
-            val right = (0 until initialShape.getWidth).reverse.find(x => (0 until initialShape.getHeight).find(y => initialShape.isPixelBlack(x,y)).isDefined).getOrElse(-1)
-            val bottom = (0 until initialShape.getHeight).reverse.find(y => (0 until initialShape.getWidth).find(x => initialShape.isPixelBlack(x,y)).isDefined).getOrElse(-1)
+            val left = (0 until initialShape.getWidth).find(x => (0 until initialShape.getHeight).find(y => isPixelBlack(x,y)).isDefined).getOrElse(-1)
+            val top = (0 until initialShape.getHeight).find(y => (0 until initialShape.getWidth).find(x => isPixelBlack(x,y)).isDefined).getOrElse(-1)
+            val right = (0 until initialShape.getWidth).reverse.find(x => (0 until initialShape.getHeight).find(y => isPixelBlack(x,y)).isDefined).getOrElse(-1)
+            val bottom = (0 until initialShape.getHeight).reverse.find(y => (0 until initialShape.getWidth).find(x => isPixelBlack(x,y)).isDefined).getOrElse(-1)
 
             val shape = Option.when(right>=0)(new Shape(jochreImage, baseLeft+left, baseTop+top, baseLeft+right, baseTop+bottom, jochreSession))
             glyph -> shape
@@ -156,5 +166,5 @@ case class Jochre2LetterGuesser() extends TextGuesser with ImageUtils {
     })
 
     analysedPage
-  }
+  }.tapError(exception => ZIO.succeed(log.error("Failed to analyze image", exception)))
 }

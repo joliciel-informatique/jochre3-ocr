@@ -110,9 +110,12 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
         // Place lines inside blocks
         val translatedLinePredictions = linePredictions.map(p => p.copy(rectangle = p.rectangle.translate(croppedPrintArea.left, croppedPrintArea.top)))
         // lines are rectangles predicted vertically centered around the baseline - we want to move them upwards to place them as much as possible inside the text box
-        val linesBumpedUp = translatedLinePredictions.map(p => p.copy(rectangle = p.rectangle.translate(0, 0 - (p.rectangle.height / 2))))
+        val linesBumpedUp = translatedLinePredictions
+          .filter(line => line.rectangle.bottom <= pageWithBlocks.height)
+          .map(p => p.copy(rectangle = p.rectangle.translate(0, 0 - (p.rectangle.height / 2))))
         val linesToPlace = testRectangle.map(testRect => linesBumpedUp.filter(line => line.rectangle.areaOfIntersection(testRect) / line.rectangle.area.toDouble > 0))
           .getOrElse(linesBumpedUp)
+
         val textBlockToLineMap = placeRectanglesInTextBlocks(textBlocksToConsider, linesToPlace, "TextLine", minIntersection = 0.01, splitHorizontally = true)
 
         val textBlocksWithLines = textBlocksToConsider.map{ textBlock =>
@@ -124,6 +127,9 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
 
         // Place words inside blocks
         val translatedWordPredictions = wordPredictions.map(p => p.copy(rectangle = p.rectangle.translate(croppedPrintArea.left, croppedPrintArea.top)))
+          // Avoid words that overlap the bottom of the page
+          .filter(word => word.rectangle.bottom < pageWithBlocks.height - 1)
+
         val wordsToPlace = testRectangle.map(testRect => translatedWordPredictions.filter(word => word.rectangle.areaOfIntersection(testRect) / word.rectangle.area.toDouble > 0.8))
           .getOrElse(translatedWordPredictions)
         val textBlockToWordMap = placeRectanglesInTextBlocks(textBlocksWithLines, wordsToPlace, "Word")
@@ -135,10 +141,8 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
           textBlock.copy(textLines = textBlock.textLines.map{ textLine =>
             val myWordRects = textLineToWordMap.get(textLine).getOrElse(Seq.empty)
             val myWords = myWordRects.map(rect => Word(rect.rectangle.copy(label=""), Seq.empty, 1.0))
-            val wordsAndSpaces = Option.when(myWords.size > 1)(myWords.zip(myWords.tail).flatMap{ case (word, nextWord) =>
-              Seq(word, Space(Rectangle("", nextWord.rectangle.right, word.rectangle.top, word.rectangle.left - nextWord.rectangle.right, word.rectangle.height)))
-            } :+ myWords.last).getOrElse(myWords)
-            textLine.copy(wordsAndSpaces = wordsAndSpaces)
+
+            textLine.copy(wordsAndSpaces = myWords)
           })
         }
 
@@ -156,10 +160,9 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
             if (log.isDebugEnabled) log.debug(f"In TextLine ${textLine.baseLine} with ${textLine.words.size} words, found glyphs: ${textLineGlyphs.map(_.rectangle.coordinates).mkString(", ")}")
             if (!textLineGlyphs.isEmpty) {
               val wordToGlyphMap = placeRectanglesInWords(textLine, textLineGlyphs)
-              textLine.copy(wordsAndSpaces = textLine.wordsAndSpaces.map {
-                case word: Word =>
+              val nonEmptyWords = textLine.words.flatMap { word =>
                   val myGlyphRects = wordToGlyphMap.get(word).getOrElse(Seq.empty)
-                  if (!myGlyphRects.isEmpty) {
+                  Option.when(!myGlyphRects.isEmpty) {
                     // Take average border between two sequential glyphs as their border
                     val borders = myGlyphRects.zip(myGlyphRects.tail).map {
                       case (firstRect, secondRect) => (firstRect.rectangle.left + secondRect.rectangle.right) / 2
@@ -170,17 +173,27 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
                       case (right, left) => Glyph(Rectangle("", left = left, top = word.rectangle.top, width = right-left, height = word.rectangle.height), 1.0)
                     }
                     word.copy(glyphs = myGlyphs)
-                  } else {
-                    word
                   }
-                case space: Space => space
-              })
+              }
+
+              //TODO: adapt to right-to-left or left-to-right
+              val wordsAndSpaces = Option.when(nonEmptyWords.size > 1)(nonEmptyWords.zip(nonEmptyWords.tail).flatMap { case (word, nextWord) =>
+                val spaceWidth = word.rectangle.left - nextWord.rectangle.right
+                if (spaceWidth > 0) {
+                  Seq(word, Space(Rectangle("", nextWord.rectangle.right, word.rectangle.top, spaceWidth, word.rectangle.height)))
+                } else {
+                  Seq(word)
+                }
+              } :+ nonEmptyWords.last).getOrElse(nonEmptyWords)
+
+              textLine.copy(wordsAndSpaces = wordsAndSpaces)
             } else {
               textLine
             }
           }
-          textBlock.copy(textLines = textLinesWithGlyphs)
-        }
+          val nonEmptyLines = textLinesWithGlyphs.filter(_.words.size > 0)
+          textBlock.copy(textLines = nonEmptyLines)
+        }.filter(_.textLines.size > 0)
 
         val newBlocks = BlockSorter.sort(textBlocksWithGlyphs ++ illustrations)
           .collect{
