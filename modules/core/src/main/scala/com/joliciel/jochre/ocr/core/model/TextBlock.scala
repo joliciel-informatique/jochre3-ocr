@@ -2,6 +2,9 @@ package com.joliciel.jochre.ocr.core.model
 
 import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
 import com.joliciel.jochre.ocr.core.segmentation.BlockType
+import org.bytedeco.opencv.global.opencv_imgproc
+import org.bytedeco.opencv.global.opencv_imgproc.LINE_8
+import org.bytedeco.opencv.opencv_core.{AbstractScalar, Mat, Point}
 
 import scala.xml.{Elem, Node}
 
@@ -32,6 +35,11 @@ case class TextBlock(rectangle: Rectangle, textLines: Seq[TextLine]) extends Blo
   override def rotate(imageInfo: ImageInfo): TextBlock =
     TextBlock(rectangle.rotate(imageInfo), textLines.map(_.rotate(imageInfo)))
 
+  override def rescale(scale: Double): TextBlock = this.copy(
+    rectangle = this.rectangle.rescale(scale),
+    textLines = this.textLines.map(_.rescale(scale)).collect { case tl: TextLine => tl }
+  )
+
   override def toXml(id: String): Elem =
     <TextBlock ID={id} HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString} >
       {textLines.map(_.toXml())}
@@ -39,7 +47,13 @@ case class TextBlock(rectangle: Rectangle, textLines: Seq[TextLine]) extends Blo
 
   def allWords: Seq[Word] = textLines.flatMap(_.words)
 
-  override def compare(that: Block): Int = this.rectangle.compare(that.rectangle)
+  override def draw(mat: Mat): Unit = {
+    opencv_imgproc.rectangle(mat, new Point(rectangle.left - 2, rectangle.top - 2), new Point(rectangle.left + rectangle.width + 4, rectangle.top + rectangle.height + 4), AbstractScalar.BLACK,
+      2, LINE_8, 0)
+    this.textLines.map(_.draw(mat))
+  }
+
+  override lazy val content: String = textLines.map(_.content).mkString("\n")
 }
 
 object TextBlock {

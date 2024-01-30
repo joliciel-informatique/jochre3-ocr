@@ -3,7 +3,7 @@ package com.joliciel.jochre.ocr.core.corpus
 import com.joliciel.jochre.ocr.core.corpus.YoloAnnotator.YoloTask
 import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
 import com.joliciel.jochre.ocr.core.model.Page
-import com.joliciel.jochre.ocr.core.utils.FileUtils
+import com.joliciel.jochre.ocr.core.utils.{FileUtils, ImageUtils}
 import com.typesafe.config.ConfigFactory
 import enumeratum._
 import org.bytedeco.opencv.opencv_core.Mat
@@ -30,7 +30,7 @@ case class YoloAnnotator(
   objectsToInclude: Seq[YoloObjectType],
   yamlFileName: Option[String] = None,
   validationOneEvery: Option[Int] = None,
-  altoFinder: AltoFinder = AltoFinder.default) extends CorpusAnnotator {
+  altoFinder: AltoFinder = AltoFinder.default) extends CorpusAnnotator with ImageUtils {
 
   import YoloAnnotator._
 
@@ -38,6 +38,8 @@ case class YoloAnnotator(
   private val log = LoggerFactory.getLogger(getClass)
 
   private val lineThickness = config.getDouble("line-thickness-normalized")
+  private val cropToPrintArea = config.getBoolean("crop-to-print-area")
+  private val cropMargin = config.getDouble("crop-margin")
 
   private def df(d: Double): String = String.format("%.6f", d)
   private def pad(i: Int): String = String.format("%-2s", i)
@@ -66,11 +68,21 @@ case class YoloAnnotator(
     // Box coordinates must be in normalized xywh format (from 0 to 1).
     // If your boxes are in pixels, you should divide x_center and width by image width, and y_center and height by image height.
     // Class numbers should be zero-indexed (start with 0).
-    val width = alto.width.toDouble
-    val height = alto.height.toDouble
+
+    val (croppedAlto, croppedMat) = if (cropToPrintArea) {
+      val cropRectangle = alto.croppedPrintArea(cropMargin)
+      val croppedAlto = alto.crop(cropRectangle)
+      val croppedMat = crop(mat, cropRectangle)
+      croppedAlto -> croppedMat
+    } else {
+      alto -> mat
+    }
+
+    val width = croppedAlto.width.toDouble
+    val height = croppedAlto.height.toDouble
 
     val objectTypeSet = objectsToInclude.toSet
-    val yoloBoxes = alto.allTextBoxes.flatMap{ textBlock =>
+    val yoloBoxes = croppedAlto.allTextBoxes.flatMap{ textBlock =>
       textBlock.textLinesWithRectangles.zipWithIndex.flatMap{ case ((textLine, textLineRectangle), i) =>
 
         val baseLineType = if (i == textBlock.textLines.length - 1) {
@@ -144,7 +156,7 @@ case class YoloAnnotator(
     val imageFile = new File(parentDir, f"images/${trainOrVal}/${imageFileName}")
     imageFile.getParentFile.mkdirs()
     log.info(f"Saving image to ${imageFile.getPath}")
-    saveImage(mat, imageFile.getPath)
+    saveImage(croppedMat, imageFile.getPath)
 
     debugDir.foreach{ debugDir =>
       val imageFileName = f"${baseName}-annotation.${extension}"
@@ -155,7 +167,7 @@ case class YoloAnnotator(
       val image = new BufferedImage(width.toInt, height.toInt, BufferedImage.TYPE_INT_RGB)
       val graphics = image.createGraphics
 
-      val originalImage = toBufferedImage(mat)
+      val originalImage = toBufferedImage(croppedMat)
       graphics.drawImage(originalImage, 0, 0, null)
       graphics.setComposite(AlphaComposite.SrcOver.derive(0.5f))
       yoloBoxes.zipWithIndex.foreach {

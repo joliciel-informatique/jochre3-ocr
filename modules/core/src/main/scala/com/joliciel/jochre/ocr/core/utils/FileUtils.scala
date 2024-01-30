@@ -2,6 +2,8 @@ package com.joliciel.jochre.ocr.core.utils
 
 import java.io.File
 import java.net.URI
+import java.nio.charset.StandardCharsets
+import java.nio.file.{Files, Path, Paths}
 import scala.io.Source
 import scala.util.matching.Regex
 
@@ -12,21 +14,43 @@ trait FileUtils {
     filename.replaceAll(extPattern, "")
   }
 
-  def readFile(filename: String): Seq[String] = {
-    val bufferedSource = Source.fromFile(filename)
-    val lines = (for (line <- bufferedSource.getLines()) yield line).toList
-    bufferedSource.close
-    lines
+  def readFile(file: File): Seq[String] = {
+    val source = Source.fromFile(file)
+    try {
+      readSource(source)
+    } finally {
+      source.close()
+    }
   }
 
-  def recursiveListFiles(dir: File, regex: Regex): Array[File] = {
+  def readFile(filename: String): Seq[String] = {
+    val source = Source.fromFile(filename)
+    try {
+      readSource(source)
+    } finally {
+      source.close()
+    }
+  }
+
+  private def readSource(source: Source): Seq[String] = {
+    (for (line <- source.getLines()) yield line).toSeq
+  }
+
+  def writeFile(path: Path, text: String) = {
+    Files.write(path, text.getBytes(StandardCharsets.UTF_8))
+  }
+
+  def recursiveListFiles(dir: File, regex: Regex): Seq[File] =
+    recursiveListFilesInternal(dir, regex).sortBy(_.getPath).toSeq
+
+  private def recursiveListFilesInternal(dir: File, regex: Regex): Array[File] = {
     val these = Option(dir.listFiles).getOrElse(Array.empty)
     val good = these.filter(file => regex.findFirstIn(file.getName).isDefined)
-    good ++ these.filter(_.isDirectory).flatMap(recursiveListFiles(_, regex))
+    good ++ these.filter(_.isDirectory).flatMap(recursiveListFilesInternal(_, regex))
   }
 
-  def recursiveListImages(dir: File): Vector[URI] =
-    recursiveListFiles(dir, ".*\\.jpg|.*\\.png|.*\\.jpeg".r).map(_.toURI).sortBy(_.getPath).toVector
+  def recursiveListImages(dir: File): Seq[URI] =
+    recursiveListFilesInternal(dir, ".*\\.jpg|.*\\.png|.*\\.jpeg".r).map(_.toURI).sortBy(_.getPath).toSeq
 }
 
 object FileUtils extends FileUtils

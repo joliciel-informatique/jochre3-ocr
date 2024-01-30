@@ -1,12 +1,15 @@
 package com.joliciel.jochre.ocr.core.segmentation
 
 import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
-import com.joliciel.jochre.ocr.core.utils.{OpenCvUtils, OutputLocation}
+import com.joliciel.jochre.ocr.core.utils.{ImageUtils, OutputLocation}
 import org.bytedeco.opencv.global.opencv_imgproc
 import org.bytedeco.opencv.global.opencv_imgproc._
 import org.bytedeco.opencv.opencv_core.{Mat, MatVector, RotatedRect}
 
-class BoxDetector(thresh: Int = 240, override val outputLocation: Option[OutputLocation] = None) extends ImageLabelDetector[Rectangle] with OpenCvUtils {
+/**
+ * Detects boxes based on black pixels in an image.
+ */
+class BoxDetector(thresh: Int = 240, override val outputLocation: Option[OutputLocation] = None) extends ImageLabelDetector[Rectangle] with ImageUtils {
   def detect(image: Mat, label: String): Seq[Rectangle] = {
     outputLocation.foreach(outputLocation => saveImage(image, outputLocation.resolve(f"_${label}_box0_image.png").toString))
 
@@ -30,6 +33,6 @@ class BoxDetector(thresh: Int = 240, override val outputLocation: Option[OutputL
     }.sortBy(0 - _.area)
 
     val noContains = rectangles.zipWithIndex.filterNot { case (rect, i) => rectangles.slice(0, i).exists(_.contains(rect)) }.map(_._1)
-    noContains.sorted
+    noContains
   }
 }

@@ -31,7 +31,7 @@
   </appender>
 
   <logger name="com.joliciel" level="INFO" />
-  <logger name="com.joliciel.jochre.ocr" level="DEBUG" />
+  <logger name="com.joliciel.jochre.ocr" level="INFO" />
   <logger name="com.joliciel.jochre.graphics" level="INFO" />
 
   <root level="INFO">

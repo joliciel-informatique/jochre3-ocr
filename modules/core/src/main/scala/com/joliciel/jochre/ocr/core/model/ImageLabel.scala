@@ -6,15 +6,20 @@ import java.awt
 import scala.xml.Node
 
 sealed trait ImageLabel {
-  val label: String
+  def label: String
 }
 
 object ImageLabel {
-  case class Rectangle(label: String, left: Int, top: Int, width: Int, height: Int) extends ImageLabel with Ordered[Rectangle] {
+  case class PredictedRectangle(rectangle: Rectangle, confidence: Double) extends ImageLabel with WithRectangle {
+    override val label: String = rectangle.label
+  }
+
+  case class Rectangle(label: String, override val left: Int, override val top: Int, override val width: Int, height: Int) extends ImageLabel with WithRectangle {
+    val rectangle: Rectangle = this
     val area: Int = width * height
 
-    val right: Int = left + width
-    val bottom: Int = top + height
+    override val right: Int = left + width
+    override val bottom: Int = top + height
 
     val xCenter: Int = (left + right) / 2
     val yCenter: Int = (top + bottom) / 2
@@ -39,17 +44,84 @@ object ImageLabel {
       Rectangle(f"${this.label}${that.label}", minLeft, minTop, maxRight - minLeft, maxBottom - minTop)
     }
 
-    private def areaOfIntersection(that: Rectangle): Double = intersection(that).map(_.area.toDouble).getOrElse(0.0)
+    def areaOfIntersection(that: Rectangle): Double = intersection(that).map(_.area.toDouble).getOrElse(0.0)
 
-    private def areaOfUnion(that: Rectangle): Double = {
+    def percentageIntersection(that: Rectangle): Double = this.areaOfIntersection(that) / this.area.toDouble
+
+    def areaOfUnion(that: Rectangle): Double = {
       (area + that.area) - areaOfIntersection(that)
     }
 
     def iou(that: Rectangle): Double = areaOfIntersection(that) / areaOfUnion(that)
 
-    import scala.math.Ordered.orderingToOrdered
+    /**
+     * Note: this compare will fail for complex pages.
+     * Use BlockSorter instead (which tries this compare and, if it fails,
+     * performs a more complex compare).
+     */
+    def simplePageLayoutCompare(that: Rectangle): Int = {
+      // We'll assume right-to-left for now
+      if (this.left >= that.right) return -1
+      if (this.right <= that.left) return 1
+      if (this.top < that.top) return -1
+      if (that.top < this.top) return 1
+      if (this.bottom < that.bottom) return -1
+      if (that.bottom < this.bottom) return 1
+      if (this.right > that.right) return -1
+      if (that.right > this.right) return 1
+      if (this.left < that.left) return 1
+      if (that.left < this.left) return -1
+      this.label.compareTo(that.label)
+    }
 
-    def compare(that: Rectangle): Int = (this.top, this.left, this.width, this.height, this.label) compare (that.top, that.left, that.width, that.height, that.label)
+    def horizontalCompare(that: Rectangle): Int = {
+      if (this.right > that.right) return -1
+      if (that.right > this.right) return 1
+      if (this.left < that.left) return 1
+      if (that.left < this.left) return -1
+      this.label.compareTo(that.label)
+    }
+
+    def verticalCompare(that: Rectangle): Int = {
+      if (this.top < that.top) return -1
+      if (that.top < this.top) return 1
+      if (this.bottom < that.bottom) return -1
+      if (that.bottom < this.bottom) return 1
+      this.label.compareTo(that.label)
+    }
+
+    /**
+     * Return 0 if there's an overlap > 50%.
+     * Return -1 if we should check later rectangles.
+     * Return 1 if we should check earlier rectangles.
+     */
+    def testVerticalOverlap(that: Rectangle): Int = {
+      if (this.top >= that.bottom) return 1
+      if (this.bottom <= that.top) return -1
+      if (areaOfIntersection(that) / that.area.toDouble > 0.5) return 0
+      if (this.top < that.top) return -1
+      if (that.top < this.top) return 1
+      if (this.bottom < that.bottom) return -1
+      if (that.bottom < this.bottom) return 1
+      -1
+    }
+
+    /**
+     * Return 0 if there's an overlap > 50%.
+     * Return -1 if we should check later rectangles.
+     * Return 1 if we should check earlier rectangles.
+     */
+    def testHorizontalOverlap(that: Rectangle): Int = {
+      // We'll assume right-to-left for now
+      if (this.left >= that.right) return -1
+      if (this.right <= that.left) return 1
+      if (areaOfIntersection(that) / that.area.toDouble > 0.5) return 0
+      if (this.right > that.right) return 1
+      if (that.right > this.right) return -1
+      if (this.left < that.left) return -1
+      if (that.left < this.left) return 1
+      -1
+    }
 
     def rescale(scale: Double): Rectangle =
       Rectangle(label, (left.toDouble * scale).toInt, (top.toDouble * scale).toInt, (width.toDouble * scale).toInt, (height.toDouble * scale).toInt)
@@ -64,6 +136,8 @@ object ImageLabel {
     }
 
     def toAWT(): java.awt.Rectangle = new awt.Rectangle(this.left, this.top, this.width, this.height)
+
+    lazy val coordinates: String = f"Rectangle(l$left,t$top,r$right,b$bottom)"
   }
 
   object Rectangle {
@@ -71,6 +145,18 @@ object ImageLabel {
       Rectangle(label, rotatedRect.boundingRect().x, rotatedRect.boundingRect().y, rotatedRect.boundingRect().width, rotatedRect.boundingRect.height)
 
     def fromXML(label: String, node: Node): Rectangle = Rectangle(label, left=(node \@ "HPOS").toInt, top=(node \@ "VPOS").toInt, width=(node \@ "WIDTH").toInt, height = (node \@ "HEIGHT").toIntOption.getOrElse(1))
+
+    object HorizontalOrdering extends Ordering[Rectangle] {
+      def compare(a: Rectangle, b: Rectangle) = a.horizontalCompare(b)
+    }
+
+    object VerticalOrdering extends Ordering[Rectangle] {
+      def compare(a: Rectangle, b: Rectangle) = a.verticalCompare(b)
+    }
+
+    object SimplePageLayoutOrdering extends Ordering[Rectangle] {
+      def compare(a: Rectangle, b: Rectangle) = a.simplePageLayoutCompare(b)
+    }
   }
 
   case class Line(label: String, x1: Int, y1: Int, x2: Int, y2: Int) extends ImageLabel with Ordered[Line] {

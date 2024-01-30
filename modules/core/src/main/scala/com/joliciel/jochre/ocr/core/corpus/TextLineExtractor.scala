@@ -1,7 +1,7 @@
 package com.joliciel.jochre.ocr.core.corpus
 
 import com.joliciel.jochre.ocr.core.model.Page
-import com.joliciel.jochre.ocr.core.utils.{FileUtils, OpenCvUtils}
+import com.joliciel.jochre.ocr.core.utils.{FileUtils, ImageUtils}
 import org.bytedeco.opencv.opencv_core.Mat
 import org.rogach.scallop.{ScallopConf, ScallopOption}
 import org.slf4j.LoggerFactory
@@ -20,7 +20,7 @@ case class TextLineExtractor(
   fileList: Option[Set[String]] = None,
   textSimplifier: TextSimplifier = TextSimplifier.default,
   altoFinder: AltoFinder = AltoFinder.default
-) extends CorpusAnnotator with OpenCvUtils {
+) extends CorpusAnnotator with ImageUtils {
   private val log = LoggerFactory.getLogger(getClass)
 
   val textFile = new File(outDir.toFile, "line-to-text.txt")

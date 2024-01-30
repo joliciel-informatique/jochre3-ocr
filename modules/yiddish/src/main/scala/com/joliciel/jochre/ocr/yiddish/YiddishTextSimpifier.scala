@@ -26,8 +26,9 @@ object YiddishTextSimpifier extends TextSimplifier {
   private val nonYivoNikud = """[ְֱֲֳֵֶֹֻׁ]""".r
   private val nonStandardMaqaf = """[-⸗]""".r
   private val nonStandardLongDash = """[𝆙←]""".r
-  private val nonStandardDoubleQuote = """["]""".r
+  private val nonStandardDoubleQuote = """["]|(‛‛)|('')""".r
   private val nonStandardSingleQuote = """[']""".r
+  private val nonStandardLowerDoubleQuote = """(,,)|(‚‚)""".r
   private val verticalBar = """|""".r
   private val otherSymbol = """[▼◦№]""".r
 
@@ -51,6 +52,7 @@ object YiddishTextSimpifier extends TextSimplifier {
       .replaceRegex(nonStandardMaqaf, "־")
       .replaceRegex(nonStandardLongDash, "—")
       .replaceRegex(nonStandardDoubleQuote, "“")
+      .replaceRegex(nonStandardLowerDoubleQuote, "„")
       .replaceRegex(nonStandardSingleQuote, "‛")
       // Get rid of stray vertical bars left over by Jochre 2
       .replaceRegex(verticalBar, "")

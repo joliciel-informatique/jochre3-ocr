@@ -17,6 +17,7 @@ object Libraries {
   val flywayVersion = "9.21.1"
   val catsVersion = "2.9.0"
   val sttpVersion = "3.9.0"
+  val circeVersion = "0.14.1"
 
   val typeDeps = Seq(
     "com.beachape" %% "enumeratum" % enumeratumVersion
@@ -51,12 +52,19 @@ object Libraries {
     "org.tpolecat" %% "doobie-specs2" % doobieVersion % "test", // Specs2 support for typechecking statements.
     "org.tpolecat" %% "doobie-scalatest" % doobieVersion % "test", // ScalaTest support for typechecking statements.
     "com.beachape" %% "enumeratum-doobie" % enumeratumVersion,
-    "org.flywaydb" % "flyway-core" % flywayVersion
+    "org.flywaydb" % "flyway-core" % flywayVersion,
+  )
+
+  val jsonDeps = Seq(
+    "io.circe" %% "circe-core" % circeVersion,
+    "io.circe" %% "circe-generic" % circeVersion,
+    "io.circe" %% "circe-parser" % circeVersion,
   )
 
   val httpClientDeps = Seq(
     "com.softwaremill.sttp.client3" %% "core" % sttpVersion,
     "com.softwaremill.sttp.client3" %% "zio" % sttpVersion,
+    "com.softwaremill.sttp.client3" %% "circe" % sttpVersion,
   )
 
   val apiDeps = Seq(
@@ -83,5 +91,5 @@ object Libraries {
     "dev.zio" %% "zio-test-junit" % zioVersion % Test,
   )
 
-  val commonDeps = typeDeps ++ loggingDeps ++ effectDeps ++ configDeps ++ testDeps
+  val commonDeps = typeDeps ++ loggingDeps ++ effectDeps ++ configDeps ++ testDeps ++ jsonDeps
 }

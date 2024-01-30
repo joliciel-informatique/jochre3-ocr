@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory
 import java.awt.Color
 import java.awt.image.BufferedImage
 
-trait OpenCvUtils {
+trait ImageUtils {
   private val log = LoggerFactory.getLogger(getClass)
 
   def loadImage(path: String): Mat =

@@ -1,7 +1,8 @@
 package com.joliciel.jochre.ocr.core.model
 
 import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
-import com.joliciel.jochre.ocr.core.utils.MathImplicits._
+import com.joliciel.jochre.ocr.core.utils.MathUtils.MathImplicits._
+import org.bytedeco.opencv.opencv_core.Mat
 
 import scala.xml.{Elem, Node}
 
@@ -32,7 +33,10 @@ case class Page(
     case illustration: Illustration => illustration
   }
 
-  lazy val allTextBoxes: Seq[TextBlock] = (composedBlocks.flatMap(_.textBlocks) ++ textBlocks).sorted
+  lazy val allTextBoxes: Seq[TextBlock] = BlockSorter.sort(composedBlocks.flatMap(_.textBlocks) ++ textBlocks)
+    .collect{
+      case t:TextBlock => t
+    }
 
   lazy val allTextLines: Seq[TextLine] = (textBlocks.flatMap(_.textLines) ++ composedBlocks.flatMap(_.textBlocks.flatMap(_.textLines))).sorted
 
@@ -46,6 +50,46 @@ case class Page(
     case textBlock: TextBlock => textBlock.textLinesWithRectangles
     case composedBlock: ComposedBlock => composedBlock.textLinesWithRectangles
     case _: Illustration => Seq.empty
+  }
+
+  val rectangle: Rectangle = Rectangle("", 0, 0, width, height)
+
+  lazy val printArea: Rectangle = {
+    val minLeft = this.blocks.map(_.rectangle.left).minOption.getOrElse(0)
+    val minTop = this.blocks.map(_.rectangle.top).minOption.getOrElse(0)
+    val maxRight = this.blocks.map(_.rectangle.right).maxOption.getOrElse(width)
+    val maxBottom = this.blocks.map(_.rectangle.bottom).maxOption.getOrElse(height)
+    Rectangle("",
+      left = minLeft,
+      top = minTop,
+      width = maxRight - minLeft,
+      height = maxBottom - minTop
+    )
+  }
+  
+  def croppedPrintArea(cropMargin: Double): Rectangle = {
+    val xMargin = (width.toDouble * cropMargin).toInt
+    val yMargin = (height.toDouble * cropMargin).toInt
+
+    val newLeft = if (printArea.left - xMargin < 0) { 0 } else { printArea.left - xMargin }
+    val newTop = if (printArea.top - yMargin < 0) { 0 } else { printArea.top - yMargin }
+    val newWidth = printArea.width + (2 * xMargin)
+    val newHeight = printArea.height + (2 * yMargin)
+
+    Rectangle("",
+      left = newLeft,
+      top = newTop,
+      width = if (newLeft + newWidth > width) {
+        width - newLeft
+      } else {
+        newWidth
+      },
+      height = if (newTop + newHeight > height) {
+        height - newTop
+      } else {
+        newHeight
+      },
+    )
   }
 
   def rotate(): Page = {
@@ -62,6 +106,22 @@ case class Page(
     })
   }
 
+  override def rescale(scale: Double): Page = {
+    this.copy(blocks = blocks.map(_.rescale(scale)).collect {
+      case block: Block => block
+    })
+  }
+
+  def crop(rectangle: Rectangle): Page = {
+    this.copy(
+      height = rectangle.height,
+      width = rectangle.width,
+      blocks = this.blocks.map(
+        _.translate(0 - rectangle.left, 0 - rectangle.top))
+        .collect{ case b: Block => b}
+    )
+  }
+
   override def toXml(idToIgnore: String): Elem =
     <Page ID={id} HEIGHT={height.toString} WIDTH={width.toString} PHYSICAL_IMG_NR={physicalPageNumber.toString} ROTATION={rotation.roundTo(2).toString}
           LANG={language} PC={confidence.roundTo(2).toString}>
@@ -69,6 +129,16 @@ case class Page(
         {blocks.zipWithIndex.map{ case (block, i) => block.toXml(f"${id}_B${i}")}}
       </PrintSpace>
     </Page>
+
+  override def draw(mat: Mat): Unit = {
+    this.blocks.map(_.draw(mat))
+  }
+
+  override def content: String = this.blocks.map{
+    case composedBlock:ComposedBlock => composedBlock.content
+    case textBlock:TextBlock => f"${textBlock.content}\n"
+    case illustration:Illustration => illustration.content
+  }.mkString
 }
 
 object Page {

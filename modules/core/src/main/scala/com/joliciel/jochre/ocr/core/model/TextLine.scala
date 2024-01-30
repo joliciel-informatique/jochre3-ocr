@@ -1,15 +1,14 @@
 package com.joliciel.jochre.ocr.core.model
 
 import com.joliciel.jochre.ocr.core.model.ImageLabel.Line
+import org.bytedeco.opencv.global.opencv_imgproc
+import org.bytedeco.opencv.global.opencv_imgproc.LINE_8
+import org.bytedeco.opencv.opencv_core.{AbstractScalar, Mat, Point}
 
 import scala.xml.{Elem, Node}
 
 case class TextLine(baseLine: Line, wordsAndSpaces: Seq[WordOrSpace]) extends PageElement with Ordered[TextLine] {
-  lazy val content: String = wordsAndSpaces.map{
-    case word@Word(_, _, _) => word.content
-    case Space(_) => " "
-    case hyphen@Hyphen(_) => hyphen.content
-  }.mkString
+  override lazy val content: String = wordsAndSpaces.map(_.content).mkString
 
   lazy val words: Seq[Word] = wordsAndSpaces.collect{ case w: Word => w }
   lazy val spaces: Seq[Space] = wordsAndSpaces.collect{ case s: Space => s }
@@ -39,6 +38,11 @@ case class TextLine(baseLine: Line, wordsAndSpaces: Seq[WordOrSpace]) extends Pa
   override def rotate(imageInfo: ImageInfo): TextLine =
     TextLine(baseLine.rotate(imageInfo), wordsAndSpaces.map(_.rotate(imageInfo)).collect{ case wordOrSpace: WordOrSpace => wordOrSpace })
 
+  override def rescale(scale: Double): TextLine = this.copy(
+    baseLine = this.baseLine.rescale(scale),
+    wordsAndSpaces = this.wordsAndSpaces.map(_.rescale(scale)).collect { case wos: WordOrSpace => wos }
+  )
+
   override def toXml(id: String): Elem =
     <TextLine HPOS={baseLine.x1.toString} VPOS={baseLine.y1.toString} WIDTH={baseLine.width.toString} HEIGHT={baseLine.height.toString}
               BASELINE={f"${baseLine.x1},${baseLine.y1} ${baseLine.x2},${baseLine.y2}"}>
@@ -47,6 +51,12 @@ case class TextLine(baseLine: Line, wordsAndSpaces: Seq[WordOrSpace]) extends Pa
 
   override def compare(that: TextLine): Int =
     this.baseLine.compare(that.baseLine)
+
+  override def draw(mat: Mat): Unit = {
+    opencv_imgproc.line(mat, new Point(baseLine.x1, baseLine.y1), new Point(baseLine.x2, baseLine.y2), AbstractScalar.BLUE,
+      3, LINE_8, 0)
+    this.wordsAndSpaces.map(_.draw(mat))
+  }
 }
 
 object TextLine {

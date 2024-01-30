@@ -1,26 +1,27 @@
-package com.joliciel.jochre.ocr.core.segmentation
+package com.joliciel.jochre.ocr.core.text
 
 import com.joliciel.jochre.ocr.core.model.ImageLabel
-import com.joliciel.jochre.ocr.core.utils.{OpenCvUtils, OutputLocation}
+import com.joliciel.jochre.ocr.core.segmentation.BlockType
+import com.joliciel.jochre.ocr.core.utils.{ImageUtils, OutputLocation}
 import org.bytedeco.opencv.opencv_core.Mat
 
 import java.awt.image.BufferedImage
 import java.awt.{Color, Graphics2D}
 import javax.imageio.ImageIO
 
-sealed trait ImageSegment {
+private[text] sealed trait ImageSegment {
   def block: ImageLabel.Rectangle
 }
-case class TextSegment(block: ImageLabel.Rectangle, subImage: BufferedImage) extends ImageSegment
-case class IllustrationSegment(block: ImageLabel.Rectangle) extends ImageSegment
+private[text] case class TextSegment(block: ImageLabel.Rectangle, subImage: BufferedImage) extends ImageSegment
+private[text] case class IllustrationSegment(block: ImageLabel.Rectangle) extends ImageSegment
 
-case class ImageSegmentExtractor(image: Mat, blocks: Seq[ImageLabel.Rectangle], outputLocation: Option[OutputLocation] = None) extends OpenCvUtils {
+private[text] case class ImageSegmentExtractor(image: Mat, blocks: Seq[ImageLabel.Rectangle], outputLocation: Option[OutputLocation] = None) extends ImageUtils {
   val segments: Seq[ImageSegment] = {
     val withoutIllustrations = toBufferedImage(image);
     val graph: Graphics2D = withoutIllustrations.createGraphics
     graph.setColor(Color.WHITE)
 
-    blocks.filter(_.label==BlockType.Illustration.entryName)
+    blocks.filter(_.label==BlockType.Image.entryName)
       .map{ illustration =>
         graph.fill(illustration.toAWT())
       }
@@ -37,7 +38,7 @@ case class ImageSegmentExtractor(image: Mat, blocks: Seq[ImageLabel.Rectangle], 
         val height = if (top + textBlock.height> withoutIllustrations.getHeight) { withoutIllustrations.getHeight - top } else { textBlock.height }
         val subImage = withoutIllustrations.getSubimage(left, top, width, height)
         Some(TextSegment(textBlock, subImage))
-      case block: ImageLabel.Rectangle if block.label == BlockType.Illustration.entryName =>
+      case block: ImageLabel.Rectangle if block.label == BlockType.Image.entryName =>
         Some(IllustrationSegment(block))
       case _ =>
         None

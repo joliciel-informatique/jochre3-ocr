@@ -2,7 +2,7 @@ package com.joliciel.jochre.ocr.core.transform
 
 import com.joliciel.jochre.ocr.core.corpus.AltoFinder
 import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
-import com.joliciel.jochre.ocr.core.utils.{FileUtils, OpenCvUtils}
+import com.joliciel.jochre.ocr.core.utils.{FileUtils, ImageUtils}
 import com.typesafe.config.ConfigFactory
 import org.bytedeco.opencv.global.opencv_core._
 import org.bytedeco.opencv.global.opencv_imgproc
@@ -15,7 +15,7 @@ import java.awt.Color
 import java.io.File
 import java.nio.file.{Path, Paths}
 
-case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) extends ImageTransformer[SkewAngle] with OpenCvUtils {
+case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) extends ImageTransformer[SkewAngle] with ImageUtils {
   private val log = LoggerFactory.getLogger(getClass)
   private val config = ConfigFactory.load().getConfig("jochre.ocr.deskewer")
   private val maxContours = config.getInt("max-contours-for-calculation")
@@ -40,11 +40,14 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) 
 
     val baseName = path.map(path => FileUtils.removeFileExtension(new File(path).getName)).getOrElse("test")
 
-    val colored = toRGB(mat)
+    val resizer = new ResizeImageAndKeepAspectRatio(1000)
+    val (resized, _) = resizer.transform(baseName, mat)
+
+    val colored = toRGB(resized)
 
     // Image preparation: blur, and threshold
     val blur = new Mat()
-    GaussianBlur(mat, blur, new Size(9, 9), 0)
+    GaussianBlur(resized, blur, new Size(9, 9), 0)
 
     debugDir.foreach(debugDir => saveImage(blur, Paths.get(debugDir.toString, baseName + "_deskewer1_blur.jpg").toString))
 
@@ -159,7 +162,7 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) 
   }
 }
 
-object Deskewer extends OpenCvUtils {
+object Deskewer extends ImageUtils {
   private val log = LoggerFactory.getLogger(getClass)
 
   class DeskewerCLI(arguments: Seq[String]) extends ScallopConf(arguments) {
