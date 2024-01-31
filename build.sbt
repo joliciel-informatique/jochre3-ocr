@@ -2,6 +2,7 @@ import BuildHelper._
 import Libraries._
 import scala.sys.process._
 import xerial.sbt.Sonatype._
+import com.typesafe.sbt.packager.docker.Cmd
 
 ThisBuild / scalaVersion := "2.13.11"
 ThisBuild / organization := "com.joli-ciel"
@@ -90,6 +91,8 @@ downloadZip := {
 }
 
 (Compile / compile) := ((Compile / compile).dependsOn(downloadZip)).value
+(Docker / publishLocal) := ((Docker / publishLocal).dependsOn(downloadZip)).value
+(Docker / publish) := ((Docker / publishLocal).dependsOn(downloadZip)).value
 
 testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
 
@@ -101,7 +104,8 @@ lazy val root =
       name := "jochre3-ocr",
       publish / skip := false,
     )
-    .aggregate(core, yiddish)
+    .aggregate(core, yiddish, api)
+    .enablePlugins(DockerForwardPlugin)
 
 lazy val core = project
   .in(file("modules/core"))
@@ -118,8 +122,8 @@ lazy val core = project
     //Compile / packageDoc / mappings := Seq(),
     Compile / packageDoc / publishArtifact := true,
     fork := true,
-    publish / skip  := false,
-  )
+    publish / skip := false,
+  ).disablePlugins(DockerPlugin)
 
 lazy val yiddish = project
   .in(file("modules/yiddish"))
@@ -133,6 +137,48 @@ lazy val yiddish = project
     //Compile / packageDoc / mappings := Seq(),
     Compile / packageDoc / publishArtifact := true,
     fork := true,
-    publish / skip  := false,
+    publish / skip := false,
   )
   .dependsOn(core % "compile->compile;test->test")
+  .disablePlugins(DockerPlugin)
+
+lazy val api = project
+  .in(file("modules/api"))
+  .enablePlugins(JavaServerAppPackaging, DockerPlugin)
+  .settings(projectSettings: _*)
+  .settings(
+    libraryDependencies ++= commonDeps ++ databaseDeps ++ apiDeps ++ Seq(
+      "com.safety-data" %% "cloakroom-scala" % cloakroomVersion,
+      "com.safety-data" %% "cloakroom-test-util-scala" % cloakroomVersion % Test,
+      "com.safety-data" % "cloakroom" % cloakroomVersion,
+      "com.github.cb372" %% "cats-retry" % "3.1.0"
+    ),
+    Docker / packageName := "jochre/jochre3-ocr",
+    Docker / maintainer  := "Joliciel Informatique SARL",
+    Docker / daemonUserUid := Some("1001"),
+    dockerBaseImage := "openjdk:17.0.2-bullseye",
+    Docker / dockerRepository := sys.env.get("JOCHRE3_DOCKER_REGISTRY"),
+    Docker / version     := version.value,
+    dockerExposedPorts := Seq(3434),
+    dockerExposedVolumes := Seq("/opt/docker/index"),
+    Universal / mappings += file("modules/yiddish/resources/jochre-yiddish-lexicon-1.0.1.zip") -> "modules/yiddish/resources/jochre-yiddish-lexicon-1.0.1.zip",
+    Universal / mappings += file("modules/yiddish/resources/yiddish_letter_model.zip") -> "modules/yiddish/resources/yiddish_letter_model.zip",
+    // Add docker commands before changing user
+    Docker / dockerCommands := dockerCommands.value.flatMap {
+      case Cmd("USER", args@_*) if args.contains("1001:0") => Seq(
+        // Add unattended security upgrades to docker image
+        Cmd("RUN", "apt update && apt install -y unattended-upgrades"),
+        Cmd("RUN", "unattended-upgrade -d --dry-run"),
+        Cmd("RUN", "unattended-upgrade -d"),
+        Cmd("USER", args: _*)
+      )
+      case cmd => Seq(cmd)
+    },
+    //do not package scaladoc
+    Compile/ packageDoc / mappings := Seq(),
+    Compile / mainClass := Some("com.joliciel.jochre.ocr.api.MainApp"),
+    publish / skip := true,
+    fork := true,
+  )
+  .dependsOn(core % "compile->compile;test->test", yiddish % "compile->compile;test->test")
+  .enablePlugins(DockerPlugin)
