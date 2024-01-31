@@ -25,15 +25,16 @@ case class YiddishTextSimpifier(replaceNotYiddishAlphabets: Boolean = false) ext
   private val nonYivoSinDot = """(?<!ש)ׂ""".r
   private val nonYivoNikud = """[ְֱֲֳֵֶֹֻׁ]""".r
   private val nonStandardMaqaf = """[-⸗]""".r
-  private val nonStandardLongDash = """[𝆙←]""".r
-  private val nonStandardDoubleQuote = """["]|(‛‛)|('')""".r
-  private val nonStandardSingleQuote = """[']""".r
+  private val nonStandardLongDash = """[𝆙←–—]""".r
+  private val nonStandardDoubleQuote = """["“]|(‛‛)|('')""".r
+  private val nonStandardSingleQuote = """['‛’׳]""".r
   private val nonStandardLowerDoubleQuote = """(,,)|(‚‚)""".r
   private val verticalBar = """|""".r
-  private val otherSymbol = """[▼◦№]""".r
+  private val otherSymbol = """[▼◦№⁂]""".r
 
-  private val latinAlphabet = """[a-zA-Z]""".r
-  private val cyrillicAlphabet = """[А-яЁёѣі]""".r
+  private val latinAlphabet = """\p{IsLatin}""".r
+  private val cyrillicAlphabet = """\p{IsCyrillic}""".r
+  private val greekAlphabet = """\p{IsGreek}""".r
 
   override def simplify(text: String): String = {
     val simplifiedText = text
@@ -53,7 +54,7 @@ case class YiddishTextSimpifier(replaceNotYiddishAlphabets: Boolean = false) ext
       .replaceRegex(nonStandardLongDash, "—")
       .replaceRegex(nonStandardDoubleQuote, "“")
       .replaceRegex(nonStandardLowerDoubleQuote, "„")
-      .replaceRegex(nonStandardSingleQuote, "‛")
+      .replaceRegex(nonStandardSingleQuote, "’")
       // Get rid of stray vertical bars left over by Jochre 2
       .replaceRegex(verticalBar, "")
       .replaceRegex(otherSymbol, "•")
@@ -62,6 +63,7 @@ case class YiddishTextSimpifier(replaceNotYiddishAlphabets: Boolean = false) ext
         simplifiedText
           .replaceRegex(latinAlphabet, "L")
           .replaceRegex(cyrillicAlphabet, "C")
+          .replaceRegex(greekAlphabet, "G")
       } else {
         simplifiedText
       }

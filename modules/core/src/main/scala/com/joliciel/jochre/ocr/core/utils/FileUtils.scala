@@ -3,7 +3,7 @@ package com.joliciel.jochre.ocr.core.utils
 import java.io.File
 import java.net.URI
 import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Files, Path}
 import scala.io.Source
 import scala.util.matching.Regex
 
