@@ -43,6 +43,11 @@ simulate-ci:
     -w /app \
     tiangolo/docker-with-compose:2021-09-18 \
 		make test-ci
+
+publish-image:
+	@ cd "${CURDIR}"
+	COMPOSE_PROJECT=$(COMPOSE_PROJECT) "./publish_jochre_image.sh"
+
 run:
 	@ cd "${CURDIR}"
 	JOCHRE3_OCR_DIRECTORY="${CURDIR}" sbt run

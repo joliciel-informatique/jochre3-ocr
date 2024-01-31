@@ -12,6 +12,9 @@ import org.slf4j.LoggerFactory
 
 import java.awt.Color
 import java.awt.image.BufferedImage
+import java.net.URL
+import javax.imageio.ImageIO
+import scala.util.{Try, Using}
 
 trait ImageUtils {
   private val log = LoggerFactory.getLogger(getClass)
@@ -94,5 +97,15 @@ trait ImageUtils {
     val rect: Rect = new Rect(rectangle.left, rectangle.top, rectangle.width, rectangle.height)
     val cropped: Mat = new Mat(src, rect)
     cropped
+  }
+
+  def getImageFromUrl(urlStr: String): Try[BufferedImage] = {
+    Using.Manager { use =>
+      val stream = use {
+        val url = new URL(urlStr)
+        url.openStream
+      }
+      ImageIO.read(stream)
+    }
   }
 }

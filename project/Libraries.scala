@@ -1,23 +1,21 @@
 import sbt._
 
 object Libraries {
-  val slf4jVersion = "2.0.7"
-  val zioVersion = "2.0.15"
-  val zioJsonVersion = "0.6.0"
-  val zioNioVersion = "2.0.1"
-  val http4sVersion = "0.23.22"
-  val http4sBlazeVersion = "0.23.14"
-  val zioConfigVersion = "4.0.0-RC16"
-  val zioInteropCatsVersion = "23.0.0.8"
-  val tapirVersion = "1.6.4"
-  val scalaTestVersion = "3.2.16"
+  val slf4jVersion = "2.0.11"
+  val zioVersion = "2.0.21"
+  val zioJsonVersion = "0.6.2"
+  val zioNioVersion = "2.0.2"
+  val http4sVersion = "0.23.25"
+  val zioConfigVersion = "4.0.1"
+  val zioInteropCatsVersion = "23.1.0.0"
+  val tapirVersion = "1.9.3"
+  val scalaTestVersion = "3.2.17"
   val enumeratumVersion = "1.7.3"
   val doobieVersion = "1.0.0-RC2"
-  val logbackVersion = "1.4.8"
-  val flywayVersion = "9.21.1"
-  val catsVersion = "2.9.0"
-  val sttpVersion = "3.9.0"
-  val circeVersion = "0.14.1"
+  val logbackVersion = "1.4.14"
+  val flywayVersion = "10.6.0"
+  val catsVersion = "2.10.0"
+  val sttpVersion = "3.9.2"
 
   val typeDeps = Seq(
     "com.beachape" %% "enumeratum" % enumeratumVersion
@@ -53,12 +51,7 @@ object Libraries {
     "org.tpolecat" %% "doobie-scalatest" % doobieVersion % "test", // ScalaTest support for typechecking statements.
     "com.beachape" %% "enumeratum-doobie" % enumeratumVersion,
     "org.flywaydb" % "flyway-core" % flywayVersion,
-  )
-
-  val jsonDeps = Seq(
-    "io.circe" %% "circe-core" % circeVersion,
-    "io.circe" %% "circe-generic" % circeVersion,
-    "io.circe" %% "circe-parser" % circeVersion,
+    "org.flywaydb" % "flyway-database-postgresql" % flywayVersion,
   )
 
   val httpClientDeps = Seq(
@@ -68,11 +61,11 @@ object Libraries {
   )
 
   val apiDeps = Seq(
+    "org.http4s" %% "http4s-server" % http4sVersion,
+    "org.http4s" %% "http4s-client" % http4sVersion,
+    "org.http4s" %% "http4s-ember-server" % http4sVersion,
     "org.http4s" %% "http4s-dsl" % http4sVersion,
     "org.http4s" %% "http4s-circe" % http4sVersion,
-    "org.http4s" %% "http4s-server" % http4sVersion,
-    "org.http4s" %% "http4s-ember-server" % http4sVersion,
-    "org.http4s" %% "http4s-blaze-server" % http4sBlazeVersion,
     "com.softwaremill.sttp.tapir" %% "tapir-core" % tapirVersion,
     "com.softwaremill.sttp.tapir" %% "tapir-enumeratum" % tapirVersion,
     "com.softwaremill.sttp.tapir" %% "tapir-openapi-docs" % tapirVersion,
@@ -91,5 +84,5 @@ object Libraries {
     "dev.zio" %% "zio-test-junit" % zioVersion % Test,
   )
 
-  val commonDeps = typeDeps ++ loggingDeps ++ effectDeps ++ configDeps ++ testDeps ++ jsonDeps
+  val commonDeps = typeDeps ++ loggingDeps ++ effectDeps ++ configDeps ++ testDeps
 }

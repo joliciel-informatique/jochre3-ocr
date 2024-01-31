@@ -1,0 +1,14 @@
+version: '3.7'
+services:
+  jochre3-ocr:
+    image: registry.gitlab.com/jochre/jochre3-ocr:${JOCHRE3_OCR_VERSION:-0.1.0}
+    command: -Dconfig.file=/opt/docker/etc/jochre.conf
+    ports:
+      - 3434:3434
+    volumes:
+      - ./jochre.conf:/opt/docker/etc/jochre.conf
+    environment:
+      DOCUMENT_LAYOUT_ANALYSIS_URL: http://yolo-dla:8444
+      JOCHRE3_OCR_VERSION: ${JOCHRE3_OCR_VERSION:-0.1.0}
+  yolo-dla:
+    image: registry.gitlab.com/jochre/yolo-dla-server:0.0.3

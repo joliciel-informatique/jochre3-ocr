@@ -1,5 +1,6 @@
 variables:
   COMPOSE_PROJECT: "jochre3-ocr-test-${CI_JOB_ID}"
+  JOCHRE3_DOCKER_REGISTRY: "registry.gitlab.com"
   LOGLEVEL: warn
   DOCKER_TLS_CERTDIR: ""
   DOCKER_HOST: "tcp://docker:2375"
@@ -15,7 +16,12 @@ before_script:
 test:
   stage: test
   script:
-    # Execute your project's tests
     - make test-ci
   after_script:
     - make clean-docker-compose
+publish-image:
+  stage: deploy
+  script:
+    - make publish-image
+  only:
+    - tags
