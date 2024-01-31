@@ -1,7 +1,7 @@
 package com.joliciel.jochre.ocr.core.corpus
 
 import com.joliciel.jochre.ocr.core.model.Page
-import com.joliciel.jochre.ocr.core.utils.{FileUtils, ImageUtils}
+import com.joliciel.jochre.ocr.core.utils.{FileUtils, ImageUtils, StringUtils}
 import org.bytedeco.opencv.opencv_core.Mat
 import org.rogach.scallop.{ScallopConf, ScallopOption}
 import org.slf4j.LoggerFactory
@@ -20,10 +20,12 @@ case class WordExtractor(
   validationOneEvery: Option[Int] = None,
   textSimplifier: TextSimplifier = TextSimplifier.default,
   altoFinder: AltoFinder = AltoFinder.default
-) extends CorpusAnnotator with ImageUtils {
+) extends CorpusAnnotator with ImageUtils with StringUtils {
   private val log = LoggerFactory.getLogger(getClass)
 
   debugDir.foreach(_.toFile.mkdirs())
+
+  var alphabet: Set[String] = Set.empty
 
   def annotateOneFile(mat: Mat, alto: Page, parentDir: File, baseName: String, index: Int): Unit = {
     debugDir.foreach(debugDir => saveImage(mat, new File(debugDir.toFile, f"${baseName}_rotated.png").getPath))
@@ -41,6 +43,9 @@ case class WordExtractor(
 
       val cropped = crop(mat, word.rectangle)
       val content = textSimplifier.simplify(word.content)
+
+      val contentChars = stringToChars(content).toSet
+      alphabet = alphabet.union(contentChars)
 
       val fileNameBase = f"${baseName}_${"%04d".format(i)}"
       val imageFileName = f"${fileNameBase}.${extension}"
@@ -68,6 +73,8 @@ case class WordExtractor(
 }
 
 object WordExtractor {
+  private val log = LoggerFactory.getLogger(getClass)
+
   class WordExtractorCLI(arguments: Seq[String]) extends ScallopConf(arguments) {
     val corpusDir: ScallopOption[String] = opt[String](required = true, descr = "The directory containing original images and labels in Alto4 format")
     val outDir: ScallopOption[String] = opt[String](required = true, descr = "The directory where the processed images will be placed")
@@ -96,6 +103,8 @@ object WordExtractor {
     val extractor = WordExtractor(corpusPath, outPath, debugDir, options.maxFiles.toOption, extension, fileList, validationOneEvery,
       textSimplifier, altoFinder=altoFinder)
     extractor.annotate()
+
+    log.info(f"Alphabet: ${extractor.alphabet.toSeq.sorted.mkString("")}")
   }
 
   def main(args: Array[String]): Unit = {
