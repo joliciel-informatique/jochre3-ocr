@@ -18,6 +18,8 @@ import java.awt.image.BufferedImage
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 import javax.imageio.ImageIO
 
+import scala.jdk.DurationConverters._
+
 trait YoloPredictorService {
   def getYoloPredictor(predictionType: YoloPredictionType, mat: Mat, fileName: String, outputLocation: Option[OutputLocation] = None, minConfidence: Option[Double] = None): Task[SegmentationPredictor[PredictedRectangle]]
 }
@@ -40,6 +42,7 @@ private[segmentation] class YoloPredictor(
   private val config = ConfigFactory.load().getConfig("jochre.ocr.block-predictor")
   private val documentLayoutAnalysisUrl = config.getString("url")
   private val longerSide: Int = config.getInt("longer-side")
+  private val requestTimeout = config.getDuration("request-timeout").toScala
 
   override val extension: String = predictionType.extension
 
@@ -60,6 +63,7 @@ private[segmentation] class YoloPredictor(
         val uri = uri"${documentLayoutAnalysisUrl}/${predictionType.endpoint}?${minConfidence.map(conf => f"min-confidence=${conf}").getOrElse("")}"
         if (log.isDebugEnabled) log.debug(f"Uri: ${uri}")
         val request = basicRequest
+          .readTimeout(requestTimeout)
           .post(uri)
           .multipartBody(
             multipart("imageFile", in).fileName(fileName)
