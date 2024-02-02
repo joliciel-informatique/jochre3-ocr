@@ -16,7 +16,7 @@ import scala.util.Using
 import scala.xml.transform.RewriteRule
 import scala.xml.{Attribute, Elem, Node}
 
-case class YiddishAltoTransformer(yiddishConfig: YiddishConfig, override val textSimplifier: Option[TextSimplifier] = Some(YiddishTextSimpifier)) extends AltoTransformer with XmlImplicits {
+case class YiddishAltoTransformer(yiddishConfig: YiddishConfig, override val textSimplifier: Option[TextSimplifier] = Some(YiddishTextSimpifier(replaceNotYiddishAlphabets = false))) extends AltoTransformer with XmlImplicits {
   private val yivoTranscriber = new YivoTranscriber()
   private val lexicon: Lexicon = {
     Using(new ZipInputStream(new FileInputStream(yiddishConfig.lexiconPath))) { zis =>

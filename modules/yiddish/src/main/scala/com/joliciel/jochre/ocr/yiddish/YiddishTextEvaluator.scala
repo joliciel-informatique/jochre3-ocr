@@ -23,7 +23,7 @@ object YiddishTextEvaluator {
     val evalDir = Path.of(cli.evalDir())
     evalDir.toFile.mkdirs()
 
-    val evaluator = TextEvaluator(Seq(CharacterErrorRate, CharacterCount), evalDir, Some(YiddishTextSimpifier))
+    val evaluator = TextEvaluator(Seq(CharacterErrorRate, CharacterCount), evalDir, Some(YiddishTextSimpifier(replaceNotYiddishAlphabets = false)))
     val evalWriter = new FileWriter(new File(evalDir.toFile, "eval.tsv"), StandardCharsets.UTF_8)
     try {
       val results = evaluator.evaluate(inputDir, goldDir)

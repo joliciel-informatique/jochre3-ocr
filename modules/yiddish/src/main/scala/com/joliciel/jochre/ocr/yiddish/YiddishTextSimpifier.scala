@@ -7,7 +7,7 @@ import scala.io.Source
 import scala.language.implicitConversions
 import scala.util.matching.Regex
 
-object YiddishTextSimpifier extends TextSimplifier {
+case class YiddishTextSimpifier(replaceNotYiddishAlphabets: Boolean = false) extends TextSimplifier {
 
   private implicit class StringWithRegex(val s: String) {
     def replaceRegex(regex: Regex, replacement: String): String = regex.replaceAllIn(s, replacement)
@@ -25,18 +25,19 @@ object YiddishTextSimpifier extends TextSimplifier {
   private val nonYivoSinDot = """(?<!ש)ׂ""".r
   private val nonYivoNikud = """[ְֱֲֳֵֶֹֻׁ]""".r
   private val nonStandardMaqaf = """[-⸗]""".r
-  private val nonStandardLongDash = """[𝆙←]""".r
-  private val nonStandardDoubleQuote = """["]|(‛‛)|('')""".r
-  private val nonStandardSingleQuote = """[']""".r
+  private val nonStandardLongDash = """[𝆙←–—]""".r
+  private val nonStandardDoubleQuote = """["“]|(‛‛)|('')""".r
+  private val nonStandardSingleQuote = """['‛’׳]""".r
   private val nonStandardLowerDoubleQuote = """(,,)|(‚‚)""".r
   private val verticalBar = """|""".r
-  private val otherSymbol = """[▼◦№]""".r
+  private val otherSymbol = """[▼◦№⁂]""".r
 
-  private val latinAlphabet = """[a-zA-Z]""".r
-  private val cyrillicAlphabet = """[А-яЁёѣі]""".r
+  private val latinAlphabet = """\p{IsLatin}""".r
+  private val cyrillicAlphabet = """\p{IsCyrillic}""".r
+  private val greekAlphabet = """\p{IsGreek}""".r
 
   override def simplify(text: String): String = {
-    text
+    val simplifiedText = text
       // Replace non-YIVO nikud first, for cases like a shin with a non-YIVO shva and a YIVO sin-dot
       .replaceRegex(nonYivoNikud, "")
       .replaceRegex(nonYivoKomets, "")
@@ -53,12 +54,19 @@ object YiddishTextSimpifier extends TextSimplifier {
       .replaceRegex(nonStandardLongDash, "—")
       .replaceRegex(nonStandardDoubleQuote, "“")
       .replaceRegex(nonStandardLowerDoubleQuote, "„")
-      .replaceRegex(nonStandardSingleQuote, "‛")
+      .replaceRegex(nonStandardSingleQuote, "’")
       // Get rid of stray vertical bars left over by Jochre 2
       .replaceRegex(verticalBar, "")
       .replaceRegex(otherSymbol, "•")
-      .replaceRegex(latinAlphabet, "L")
-      .replaceRegex(cyrillicAlphabet, "C")
+
+      if (replaceNotYiddishAlphabets) {
+        simplifiedText
+          .replaceRegex(latinAlphabet, "L")
+          .replaceRegex(cyrillicAlphabet, "C")
+          .replaceRegex(greekAlphabet, "G")
+      } else {
+        simplifiedText
+      }
   }
 
   def main(args: Array[String]): Unit = {
