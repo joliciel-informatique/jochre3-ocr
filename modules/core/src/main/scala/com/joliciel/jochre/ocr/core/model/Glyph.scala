@@ -26,6 +26,11 @@ case class Glyph(rectangle: Rectangle, confidence: Double) extends PageElement w
   override def compare(that: Glyph): Int = this.rectangle.horizontalCompare(that.rectangle)
 
   override def draw(mat: Mat): Unit = {}
+
+  override def transform(partialFunction: PartialFunction[AltoElement, AltoElement]): Glyph = {
+    val transformed = if (partialFunction.isDefinedAt(this)) { partialFunction(this).asInstanceOf[Glyph] } else { this }
+    transformed
+  }
 }
 
 object Glyph {

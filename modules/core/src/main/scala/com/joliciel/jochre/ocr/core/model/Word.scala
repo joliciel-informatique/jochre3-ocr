@@ -8,13 +8,13 @@ import org.bytedeco.opencv.opencv_core.{AbstractScalar, Mat, Point}
 
 import scala.xml.{Elem, Node}
 
-case class Word(rectangle: Rectangle, glyphs: Seq[Glyph], confidence: Double) extends WordOrSpace {
+case class Word(rectangle: Rectangle, glyphs: Seq[Glyph], alternatives: Seq[SpellingAlternative], confidence: Double) extends WordOrSpace {
   override val content = rectangle.label
   override def translate(xDiff: Int, yDiff: Int): Word =
-    Word(rectangle.translate(xDiff, yDiff), glyphs.map(_.translate(xDiff, yDiff)), confidence)
+    this.copy(rectangle = rectangle.translate(xDiff, yDiff), glyphs = glyphs.map(_.translate(xDiff, yDiff)))
 
   override def rotate(imageInfo: ImageInfo): Word =
-    Word(rectangle.rotate(imageInfo), glyphs.map(_.rotate(imageInfo)), confidence)
+    this.copy(rectangle = rectangle.rotate(imageInfo), glyphs = glyphs.map(_.rotate(imageInfo)))
 
   override def rescale(scale: Double): Word = this.copy(
     rectangle = this.rectangle.rescale(scale),
@@ -24,17 +24,18 @@ case class Word(rectangle: Rectangle, glyphs: Seq[Glyph], confidence: Double) ex
   override def toXml(id: String): Elem =
     <String HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString}
             CONTENT={rectangle.label} WC={confidence.roundTo(2).toString}>
+      {alternatives.map(_.toXml())}
       {glyphs.map(_.toXml())}
     </String>
 
   override def compare(that: WordOrSpace): Int = this.rectangle.horizontalCompare(that.rectangle)
 
-  def combineWith(that: Word): Word = Word(this.rectangle.union(that.rectangle), this.glyphs ++ that.glyphs, Math.sqrt(this.confidence * that.confidence))
+  def combineWith(that: Word): Word = Word(this.rectangle.union(that.rectangle), this.glyphs ++ that.glyphs, this.alternatives ++ that.alternatives, Math.sqrt(this.confidence * that.confidence))
 
   def combineWith(hyphen: Hyphen): Word = {
     val newRectangle = this.rectangle.union(hyphen.rectangle)
     val newGlyphs = this.glyphs :+ Glyph(hyphen.rectangle, 0.5)
-    Word(newRectangle, newGlyphs, this.confidence)
+    this.copy(rectangle = newRectangle, glyphs = newGlyphs)
   }
 
   override def draw(mat: Mat): Unit = {
@@ -47,6 +48,13 @@ case class Word(rectangle: Rectangle, glyphs: Seq[Glyph], confidence: Double) ex
       }
     }
   }
+
+  override def transform(partialFunction: PartialFunction[AltoElement, AltoElement]): Word = {
+    val transformed = if (partialFunction.isDefinedAt(this)) { partialFunction(this).asInstanceOf[Word] } else { this }
+    val newGlyphs = transformed.glyphs.map(_.transform(partialFunction)).collect { case glyph: Glyph => glyph }
+    val newAlternatives = transformed.alternatives.map(_.transform(partialFunction)).collect { case alternative: SpellingAlternative => alternative }
+    transformed.copy(glyphs = newGlyphs, alternatives = newAlternatives)
+  }
 }
 
 object Word {
@@ -54,8 +62,11 @@ object Word {
     val glyphs = node.child.collect{
       case elem: Elem if elem.label=="Glyph" => Glyph.fromXML(elem)
     }.toSeq
+    val alternatives = node.child.collect {
+      case elem: Elem if elem.label=="ALTERNATIVE" => SpellingAlternative.fromXML(elem)
+    }.toSeq
     val content = node \@ "CONTENT"
     val confidence = (node \@ "WC").toDoubleOption.getOrElse(0.0)
-    Word(Rectangle.fromXML(content, node), glyphs, confidence)
+    Word(Rectangle.fromXML(content, node), glyphs, alternatives, confidence)
   }
 }

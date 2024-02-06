@@ -57,6 +57,12 @@ case class TextLine(baseLine: Line, wordsAndSpaces: Seq[WordOrSpace]) extends Pa
       3, LINE_8, 0)
     this.wordsAndSpaces.map(_.draw(mat))
   }
+
+  override def transform(partialFunction: PartialFunction[AltoElement, AltoElement]): TextLine = {
+    val transformed = if (partialFunction.isDefinedAt(this)) { partialFunction(this).asInstanceOf[TextLine] } else { this }
+    val newWordsAndSpaces = transformed.wordsAndSpaces.map(_.transform(partialFunction)).collect { case wordOrSpace: WordOrSpace => wordOrSpace }
+    transformed.copy(wordsAndSpaces = newWordsAndSpaces)
+  }
 }
 
 object TextLine {

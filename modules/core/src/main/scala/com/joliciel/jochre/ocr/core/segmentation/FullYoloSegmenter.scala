@@ -140,7 +140,7 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
 
           textBlock.copy(textLines = textBlock.textLines.map{ textLine =>
             val myWordRects = textLineToWordMap.get(textLine).getOrElse(Seq.empty)
-            val myWords = myWordRects.map(rect => Word(rect.rectangle.copy(label=""), Seq.empty, 1.0))
+            val myWords = myWordRects.map(rect => Word(rect.rectangle.copy(label=""), Seq.empty, Seq.empty, 1.0))
 
             textLine.copy(wordsAndSpaces = myWords)
           })

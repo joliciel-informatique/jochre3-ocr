@@ -3,15 +3,16 @@ package com.joliciel.jochre.ocr.yiddish
 import com.joliciel.jochre.ocr.core.Jochre
 import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
 import com.joliciel.jochre.ocr.core.model.Page
+import com.joliciel.jochre.ocr.core.utils.XmlImplicits
 import org.slf4j.LoggerFactory
 import zio._
 import zio.test.junit.JUnitRunnableSpec
 import zio.test.{Spec, TestAspect, TestEnvironment, assertTrue}
 
 import javax.imageio.ImageIO
-import scala.xml.{PrettyPrinter, Text}
+import scala.xml.{Atom, PrettyPrinter, Text}
 
-object JochreYiddishWithYoloSegmentationTest extends JUnitRunnableSpec {
+object JochreYiddishWithYoloSegmentationTest extends JUnitRunnableSpec with XmlImplicits {
   private val log = LoggerFactory.getLogger(getClass)
 
   override def spec: Spec[TestEnvironment with Scope, Any] = suite("JochreYiddishWithYoloSegmentationTest")(
@@ -20,9 +21,13 @@ object JochreYiddishWithYoloSegmentationTest extends JUnitRunnableSpec {
       val image = ImageIO.read(inputStream)
       for {
         jochreYiddish <- ZIO.service[Jochre]
-        alto <- jochreYiddish.processImage(image, None, None, "nybc200089_0011.png", testRectangle = None)
+        alto <- jochreYiddish.processImage(image, "nybc200089_0011.png")
       } yield {
-        val altoFileName = (alto \\ "fileName").head.child.collect{case text: Text => text}.map(_.text).head
+        if (log.isDebugEnabled) {
+          val prettyPrinter = new PrettyPrinter(80, 2)
+          log.debug(prettyPrinter.format(alto))
+        }
+        val altoFileName = (alto \\ "fileName").head.textContent
         assertTrue(altoFileName == "nybc200089_0011.png")
 
         val page = Page.fromXML(alto)

@@ -1,6 +1,7 @@
 package com.joliciel.jochre.ocr.yiddish
 
 import com.joliciel.jochre.ocr.core.Jochre
+import com.joliciel.jochre.ocr.core.utils.XmlImplicits
 import org.slf4j.LoggerFactory
 import zio._
 import zio.test.junit.JUnitRunnableSpec
@@ -9,7 +10,7 @@ import zio.test.{Spec, TestAspect, TestEnvironment, assertTrue}
 import javax.imageio.ImageIO
 import scala.xml.{PrettyPrinter, Text}
 
-object JochreYiddishWithYoloBlocksOnlyTest extends JUnitRunnableSpec {
+object JochreYiddishWithYoloBlocksOnlyTest extends JUnitRunnableSpec with XmlImplicits {
   private val log = LoggerFactory.getLogger(getClass)
 
   override def spec: Spec[TestEnvironment with Scope, Any] = suite("JochreYiddishWithYoloBlocksOnlyTest")(
@@ -18,9 +19,9 @@ object JochreYiddishWithYoloBlocksOnlyTest extends JUnitRunnableSpec {
       val image = ImageIO.read(inputStream)
       for {
         jochreYiddish <- ZIO.service[Jochre]
-        alto <- jochreYiddish.processImage(image, None, None, "yiddish_sample.jpg", testRectangle = None)
+        alto <- jochreYiddish.processImage(image, "yiddish_sample.jpg")
       } yield {
-        val altoFileName = (alto \\ "fileName").head.child.collect{case text: Text => text}.map(_.text).head
+        val altoFileName = (alto \\ "fileName").head.textContent
         assertTrue(altoFileName == "yiddish_sample.jpg")
 
         val content = (alto \\ "String").map(node => node \@ "CONTENT").mkString(" ")

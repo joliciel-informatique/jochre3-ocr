@@ -32,7 +32,7 @@ case class Evaluator(
         val expected = altoFinder.getAltoPage(file.toPath)
         val startTime = Instant.now()
         for {
-          predicted <- jochre.processImage(mat, outputDir, debugDir, file.getName, testRectangle)
+          predicted <- jochre.processMat(mat, file.getName, outputDir, debugDir, testRectangle)
           endTime = Instant.now()
           results <- ZIO.foreach(metrics){ metric =>
             ZIO.attempt{

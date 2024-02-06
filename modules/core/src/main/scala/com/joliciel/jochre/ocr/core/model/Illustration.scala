@@ -29,6 +29,11 @@ case class Illustration(rectangle: Rectangle) extends Block {
   }
 
   override def content: String = ""
+
+  override def transform(partialFunction: PartialFunction[AltoElement, AltoElement]): Illustration = {
+    val transformed = if (partialFunction.isDefinedAt(this)) { partialFunction(this).asInstanceOf[Illustration] } else { this }
+    transformed
+  }
 }
 
 object Illustration {

@@ -25,11 +25,16 @@ case class Hyphen(rectangle: Rectangle) extends WordOrSpace {
   override def compare(that: WordOrSpace): Int = this.rectangle.horizontalCompare(that.rectangle)
 
   def toWord: Word =
-    Word(this.rectangle, Seq(Glyph(this.rectangle, 0.5)), 0.5)
+    Word(this.rectangle, Seq(Glyph(this.rectangle, 0.5)), Seq.empty, 0.5)
 
   override def draw(mat: Mat): Unit = {
     opencv_imgproc.rectangle(mat, new Point(rectangle.left, rectangle.top ), new Point(rectangle.left + rectangle.width, rectangle.top + rectangle.height), AbstractScalar.MAGENTA,
       1, LINE_8, 0)
+  }
+
+  override def transform(partialFunction: PartialFunction[AltoElement, AltoElement]): Hyphen = {
+    val transformed = if (partialFunction.isDefinedAt(this)) { partialFunction(this).asInstanceOf[Hyphen] } else { this }
+    transformed
   }
 }
 

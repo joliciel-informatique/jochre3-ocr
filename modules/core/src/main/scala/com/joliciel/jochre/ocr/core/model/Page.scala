@@ -40,6 +40,8 @@ case class Page(
 
   lazy val allTextLines: Seq[TextLine] = (textBlocks.flatMap(_.textLines) ++ composedBlocks.flatMap(_.textBlocks.flatMap(_.textLines))).sorted
 
+  lazy val allWords: Seq[Word] = allTextLines.flatMap(_.words)
+
   lazy val combinedWords: Seq[Word] = blocks.flatMap{
     case textBlock: TextBlock => textBlock.combinedWords
     case composedBlock: ComposedBlock => composedBlock.combinedWords
@@ -139,31 +141,43 @@ case class Page(
     case textBlock:TextBlock => f"${textBlock.content}\n"
     case illustration:Illustration => illustration.content
   }.mkString
+
+  override def transform(partialFunction: PartialFunction[AltoElement, AltoElement]): Page = {
+    val transformed = if (partialFunction.isDefinedAt(this)) { partialFunction(this).asInstanceOf[Page] } else { this }
+    val newBlocks = transformed.blocks.map(_.transform(partialFunction)).collect{ case block: Block => block }
+    transformed.copy(blocks = newBlocks)
+  }
 }
 
 object Page {
   def fromXML(node: Node): Page = {
-    val page = (node \\ "Page").head
+    val page = (node \\ "Page").headOption.getOrElse(throw new Exception("No Page element found"))
     val id = page \@ "ID"
-    val height = (page \@ "HEIGHT").toInt
-    val width = (page \@ "WIDTH").toInt
+    val height = (page \@ "HEIGHT").toIntOption.getOrElse(0)
+    val width = (page \@ "WIDTH").toIntOption.getOrElse(0)
     val physicalPageNumber = (page \@ "PHYSICAL_IMG_NR").toIntOption.getOrElse(0)
     val rotationStr = (page \@ "ROTATION")
     val rotation = if (!rotationStr.isEmpty) {
       rotationStr.toDouble
     } else {
-      (page \\ "TextBlock").headOption.map(_ \@ "ROTATION").getOrElse("0").toDouble
+      val blockRotationStr = (page \\ "TextBlock").headOption.map(_ \@ "ROTATION").getOrElse("0")
+      if (blockRotationStr.isEmpty) { 0 } else { blockRotationStr.toDouble }
     }
     val imageInfo = ImageInfo(width, height, rotation)
-    val printSpace = (page \ "PrintSpace").head
-    val language = (page \@"LANG")
+    val printSpace = (page \ "PrintSpace").headOption
+    val languageStr = (page \@"LANG")
+    val language = if (languageStr.isEmpty) {
+      "en"
+    } else {
+      languageStr
+    }
     val confidence = (page \@ "PC").toDoubleOption.getOrElse(0.0)
 
-    val blocks = printSpace.child.collect{
+    val blocks = printSpace.map(_.child.collect{
       case elem: Elem if elem.label == "TextBlock" => TextBlock.fromXML(imageInfo, elem)
       case elem: Elem if elem.label == "ComposedBlock" => ComposedBlock.fromXML(imageInfo, elem)
       case elem: Elem if elem.label == "Illustration" => Illustration.fromXML(elem)
-    }.toSeq
+    }.toSeq).getOrElse(Seq.empty)
 
     Page(id, height, width, physicalPageNumber, rotation, language, confidence, blocks)
   }

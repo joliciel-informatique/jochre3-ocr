@@ -17,52 +17,71 @@ import scala.xml.PrettyPrinter
 trait AnalysisLogic extends HttpErrorMapper with ImageUtils {
   private val log = LoggerFactory.getLogger(getClass)
 
-  private case class ImageWithName(image: BufferedImage, name: String)
-
-  def postAnalyzeFileLogic(fileForm: FileForm): ZIO[Requirements, HttpError, ZStream[Any, Throwable, Byte]] =
-    (for {
-      image <- ZIO.attempt{
-        fileForm match {
-          case fileForm@FileForm(Part(_, body, _, _)) =>
-            val image = ImageIO.read(body)
-            ImageWithName(image, fileForm.image.fileName.getOrElse("Unknown"))
+  def postAnalyzeFileLogic(fileForm: FileForm): ZIO[Requirements, HttpError, ZStream[Any, Throwable, Byte]] = {
+    val fileName = fileForm.image.fileName.getOrElse("Unknown")
+    val getAlto = if (fileName.endsWith(".pdf")) {
+      (for {
+        pdfFile <- ZIO.attempt {
+          fileForm match {
+            case FileForm(Part(_, body, _, _), _, _, _) =>
+              body
+          }
         }
-      }
-      jochre <- ZIO.service[Jochre]
-      altoXml <- jochre.processImage(image.image, None, None, image.name, None)
+        jochre <- ZIO.service[Jochre]
+        altoXml <- jochre.processPdf(
+          pdfFile.toPath,
+          fileName = Some(fileName),
+          startPage = fileForm.start,
+          endPage = fileForm.end,
+          dpi = fileForm.dpi
+        )
+      } yield altoXml)
+    } else {
+      (for {
+        image <- ZIO.attempt {
+          fileForm match {
+            case FileForm(Part(_, body, _, _), _, _, _) =>
+              ImageIO.read(body)
+          }
+        }
+        jochre <- ZIO.service[Jochre]
+        altoXml <- jochre.processImage(image, fileName)
+      } yield altoXml)
+    }
+
+    (for {
+      altoXml <- getAlto
       alto <- ZIO.attempt{
         val prettyPrinter = new PrettyPrinter(80, 2)
         prettyPrinter.format(altoXml)
       }
     } yield {
-      log.info(f"Analyzed ${image.name}")
+      log.info(f"Analyzed ${fileName}")
       ZStream(alto)
         .via(ZPipeline.utf8Encode)
     })
       .tapErrorCause(error => ZIO.logErrorCause(s"Unable to analyze file", error))
       .mapError(mapToHttpError(_))
+  }
 
-  def postAnalyzeURLLogic(body: AnalyseURLRequest): ZIO[Requirements, HttpError, ZStream[Any, Throwable, Byte]] =
+  def postAnalyzeURLLogic(body: AnalyseURLRequest): ZIO[Requirements, HttpError, ZStream[Any, Throwable, Byte]] = {
+    val fileName = body.fileName.getOrElse(FilenameUtils.getName(body.url))
     (for {
       image <- ZIO.fromTry {
         getImageFromUrl(body.url)
       }
-      imageWithName <- ZIO.attempt {
-        val fileName = body.fileName.getOrElse(FilenameUtils.getName(body.url))
-        val finalFileName = if (fileName.isEmpty) { "Unknown" } else { fileName }
-        ImageWithName(image, finalFileName)
-      }
       jochre <- ZIO.service[Jochre]
-      altoXml <- jochre.processImage(imageWithName.image, None, None, imageWithName.name, None)
+      altoXml <- jochre.processImage(image, fileName)
       alto <- ZIO.attempt {
         val prettyPrinter = new PrettyPrinter(80, 2)
         prettyPrinter.format(altoXml)
       }
     } yield {
-      log.info(f"Analyzed ${imageWithName.name}")
+      log.info(f"Analyzed ${fileName}")
       ZStream(alto)
         .via(ZPipeline.utf8Encode)
     })
       .tapErrorCause(error => ZIO.logErrorCause(s"Unable to analyze URL", error))
       .mapError(mapToHttpError(_))
+  }
 }
