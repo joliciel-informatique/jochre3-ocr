@@ -31,7 +31,10 @@ case class AnalysisApp( executionContext: ExecutionContext)
       .post
       .in("ocr")
       .in("file")
-      .in(multipartBody[FileForm])
+      .in(multipartBody[FileForm].description(
+        """start (optional): for PDF files only, the start page.<br>
+          | end (optional): for PDF files only, the end page.<br>
+          | dpi (optional): for PDF files only, the DPI (defaults to 300)""".stripMargin))
       .out(streamTextBody(ZioStreams)(CodecFormat.Xml(), Some(StandardCharsets.UTF_8)))
       .description("Post an image file for analysis and return xml result.")
 

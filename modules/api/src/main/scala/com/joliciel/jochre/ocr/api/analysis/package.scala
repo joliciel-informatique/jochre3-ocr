@@ -5,7 +5,7 @@ import sttp.model.Part
 import java.io.File
 
 package object analysis {
-  case class FileForm(image: Part[File])
+  case class FileForm(image: Part[File], start: Option[Int] = None, end: Option[Int] = None, dpi: Option[Int] = None)
 
   case class AnalyseURLRequest(url: String, fileName: Option[String])
 

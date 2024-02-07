@@ -8,7 +8,9 @@ import java.time.format.DateTimeFormatter
 import java.time.{LocalDateTime, ZoneOffset}
 import scala.xml.{Elem, PrettyPrinter}
 
-case class Alto4Writer(page: Page, fileName: String) {
+case class Alto4Writer(pages: Seq[Page], fileName: String) {
+  val ocrVersion = sys.env.get("JOCHRE3_OCR_VERSION").getOrElse("0.0.1-SNAPSHOT")
+
   val alto: Elem = <alto xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                          xmlns="http://www.loc.gov/standards/alto/ns-v4#"
                          xsi:schemaLocation="http://www.loc.gov/standards/alto/ns-v4# http://www.loc.gov/standards/alto/v4/alto-4-4.xsd"
@@ -16,25 +18,21 @@ case class Alto4Writer(page: Page, fileName: String) {
     <Description>
       <MeasurementUnit>pixel</MeasurementUnit>
       <sourceImageInformation>
-        <fileName>
-          {fileName}
-        </fileName>
+        <fileName>{fileName}</fileName>
       </sourceImageInformation>
       <Processing ID="OCR_1">
-        <processingDateTime>
-          {LocalDateTime.now().atZone(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)}
-        </processingDateTime>
+        <processingDateTime>{LocalDateTime.now().atZone(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)}</processingDateTime>
         <processingStepDescription>contentGeneration</processingStepDescription>
         <processingSoftware>
           <softwareCreator>Joliciel Informatique</softwareCreator>
           <softwareName>Jochre</softwareName>
-          <softwareVersion>3.0.1-SNAPSHOT</softwareVersion>
-          <applicationDescription>Java Optical CHaracter REcognition: https://github.com/urieli/jochre</applicationDescription>
+          <softwareVersion>{ocrVersion}</softwareVersion>
+          <applicationDescription>Java Optical CHaracter REcognition: https://gitlab.com/jochre/jochre3-ocr/</applicationDescription>
         </processingSoftware>
       </Processing>
     </Description>
     <Layout>
-      {page.toXml()}
+      {pages.map(_.toXml())}
     </Layout>
   </alto>
 

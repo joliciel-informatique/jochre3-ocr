@@ -36,6 +36,12 @@ case class ComposedBlock(rectangle: Rectangle, textBlocks: Seq[TextBlock]) exten
   }
 
   override lazy val content: String = textBlocks.map(_.content).mkString("\n")
+
+  override def transform(partialFunction: PartialFunction[AltoElement, AltoElement]): ComposedBlock = {
+    val transformed = if (partialFunction.isDefinedAt(this)) { partialFunction(this).asInstanceOf[ComposedBlock] } else { this }
+    val newTextBlocks = transformed.textBlocks.map(_.transform(partialFunction)).collect { case block: TextBlock => block }
+    transformed.copy(textBlocks = newTextBlocks)
+  }
 }
 
 object ComposedBlock {

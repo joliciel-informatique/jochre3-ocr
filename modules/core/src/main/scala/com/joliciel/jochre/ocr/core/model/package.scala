@@ -21,14 +21,18 @@ package object model {
     }
   }
 
-  trait PageElement {
+  trait AltoElement {
+    def toXml(id: String = ""): Elem
+
+    def transform(partialFunction: PartialFunction[AltoElement, AltoElement]): AltoElement
+  }
+
+  trait PageElement extends AltoElement {
     def translate(xDiff: Int, yDiff: Int): PageElement
 
     def rotate(imageInfo: ImageInfo): PageElement
 
     def rescale(scale: Double): PageElement
-
-    def toXml(id: String = ""): Elem
 
     def draw(mat: Mat): Unit
 

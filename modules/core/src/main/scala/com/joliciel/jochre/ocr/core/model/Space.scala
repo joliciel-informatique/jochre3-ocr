@@ -28,6 +28,11 @@ case class Space(rectangle: Rectangle) extends WordOrSpace {
   }
 
   override val content: String = " "
+
+  override def transform(partialFunction: PartialFunction[AltoElement, AltoElement]): Space = {
+    val transformed = if (partialFunction.isDefinedAt(this)) { partialFunction(this).asInstanceOf[Space] } else { this }
+    transformed
+  }
 }
 
 object Space {

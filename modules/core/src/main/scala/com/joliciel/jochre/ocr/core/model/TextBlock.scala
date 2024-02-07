@@ -54,6 +54,12 @@ case class TextBlock(rectangle: Rectangle, textLines: Seq[TextLine]) extends Blo
   }
 
   override lazy val content: String = textLines.map(_.content).mkString("\n")
+
+  override def transform(partialFunction: PartialFunction[AltoElement, AltoElement]): TextBlock = {
+    val transformed = if (partialFunction.isDefinedAt(this)) { partialFunction(this).asInstanceOf[TextBlock] } else { this }
+    val newLines = transformed.textLines.map(_.transform(partialFunction)).collect{ case textLine: TextLine => textLine }
+    transformed.copy(textLines = newLines)
+  }
 }
 
 object TextBlock {

@@ -144,7 +144,13 @@ object ImageLabel {
     def apply(label: String, rotatedRect: RotatedRect): Rectangle =
       Rectangle(label, rotatedRect.boundingRect().x, rotatedRect.boundingRect().y, rotatedRect.boundingRect().width, rotatedRect.boundingRect.height)
 
-    def fromXML(label: String, node: Node): Rectangle = Rectangle(label, left=(node \@ "HPOS").toInt, top=(node \@ "VPOS").toInt, width=(node \@ "WIDTH").toInt, height = (node \@ "HEIGHT").toIntOption.getOrElse(1))
+    def fromXML(label: String, node: Node): Rectangle = Rectangle(
+      label,
+      left=(node \@ "HPOS").toIntOption.getOrElse(0),
+      top=(node \@ "VPOS").toIntOption.getOrElse(0),
+      width=(node \@ "WIDTH").toIntOption.getOrElse(1),
+      height = (node \@ "HEIGHT").toIntOption.getOrElse(1)
+    )
 
     object HorizontalOrdering extends Ordering[Rectangle] {
       def compare(a: Rectangle, b: Rectangle) = a.horizontalCompare(b)
@@ -196,8 +202,8 @@ object ImageLabel {
       // In Jochre2, this is a single INT (indicating the Y coordinate only, with X taken from LEFT)
       val baseLineText = (node \@ "BASELINE")
 
-      val left = (node \@ "HPOS").toInt
-      val width = (node \@ "WIDTH").toInt
+      val left = (node \@ "HPOS").toIntOption.getOrElse(0)
+      val width = (node \@ "WIDTH").toIntOption.getOrElse(1)
 
       val (x1, y1, x2, y2) = baseLineText.toIntOption match {
         case Some(yCoord) =>
@@ -209,20 +215,24 @@ object ImageLabel {
           // Hopefully this only affects the strange case of Jochre2 with a single int value for the BASELINE
           (x1, y1, x2, y2)
         case None =>
-          val sets = baseLineText.split(' ')
-          if (sets.length==1) {
-            val ints = sets(0).split(',').map(_.toInt)
-            val x1 = ints(0)
-            val y1 = ints(1)
-            val (x2, y2) = imageInfo.rotate(x1 + width, y1)
-            (x1, y1, x2, y2)
+          if (baseLineText.isEmpty) {
+            (0, 0, 0, 0)
           } else {
-            val ints = sets.map(_.split(',').map(_.toInt))
-            val x1 = ints(0)(0)
-            val y1 = ints(0)(1)
-            val x2 = ints(1)(0)
-            val y2 = ints(1)(1)
-            (x1, y1, x2, y2)
+            val sets = baseLineText.split(' ')
+            if (sets.length == 1) {
+              val ints = sets(0).split(',').map(_.toInt)
+              val x1 = ints(0)
+              val y1 = ints(1)
+              val (x2, y2) = imageInfo.rotate(x1 + width, y1)
+              (x1, y1, x2, y2)
+            } else {
+              val ints = sets.map(_.split(',').map(_.toInt))
+              val x1 = ints(0)(0)
+              val y1 = ints(0)(1)
+              val x2 = ints(1)(0)
+              val y2 = ints(1)(1)
+              (x1, y1, x2, y2)
+            }
           }
       }
 

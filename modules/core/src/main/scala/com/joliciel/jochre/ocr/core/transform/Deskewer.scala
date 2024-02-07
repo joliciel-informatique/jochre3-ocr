@@ -36,7 +36,7 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) 
   }
 
   def getSkewAngle(mat: Mat, path: Option[String] = None): Option[Double] = {
-    log.info(f"Deskewing $path")
+    log.debug(f"Deskewing $path")
 
     val baseName = path.map(path => FileUtils.removeFileExtension(new File(path).getName)).getOrElse("test")
 
@@ -156,7 +156,7 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) 
       debugDir.foreach(debugDir => saveImage(colored, Paths.get(debugDir.toString, baseName + "_deskewer4_rectangle.jpg").toString))
 
       val meanAngle = inliers.map(_.correctedAngle).sum / inliers.size
-      log.debug(f"meanAngle: ${meanAngle}")
+      log.info(f"Deskewed $path, meanAngle: $meanAngle")
       meanAngle
     }
   }

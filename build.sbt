@@ -19,6 +19,7 @@ val javaCVVersion = "1.5.9"
 val scallopVersion = "5.0.0"
 val apacheCommonsTextVersion = "1.11.0"
 val apacheCommonsMathVersion = "3.6.1"
+val apachePdfBoxVersion = "3.0.1"
 
 lazy val jochre3OCRVersion = sys.env.get("JOCHRE3_OCR_VERSION")
   .getOrElse{
@@ -118,6 +119,8 @@ lazy val core = project
       "org.scala-lang.modules" %% "scala-xml" % scalaXmlVersion,
       "org.apache.commons" % "commons-text" % apacheCommonsTextVersion,
       "org.apache.commons" % "commons-math3" % apacheCommonsMathVersion,
+      "org.apache.pdfbox" % "pdfbox" % apachePdfBoxVersion,
+      "org.apache.pdfbox" % "pdfbox-io" % apachePdfBoxVersion,
     ),
     //Compile / packageDoc / mappings := Seq(),
     Compile / packageDoc / publishArtifact := true,
@@ -132,7 +135,9 @@ lazy val yiddish = project
     name := "jochre3-ocr-yiddish",
     libraryDependencies ++= commonDeps ++ Seq(
       "com.joliciel.ljtrad" % "yivo-transcriber" % yivoTranscriberVersion,
-      "com.joliciel.jochre" % "jochre-yiddish" % jochre2Version
+      "com.joliciel.jochre" % "jochre-yiddish" % jochre2Version excludeAll(
+          ExclusionRule(organization = "org.apache.pdfbox", name = "pdfbox-app")
+        )
     ),
     //Compile / packageDoc / mappings := Seq(),
     Compile / packageDoc / publishArtifact := true,
