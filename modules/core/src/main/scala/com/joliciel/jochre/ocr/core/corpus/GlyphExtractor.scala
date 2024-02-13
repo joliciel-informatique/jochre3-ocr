@@ -1,5 +1,6 @@
 package com.joliciel.jochre.ocr.core.corpus
 
+import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
 import com.joliciel.jochre.ocr.core.model.Page
 import com.joliciel.jochre.ocr.core.utils.{FileUtils, ImageUtils, StringUtils}
 import org.bytedeco.opencv.opencv_core.Mat
@@ -10,7 +11,7 @@ import java.io.{File, FileOutputStream, OutputStreamWriter}
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 
-case class WordExtractor(
+case class GlyphExtractor(
   corpusDir: Path,
   outDir: Path,
   debugDir: Option[Path] = None,
@@ -30,8 +31,20 @@ case class WordExtractor(
   def annotateOneFile(mat: Mat, alto: Page, parentDir: File, baseName: String, index: Int): Unit = {
     debugDir.foreach(debugDir => saveImage(mat, debugDir.resolve(f"${baseName}_rotated.png")))
 
-    alto.combinedWords.zipWithIndex.map { case (word, i) =>
-      log.debug(f"Next word: $word")
+    val imageFileName = f"${baseName}.${extension}"
+
+    val imageTrainingDir = new File(parentDir, f"images/train")
+    imageTrainingDir.mkdirs()
+    val imageTrainingFile = new File(imageTrainingDir, imageFileName)
+    saveImage(mat, imageTrainingFile.toPath)
+
+    val imageValDir = new File(parentDir, f"images/val")
+    imageValDir.mkdirs()
+    val imageValFile = new File(imageValDir, imageFileName)
+    saveImage(mat, imageValFile.toPath)
+
+    alto.combinedWords.flatMap(_.glyphs).zipWithIndex.map { case (glyph, i) =>
+      log.debug(f"Next glyph: $glyph")
 
       val trainOrVal = validationOneEvery.map { validationOneEvery =>
         if ((i + 1) % validationOneEvery == 0) {
@@ -41,30 +54,32 @@ case class WordExtractor(
         }
       }.getOrElse("train")
 
-      val cropped = crop(mat, word.rectangle)
-      val content = textSimplifier.simplify(word.content)
+      val height = (glyph.rectangle.height * 1.1).toInt
+      val width = (glyph.rectangle.width * 1.1).toInt
+      val adjustedWidth = if (width < height) { height } else { width }
+      val leftMargin = (adjustedWidth - glyph.rectangle.width) / 2
+      val topMargin = (height - glyph.rectangle.height) / 2
+      val cropRectangle = Rectangle("", glyph.rectangle.left - leftMargin, glyph.rectangle.top - topMargin, adjustedWidth, height)
+
+      val rect = cropRectangle.intersection(alto.rectangle).get
+
+      val content = textSimplifier.simplify(glyph.content)
 
       val contentChars = stringToChars(content).toSet
       alphabet = alphabet.union(contentChars)
 
-      val fileNameBase = f"${baseName}_${"%04d".format(i)}"
-      val imageFileName = f"${fileNameBase}.${extension}"
-
       val labelDir = new File(parentDir, f"labels/${trainOrVal}")
       labelDir.mkdirs()
-      val textFile = new File(labelDir, "word-to-text.txt")
+      val textFile = new File(labelDir, "glyph-to-text.txt")
       val writer = new OutputStreamWriter(new FileOutputStream(textFile, true), StandardCharsets.UTF_8)
       try {
-        writer.write(f"${imageFileName}\t${content}\n")
+        writer.write(f"${imageFileName}\t${content}\t${rect.left},${rect.top},${rect.width},${rect.height}\n")
         writer.flush()
       } finally {
         writer.close()
       }
 
-      val imageDir = new File(parentDir, f"images/${trainOrVal}")
-      imageDir.mkdirs()
-      val imageFile = new File(imageDir, imageFileName)
-      saveImage(cropped, imageFile.toPath)
+
     }
   }
 
@@ -72,10 +87,10 @@ case class WordExtractor(
   }
 }
 
-object WordExtractor {
+object GlyphExtractor {
   private val log = LoggerFactory.getLogger(getClass)
 
-  class WordExtractorCLI(arguments: Seq[String]) extends ScallopConf(arguments) {
+  class GlyphExtractorCLI(arguments: Seq[String]) extends ScallopConf(arguments) {
     val corpusDir: ScallopOption[String] = opt[String](required = true, descr = "The directory containing original images and labels in Alto4 format")
     val outDir: ScallopOption[String] = opt[String](required = true, descr = "The directory where the processed images will be placed")
     val debugDir: ScallopOption[String] = opt[String](required = false, descr = "A directory where to write debug images")
@@ -88,7 +103,7 @@ object WordExtractor {
   }
 
   def execute(args: Array[String], textSimplifier: TextSimplifier = TextSimplifier.default, altoFinder: AltoFinder = AltoFinder.default): Unit = {
-    val options = new WordExtractorCLI(args.toIndexedSeq)
+    val options = new GlyphExtractorCLI(args.toIndexedSeq)
 
     val corpusDir = new File(options.corpusDir())
     val corpusPath = corpusDir.toPath
@@ -100,7 +115,7 @@ object WordExtractor {
     val extension = options.extension()
     val validationOneEvery = options.validationOneEvery.toOption
 
-    val extractor = WordExtractor(corpusPath, outPath, debugDir, options.maxFiles.toOption, extension, fileList, validationOneEvery,
+    val extractor = GlyphExtractor(corpusPath, outPath, debugDir, options.maxFiles.toOption, extension, fileList, validationOneEvery,
       textSimplifier, altoFinder=altoFinder)
     extractor.annotate()
 

@@ -42,7 +42,7 @@ private[text] class BlockTextGuesser(imageToAltoConverter: ImageToAltoConverter)
           // Analyze OCR on each text segment and extract the analyzed blocks
           log.debug(f"About to perform OCR analysis for text segment $block")
           debugLocation.foreach { outputLocation =>
-            saveImage(fromBufferedImage(subImage), outputLocation.resolve(f"_textblock$i.png").toString)
+            saveImage(fromBufferedImage(subImage), outputLocation.resolve(f"_textblock$i.png"))
           }
 
           imageToAltoConverter.analyze(subImage).map { altoXml =>

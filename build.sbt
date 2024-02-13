@@ -108,12 +108,17 @@ lazy val root =
     .aggregate(core, yiddish, api)
     .enablePlugins(DockerForwardPlugin)
 
+val jpegDeps = Seq(
+  "com.twelvemonkeys.imageio" % "imageio-jpeg" % "3.10.1",
+  "com.twelvemonkeys.imageio" % "imageio-tiff" % "3.10.1",
+)
+
 lazy val core = project
   .in(file("modules/core"))
   .settings(projectSettings: _*)
   .settings(
     name := "jochre3-ocr-core",
-    libraryDependencies ++= commonDeps ++ httpClientDeps ++ Seq(
+    libraryDependencies ++= jpegDeps ++ commonDeps ++ httpClientDeps ++ Seq(
       "org.rogach" %% "scallop" % scallopVersion,
       "org.bytedeco" % "javacv-platform" % javaCVVersion,
       "org.scala-lang.modules" %% "scala-xml" % scalaXmlVersion,
@@ -136,7 +141,10 @@ lazy val yiddish = project
     libraryDependencies ++= commonDeps ++ Seq(
       "com.joliciel.ljtrad" % "yivo-transcriber" % yivoTranscriberVersion,
       "com.joliciel.jochre" % "jochre-yiddish" % jochre2Version excludeAll(
-          ExclusionRule(organization = "org.apache.pdfbox", name = "pdfbox-app")
+          ExclusionRule(organization = "org.apache.pdfbox", name = "pdfbox-app"),
+          ExclusionRule(organization = "org.apache.pdfbox", name = "jbig2-imageio"),
+          ExclusionRule(organization = "de.digitalcollections.imageio", name = "imageio-openjpeg"),
+          ExclusionRule(organization = "de.digitalcollections.imageio", name = "imageio-turbojpeg"),
         )
     ),
     //Compile / packageDoc / mappings := Seq(),
