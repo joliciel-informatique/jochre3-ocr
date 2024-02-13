@@ -3,11 +3,13 @@ package com.joliciel.jochre.ocr.yiddish
 import com.joliciel.jochre.ocr.core.alto.AltoTransformer
 import com.joliciel.jochre.ocr.core.segmentation.{FullYoloSegmenterService, SegmenterService, YoloPredictorService}
 import com.joliciel.jochre.ocr.core.text.TextGuesserService
-import com.joliciel.jochre.ocr.core.{AbstractJochre, Jochre}
+import com.joliciel.jochre.ocr.core.{AbstractJochre, Jochre, JochreAppBase}
 import sttp.client3.httpclient.zio.{HttpClientZioBackend, SttpClient}
 import zio._
 
-object JochreYiddishWithYoloSegmentation extends ZIOAppDefault with JochreYiddishBase {
+object JochreYiddishWithYoloSegmentation extends ZIOAppDefault with JochreAppBase {
+  override val textSimplifier = Some(YiddishTextSimpifier(replaceNotYiddishAlphabets = false))
+
   private case class JochreYiddishImpl(segmenterService: SegmenterService, textGuesserService: TextGuesserService) extends AbstractJochre {
     override val altoTransformer: AltoTransformer = YiddishAltoTransformer()
   }

@@ -29,7 +29,7 @@ trait CorpusAnnotator extends FileUtils with ImageUtils {
       val corpusFiles = recursiveListImages(corpusDir.toFile)
 
       val locations = corpusFiles
-        .filter(location => fileList.map(_.contains(Path.of(location).getFileName.toString)).getOrElse(true))
+        .filter(location => fileList.map(_.contains(location.getName)).getOrElse(true))
         .take(maxFiles.getOrElse(corpusFiles.size))
 
       val initialTransforms = List[AnnotatedImageTransformer[_]](
@@ -38,8 +38,8 @@ trait CorpusAnnotator extends FileUtils with ImageUtils {
 
       locations.zipWithIndex.map { case (location, i) =>
         log.info(f"About to annotate ${location.getPath}")
-        val mat = loadImage(location.getPath)
-        val alto = altoFinder.getAltoPage(Path.of(location))
+        val mat = loadImage(location.toPath)
+        val alto = altoFinder.getAltoPage(location.toPath)
 
         val (transformedMat, transformedAlto) = initialTransforms.foldLeft(mat -> alto) {
           case ((mat, alto), transformer) =>
@@ -47,7 +47,7 @@ trait CorpusAnnotator extends FileUtils with ImageUtils {
             newMat -> newAlto
         }
 
-        val filePath = Path.of(location)
+        val filePath = location.toPath
         val fileName = if (keepStructure) {
           corpusDir.relativize(filePath).toString
         } else {

@@ -229,7 +229,11 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
       // Otherwise, we take the intersection of the sets until we reach 1 or 0.
       if (log.isDebugEnabled) log.debug(f"Trying to find textBlock for $itemType ${rect.rectangle.coordinates}")
 
-      val candidates = getIntersectingBlocks(rect, textBlocksByTop, textBlocksByLeft, textBlocksByBottom, textBlocksByRight)
+      val candidates = if (textBlocks.size > 0) {
+        getIntersectingBlocks(rect, textBlocksByTop, textBlocksByLeft, textBlocksByBottom, textBlocksByRight)
+      } else {
+        Set.empty
+      }
 
       if (log.isDebugEnabled) {
         log.debug(f"Final candidates: ${candidates.map(_.rectangle.coordinates).mkString(", ")}")

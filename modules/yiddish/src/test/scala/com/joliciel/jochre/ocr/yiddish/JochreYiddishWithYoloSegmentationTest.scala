@@ -21,16 +21,12 @@ object JochreYiddishWithYoloSegmentationTest extends JUnitRunnableSpec with XmlI
       val image = ImageIO.read(inputStream)
       for {
         jochreYiddish <- ZIO.service[Jochre]
-        alto <- jochreYiddish.processImage(image, "nybc200089_0011.png")
+        page <- jochreYiddish.processImage(image, "nybc200089_0011.png")
       } yield {
         if (log.isDebugEnabled) {
           val prettyPrinter = new PrettyPrinter(80, 2)
-          log.debug(prettyPrinter.format(alto))
+          log.debug(prettyPrinter.format(page.toXml()))
         }
-        val altoFileName = (alto \\ "fileName").head.textContent
-        assertTrue(altoFileName == "nybc200089_0011.png")
-
-        val page = Page.fromXML(alto)
         val testRectangle = Rectangle("", 732, 1638, 2319, 240)
         val myTextBlock = page.textBlocks.filter(_.rectangle.percentageIntersection(testRectangle) > 0.75).headOption
 

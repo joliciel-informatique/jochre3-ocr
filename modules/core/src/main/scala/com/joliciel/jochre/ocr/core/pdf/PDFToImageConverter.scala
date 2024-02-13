@@ -9,6 +9,9 @@ import zio.{Task, ZIO}
 
 import java.awt.image.BufferedImage
 import java.io.InputStream
+import javax.imageio.{ImageIO, ImageReader}
+
+import scala.jdk.CollectionConverters._
 
 case class PDFToImageConverter(source: () => InputStream, startPage: Option[Int] = None, endPage: Option[Int] = None, dpi: Option[Int] = None) {
   private val log = LoggerFactory.getLogger(getClass)
@@ -47,5 +50,13 @@ case class PDFToImageConverter(source: () => InputStream, startPage: Option[Int]
             convert(image, i)
           }
     }
+  }
+}
+
+object PDFToImageConverter {
+  def main(args: Array[String]): Unit = {
+    val readers: Iterator[ImageReader] = ImageIO.getImageReadersByFormatName("JPEG").asScala
+
+    readers.foreach(r => println(f"$r"))
   }
 }

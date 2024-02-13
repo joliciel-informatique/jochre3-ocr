@@ -11,15 +11,15 @@ import org.bytedeco.opencv.opencv_core.{Mat, MatVector, RotatedRect}
  */
 class BoxDetector(thresh: Int = 240, override val outputLocation: Option[OutputLocation] = None) extends ImageLabelDetector[Rectangle] with ImageUtils {
   def detect(image: Mat, label: String): Seq[Rectangle] = {
-    outputLocation.foreach(outputLocation => saveImage(image, outputLocation.resolve(f"_${label}_box0_image.png").toString))
+    outputLocation.foreach(outputLocation => saveImage(image, outputLocation.resolve(f"_${label}_box0_image.png")))
 
     val gray = new Mat()
     threshold(image, gray, thresh, 255, THRESH_BINARY)
-    outputLocation.foreach(outputLocation => saveImage(gray, outputLocation.resolve(f"_${label}_box1_thresh.png").toString))
+    outputLocation.foreach(outputLocation => saveImage(gray, outputLocation.resolve(f"_${label}_box1_thresh.png")))
 
     val canny = new Mat()
     Canny(gray, canny, 175.0, 200.0, 3, true)
-    outputLocation.foreach(outputLocation => saveImage(canny, outputLocation.resolve(f"_${label}_box4_canny.png").toString))
+    outputLocation.foreach(outputLocation => saveImage(canny, outputLocation.resolve(f"_${label}_box4_canny.png")))
 
     val contours: MatVector = new MatVector
     val mode = opencv_imgproc.CV_RETR_EXTERNAL

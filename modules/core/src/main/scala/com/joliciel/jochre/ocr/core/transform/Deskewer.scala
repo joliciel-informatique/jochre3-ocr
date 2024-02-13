@@ -31,7 +31,7 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) 
       this.unrotate(_, mat)).getOrElse(mat)
 
     val baseName = FileUtils.removeFileExtension(new File(path).getName)
-    outDir.foreach(outDir => saveImage(rotated, Paths.get(outDir.toString, baseName + "_deskewered.jpg").toString))
+    outDir.foreach(outDir => saveImage(rotated, outDir.resolve(f"${baseName}_deskewered.jpg")))
     rotated
   }
 
@@ -49,12 +49,12 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) 
     val blur = new Mat()
     GaussianBlur(resized, blur, new Size(9, 9), 0)
 
-    debugDir.foreach(debugDir => saveImage(blur, Paths.get(debugDir.toString, baseName + "_deskewer1_blur.jpg").toString))
+    debugDir.foreach(debugDir => saveImage(blur, debugDir.resolve(f"${baseName}_deskewer1_blur.jpg")))
 
     val thresh = new Mat()
     threshold(blur, thresh, 0, 255, THRESH_BINARY_INV + THRESH_OTSU)
 
-    debugDir.foreach(debugDir => saveImage(thresh, Paths.get(debugDir.toString, baseName + "_deskewer2_threshold.jpg").toString))
+    debugDir.foreach(debugDir => saveImage(thresh, debugDir.resolve(f"${baseName}__deskewer2_threshold.jpg")))
 
     // thresh = cv2.threshold (blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
 
@@ -65,7 +65,7 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) 
     val dilated = new Mat()
     dilate(thresh, dilated, kernel, new Point(-1, -1), 3, BORDER_CONSTANT, new Scalar(morphologyDefaultBorderValue))
 
-    debugDir.foreach(debugDir => saveImage(dilated, Paths.get(debugDir.toString, baseName + "_deskewer3_dilated.jpg").toString))
+    debugDir.foreach(debugDir => saveImage(dilated, Paths.get(debugDir.toString, baseName + "_deskewer3_dilated.jpg")))
 
     // Find all contours
     val mode = opencv_imgproc.RETR_LIST
@@ -153,7 +153,7 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) 
           isInlier
       }
 
-      debugDir.foreach(debugDir => saveImage(colored, Paths.get(debugDir.toString, baseName + "_deskewer4_rectangle.jpg").toString))
+      debugDir.foreach(debugDir => saveImage(colored, debugDir.resolve(f"${baseName}__deskewer4_rectangle.jpg")))
 
       val meanAngle = inliers.map(_.correctedAngle).sum / inliers.size
       log.info(f"Deskewed $path, meanAngle: $meanAngle")
@@ -191,7 +191,7 @@ object Deskewer extends ImageUtils {
 
     files.map { file =>
       log.debug(f"Processing ${file.getPath}")
-      val mat = loadImage(file.getPath)
+      val mat = loadImage(file.toPath)
 
       val transformed: Mat = transforms.foldLeft(mat) {
         case (mat, transformer) =>
@@ -200,7 +200,7 @@ object Deskewer extends ImageUtils {
 
       val calculated = deskewer.getSkewAngle(transformed, Some(file.getPath))
       val altoFinder = AltoFinder.default
-      val alto = altoFinder.getAltoPage(Path.of(file))
+      val alto = altoFinder.getAltoPage(file.toPath)
       val expected = alto.rotation
       val calculatedOrZero = calculated.getOrElse(0.0)
 

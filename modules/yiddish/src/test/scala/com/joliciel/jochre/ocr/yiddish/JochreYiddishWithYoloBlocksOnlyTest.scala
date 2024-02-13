@@ -19,18 +19,16 @@ object JochreYiddishWithYoloBlocksOnlyTest extends JUnitRunnableSpec with XmlImp
       val image = ImageIO.read(inputStream)
       for {
         jochreYiddish <- ZIO.service[Jochre]
-        alto <- jochreYiddish.processImage(image, "yiddish_sample.jpg")
+        page <- jochreYiddish.processImage(image, "yiddish_sample.jpg")
       } yield {
-        val altoFileName = (alto \\ "fileName").head.textContent
-        assertTrue(altoFileName == "yiddish_sample.jpg")
+        if (log.isDebugEnabled) {
+          val prettyPrinter = new PrettyPrinter(80, 2)
+          log.debug(prettyPrinter.format(page.toXml()))
+        }
 
-        val content = (alto \\ "String").map(node => node \@ "CONTENT").mkString(" ")
-        assertTrue(content == "מאַמע - לשון")
+        assertTrue(page.content == "מאַמע - לשון")
 
-        val prettyPrinter = new PrettyPrinter(80, 2)
-        log.debug(prettyPrinter.format(alto))
-
-        val wcs = (alto \\ "String").map(node => node \@ "WC").map(_.toDouble)
+        val wcs = page.allWords.map(_.confidence)
         assertTrue(wcs.forall(_>0.0))
       }
     }

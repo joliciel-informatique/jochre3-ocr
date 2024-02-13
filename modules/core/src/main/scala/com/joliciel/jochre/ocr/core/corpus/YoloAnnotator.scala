@@ -1,7 +1,6 @@
 package com.joliciel.jochre.ocr.core.corpus
 
 import com.joliciel.jochre.ocr.core.corpus.YoloAnnotator.YoloTask
-import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
 import com.joliciel.jochre.ocr.core.model.Page
 import com.joliciel.jochre.ocr.core.utils.{FileUtils, ImageUtils}
 import com.typesafe.config.ConfigFactory
@@ -155,7 +154,7 @@ case class YoloAnnotator(
     val imageFile = new File(parentDir, f"images/${trainOrVal}/${imageFileName}")
     imageFile.getParentFile.mkdirs()
     log.info(f"Saving image to ${imageFile.getPath}")
-    saveImage(croppedMat, imageFile.getPath)
+    saveImage(croppedMat, imageFile.toPath)
 
     debugDir.foreach{ debugDir =>
       val imageFileName = f"${baseName}-annotation.${extension}"

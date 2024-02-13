@@ -7,7 +7,7 @@ import java.io.File
 package object analysis {
   case class FileForm(image: Part[File], start: Option[Int] = None, end: Option[Int] = None, dpi: Option[Int] = None)
 
-  case class AnalyseURLRequest(url: String, fileName: Option[String])
+  case class AnalyseURLRequest(url: String, fileName: Option[String], start: Option[Int] = None, end: Option[Int] = None, dpi: Option[Int] = None)
 
   object AnalysisHelper {
     val analyzeURLRequestExample: AnalyseURLRequest = AnalyseURLRequest(
