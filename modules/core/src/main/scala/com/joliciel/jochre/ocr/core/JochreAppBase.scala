@@ -70,7 +70,7 @@ trait JochreAppBase {
         }.getOrElse {
           if (input.toFile.isDirectory) {
             jochre.processDirectory(input, outputFormats, Some(outDir), debugDir, maxImages, testRectangle)
-          } else if (input.endsWith(".pdf")) {
+          } else if (input.toFile.getName.endsWith(".pdf")) {
             jochre.processPdf(input, None, outputFormats, Some(outDir), debugDir, startPage, endPage, dpi, testRectangle)
           } else {
             // Assume image file
