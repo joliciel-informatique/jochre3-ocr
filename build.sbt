@@ -20,6 +20,9 @@ val scallopVersion = "5.0.0"
 val apacheCommonsTextVersion = "1.11.0"
 val apacheCommonsMathVersion = "3.6.1"
 val apachePdfBoxVersion = "3.0.1"
+val twelveMonkeysVersion = "3.10.1"
+val djlVersion = "0.26.0"
+val pytorchVersion = "2.1.1"
 
 lazy val jochre3OCRVersion = sys.env.get("JOCHRE3_OCR_VERSION")
   .getOrElse{
@@ -108,9 +111,20 @@ lazy val root =
     .aggregate(core, yiddish, api)
     .enablePlugins(DockerForwardPlugin)
 
+val learningDeps = Seq(
+  "ai.djl" % "api" % djlVersion,
+  "ai.djl" % "bom" % djlVersion,
+  "ai.djl" % "basicdataset" % djlVersion,
+  "ai.djl" % "model-zoo" % djlVersion,
+  "ai.djl.pytorch" % "pytorch-engine" % djlVersion,
+  "ai.djl.pytorch" % "pytorch-model-zoo" % djlVersion,
+  "ai.djl.pytorch" % "pytorch-native-cpu" % pytorchVersion,
+  "ai.djl.pytorch" % "pytorch-jni" % f"$pytorchVersion-$djlVersion"
+)
+
 val jpegDeps = Seq(
-  "com.twelvemonkeys.imageio" % "imageio-jpeg" % "3.10.1",
-  "com.twelvemonkeys.imageio" % "imageio-tiff" % "3.10.1",
+  "com.twelvemonkeys.imageio" % "imageio-jpeg" % twelveMonkeysVersion,
+  "com.twelvemonkeys.imageio" % "imageio-tiff" % twelveMonkeysVersion,
 )
 
 lazy val core = project
@@ -126,7 +140,7 @@ lazy val core = project
       "org.apache.commons" % "commons-math3" % apacheCommonsMathVersion,
       "org.apache.pdfbox" % "pdfbox" % apachePdfBoxVersion,
       "org.apache.pdfbox" % "pdfbox-io" % apachePdfBoxVersion,
-    ),
+    ) ++ learningDeps,
     //Compile / packageDoc / mappings := Seq(),
     Compile / packageDoc / publishArtifact := true,
     fork := true,
