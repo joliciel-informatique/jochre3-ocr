@@ -42,6 +42,8 @@ case class Page(
 
   lazy val allWords: Seq[Word] = allTextLines.flatMap(_.words)
 
+  lazy val allGlyphs: Seq[Glyph] = allWords.flatMap(_.glyphs)
+
   lazy val combinedWords: Seq[Word] = blocks.flatMap{
     case textBlock: TextBlock => textBlock.combinedWords
     case composedBlock: ComposedBlock => composedBlock.combinedWords

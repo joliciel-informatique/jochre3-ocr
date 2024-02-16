@@ -42,7 +42,7 @@ trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImpli
 
   private val transforms = List(
     // change to grayscale
-    Some(new GrayscaleTransform()),
+    Some(GrayscaleTransform),
 
     // Increase contrast and brightness
     Option.when(applyContrastAndBrightness)(new BrightnessAndContrastTransform(contrast, brightness)),
