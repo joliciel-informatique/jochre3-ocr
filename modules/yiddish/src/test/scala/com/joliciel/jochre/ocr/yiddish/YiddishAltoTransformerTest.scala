@@ -6,9 +6,10 @@ import org.scalatest.matchers.should.Matchers
 
 class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
   private val yiddishConfig: YiddishConfig = YiddishConfig.fromConfig
+  val yiddishAltoProcessor = YiddishAltoTransformer(yiddishConfig)
 
   "getAlternatives" should "correctly add alternatives" in {
-    val yiddishAltoProcessor = YiddishAltoTransformer(yiddishConfig, textSimplifier = None)
+
     yiddishAltoProcessor.getAlternatives("מעהר") shouldEqual Set(
       SpellingAlternative(YiddishAltoTransformer.Purpose.YIVO.entryName, "מער"),
       SpellingAlternative(YiddishAltoTransformer.Purpose.Roman.entryName, "mer")
@@ -21,15 +22,12 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
   }
 
   it should "only add a YIVO alternative if it's different from the original" in {
-    val yiddishAltoProcessor = YiddishAltoTransformer(yiddishConfig, textSimplifier = None)
     yiddishAltoProcessor.getAlternatives("מער") shouldEqual Set(
       SpellingAlternative(YiddishAltoTransformer.Purpose.Roman.entryName, "mer")
     )
   }
 
   it should "find first real word if impossible shtumer alef" in {
-    val yiddishAltoProcessor = YiddishAltoTransformer(yiddishConfig, textSimplifier = None)
-
     yiddishAltoProcessor.getAlternatives("אָװנט") shouldEqual Set(
       SpellingAlternative(YiddishAltoTransformer.Purpose.Roman.entryName, "ovnt")
     )
@@ -64,8 +62,6 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
   }
 
   "process" should "keep spaces" in {
-    val yiddishAltoProcessor = YiddishAltoTransformer(yiddishConfig, textSimplifier = None)
-
     val alto = <Page>
       <PrintSpace>
         <TextBlock>
@@ -86,7 +82,6 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
   }
 
   it should "reverse numbers" in {
-    val yiddishAltoProcessor = YiddishAltoTransformer(yiddishConfig, textSimplifier = None)
     val alto = <Page>
       <PrintSpace>
         <TextBlock>
@@ -139,13 +134,12 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
   }
 
   it should "split on punctuation" in {
-    val yiddishAltoProcessor = YiddishAltoTransformer(yiddishConfig, textSimplifier = None)
     val alto = <Page>
       <PrintSpace>
         <TextBlock>
           <TextLine>
-            <String HPOS="10" VPOS="10" WIDTH="80" HEIGHT="80" CONTENT="-a,.bc." WC="0.8">
-              <Glyph HPOS="10" VPOS="10" WIDTH="10" HEIGHT="10" CONTENT="-" GC="0.1"/>
+            <String HPOS="10" VPOS="10" WIDTH="80" HEIGHT="80" CONTENT=";a,.bc." WC="0.8">
+              <Glyph HPOS="10" VPOS="10" WIDTH="10" HEIGHT="10" CONTENT=";" GC="0.1"/>
               <Glyph HPOS="20" VPOS="20" WIDTH="10" HEIGHT="10" CONTENT="a" GC="0.2"/>
               <Glyph HPOS="30" VPOS="30" WIDTH="10" HEIGHT="10" CONTENT="," GC="0.3"/>
               <Glyph HPOS="40" VPOS="40" WIDTH="10" HEIGHT="10" CONTENT="." GC="0.4"/>
@@ -165,7 +159,7 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
       <PrintSpace>
         <TextBlock>
           <TextLine>
-            <String HPOS="10" VPOS="10" WIDTH="10" HEIGHT="10" CONTENT="-" WC="0.1"></String>
+            <String HPOS="10" VPOS="10" WIDTH="10" HEIGHT="10" CONTENT=";" WC="0.1"></String>
             <String HPOS="20" VPOS="20" WIDTH="10" HEIGHT="10" CONTENT="a" WC="0.8"></String>
             <String HPOS="30" VPOS="30" WIDTH="20" HEIGHT="20" CONTENT=",." WC="0.35"></String>
             <String HPOS="50" VPOS="50" WIDTH="20" HEIGHT="20" CONTENT="bc" WC="0.8"></String>
@@ -181,8 +175,6 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
   }
 
   it should "correctly remove non-abbreviation apostrophes from words" in {
-    val yiddishAltoProcessor = YiddishAltoTransformer(yiddishConfig, textSimplifier = None)
-
     val alto = {
       <Page>
         <PrintSpace>
@@ -232,8 +224,10 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
               <String HPOS="1052" VPOS="2993" WIDTH="136" HEIGHT="117" CONTENT="נאָך" WC="0.87">
                 <ALTERNATIVE PURPOSE="Roman">nokh</ALTERNATIVE>
               </String>
-              <String HPOS="1020" VPOS="2993" WIDTH="32" HEIGHT="117" CONTENT="-" WC="0.97"></String>
-              <String HPOS="658" VPOS="2992" WIDTH="362" HEIGHT="118" CONTENT="פּסח'דיגען" WC="0.87">
+              <String HPOS="1020" VPOS="2993" WIDTH="32" HEIGHT="117" CONTENT="־" WC="0.97">
+                <ALTERNATIVE PURPOSE="Roman">-</ALTERNATIVE>
+              </String>
+              <String HPOS="658" VPOS="2992" WIDTH="362" HEIGHT="118" CONTENT="פּסח’דיגען" WC="0.87">
                 <ALTERNATIVE PURPOSE="Roman">peysekhdikn</ALTERNATIVE>
                 <ALTERNATIVE PURPOSE="YIVO">פּסחדיקן</ALTERNATIVE>
               </String>

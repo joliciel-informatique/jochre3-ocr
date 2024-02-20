@@ -3,15 +3,16 @@ package com.joliciel.jochre.ocr.yiddish
 import com.joliciel.jochre.ocr.core.alto.AltoTransformer
 import com.joliciel.jochre.ocr.core.segmentation.{FullYoloSegmenterService, SegmenterService, YoloPredictorService}
 import com.joliciel.jochre.ocr.core.text.TextGuesserService
-import com.joliciel.jochre.ocr.core.{AbstractJochre, Jochre, JochreAppBase}
+import com.joliciel.jochre.ocr.core.{AbstractJochre, Jochre, JochreAppBase, JochreCLI}
 import sttp.client3.httpclient.zio.{HttpClientZioBackend, SttpClient}
 import zio._
 
 object JochreYiddishWithYoloSegmentation extends ZIOAppDefault with JochreAppBase {
   override val textSimplifier = Some(YiddishTextSimpifier(replaceNotYiddishAlphabets = false))
+  val yiddishConfig = YiddishConfig.fromConfig
 
   private case class JochreYiddishImpl(segmenterService: SegmenterService, textGuesserService: TextGuesserService) extends AbstractJochre {
-    override val altoTransformer: AltoTransformer = YiddishAltoTransformer()
+    override val altoTransformer: AltoTransformer = YiddishAltoTransformer(yiddishConfig)
   }
 
   private val sttpClient: ZLayer[Any, Throwable, SttpClient] = HttpClientZioBackend.layer()
@@ -33,7 +34,8 @@ object JochreYiddishWithYoloSegmentation extends ZIOAppDefault with JochreAppBas
   override def run = {
     for {
       args <- getArgs
-      result <- app(args).provide(
+      jochreCLI <- ZIO.attempt(new JochreCLI(args))
+      result <- app(jochreCLI).provide(
         sttpClient,
         yoloPredictorService,
         segmenterService,

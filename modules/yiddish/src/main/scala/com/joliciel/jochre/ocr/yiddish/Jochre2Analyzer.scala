@@ -17,7 +17,7 @@ import scala.xml.{Elem, XML}
 object Jochre2Analyzer extends ImageToAltoConverter {
   private val log = LoggerFactory.getLogger(getClass)
 
-  private val yiddishConfig = ConfigFactory.load().getConfig("jochre.ocr.yiddish")
+  private val yiddishConfig = ConfigFactory.load().getConfig("jochre.ocr.yiddish.jochre2")
   private val lexiconPath = yiddishConfig.getString("lexicon-path")
   private val letterModelPath = yiddishConfig.getString("letter-model-path")
 

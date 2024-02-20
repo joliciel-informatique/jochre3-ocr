@@ -11,7 +11,6 @@ import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
 import com.joliciel.jochre.ocr.core.utils.{FileUtils, ImageUtils}
 import org.bytedeco.opencv.opencv_core.Mat
 import org.slf4j.LoggerFactory
-import zio.{Task, ZIO, ZLayer}
 
 import java.awt.image.BufferedImage
 import java.nio.file.Path
