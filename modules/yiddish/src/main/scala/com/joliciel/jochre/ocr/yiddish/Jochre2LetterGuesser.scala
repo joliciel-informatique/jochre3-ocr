@@ -33,7 +33,7 @@ private object Jochre2LetterGuesserServiceImpl extends TextGuesserService {
 case class Jochre2LetterGuesser() extends TextGuesser with ImageUtils {
   private val log = LoggerFactory.getLogger(getClass)
 
-  private val yiddishConfig = ConfigFactory.load().getConfig("jochre.ocr.yiddish")
+  private val yiddishConfig = ConfigFactory.load().getConfig("jochre.ocr.yiddish.jochre2")
   private val lexiconPath = yiddishConfig.getString("lexicon-path")
   private val letterModelPath = yiddishConfig.getString("letter-model-path")
 

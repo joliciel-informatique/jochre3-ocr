@@ -1,40 +1,30 @@
 package com.joliciel.jochre.ocr.yiddish
 
-import com.joliciel.jochre.lexicon.{Lexicon, TextFileLexicon}
 import com.joliciel.jochre.ocr.core.alto.AltoTransformer
 import com.joliciel.jochre.ocr.core.corpus.TextSimplifier
+import com.joliciel.jochre.ocr.core.lexicon.Lexicon
 import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
 import com.joliciel.jochre.ocr.core.model.{AltoElement, Glyph, Hyphen, SpellingAlternative, TextLine, Word}
 import com.joliciel.jochre.ocr.core.utils.{StringUtils, XmlImplicits}
 import com.joliciel.jochre.ocr.yiddish.YiddishAltoTransformer.{Purpose, punctuationAndNotRegex}
+import com.joliciel.jochre.ocr.yiddish.lexicon.YivoLexicon
 import com.joliciel.yivoTranscriber.YivoTranscriber
 import enumeratum._
 
-import java.io.FileInputStream
-import java.util.zip.ZipInputStream
-import scala.util.Using
-
-case class YiddishAltoTransformer(yiddishConfig: YiddishConfig, override val textSimplifier: Option[TextSimplifier] = Some(YiddishTextSimpifier(replaceNotYiddishAlphabets = false))) extends AltoTransformer with XmlImplicits {
-  private val yivoTranscriber = new YivoTranscriber()
-  private val lexicon: Lexicon = {
-    Using(new ZipInputStream(new FileInputStream(yiddishConfig.lexiconPath))) { zis =>
-      TextFileLexicon.deserialize(zis)
-    }
-  }.get
-
+case class YiddishAltoTransformer(yiddishConfig: YiddishConfig, lexicon: YivoLexicon, override val textSimplifier: Option[TextSimplifier] = Some(YiddishTextSimpifier(replaceNotYiddishAlphabets = false))) extends AltoTransformer with XmlImplicits {
   // match an alef if:
   // - it's at the start of word and not immediately followed by a yud, vov, vov yud or tsvey yudn
   // - it's in the middle of word and not immediately followed by a komets or pasekh
   private val shtumerAlef = raw"^א(?![יוײײ ַָ])|(?<!^)א(?![ַָ])".r
 
-  private val nonAbbreviationApostropheRegex = raw"""(?U)['‛](\w\w+)""".r
+  private val nonAbbreviationApostropheRegex = raw"""(?U)['‛’](\w\w+)""".r
   override def getAlternatives(content: String): Set[SpellingAlternative] = {
     val contentWithoutNonAbbreviationApostrophes = if (punctuationAndNotRegex.findFirstIn(content).isDefined) {
       nonAbbreviationApostropheRegex.pattern.matcher(content).replaceAll("$1")
     } else {
       content
     }
-    val yivo = yivoTranscriber.transcribe(contentWithoutNonAbbreviationApostrophes, false)
+    val yivo = lexicon.toYivo(contentWithoutNonAbbreviationApostrophes)
 
     val fixedYivo = {
       if (lexicon.getFrequency(yivo)>0 && yivo!="א") {
@@ -58,7 +48,7 @@ case class YiddishAltoTransformer(yiddishConfig: YiddishConfig, override val tex
             Seq(sb.toString(), sb2.toString())
           }
         }.map(_.replace("A", "אַ").replace("O", "אָ"))
-        val realWord = newAlternatives.find(lexicon.getFrequency(_) > 0)
+        val realWord = newAlternatives.find(lexicon.getFrequency(_)>0)
         realWord.getOrElse(newAlternatives(0))
       }
     }
@@ -91,11 +81,11 @@ object YiddishAltoTransformer extends XmlImplicits with StringUtils {
 
   private val punctuationAndNotRegex = raw"(?U)\p{Punct}[^\p{Punct}]|[^\p{Punct}]\p{Punct}".r
   private val punctuationRegex = raw"(?U)\p{Punct}+".r
-  private val quoteRegex = raw"""(?U)[‛“'"]""".r
-  private val abbreviationRegex = raw"""(?U)\w+[‛“'"]\w+""".r
+  private val quoteRegex = raw"""(?U)[‛“'"’]""".r
+  private val abbreviationRegex = raw"""(?U)\w+[‛“'"’]\w+""".r
 
-  private val dotRegex = raw"""(?U)[\.]""".r
-  private val decimalNumberRegex = raw"""(?U)\d+[\.]\d+""".r
+  private val dotRegex = raw"""(?U)\.""".r
+  private val decimalNumberRegex = raw"""(?U)\d+\.\d+""".r
 
   def punctuationSplitRule(textSimplifier: Option[TextSimplifier] = None): PartialFunction[AltoElement, AltoElement] = {
     case textLine: TextLine =>
@@ -158,7 +148,6 @@ object YiddishAltoTransformer extends XmlImplicits with StringUtils {
 
 
   private def mean(seq: Seq[Double]): Double = if (seq.isEmpty) 0 else seq.sum / seq.size
-  private def roundAt(p: Int)(n: Double): Double = { val s = math pow (10, p); (math round n * s) / s }
 
   private def glyphsToWord(glyphs: Seq[Glyph], confidence: Double, textSimplifier: Option[TextSimplifier]): Word = {
     val content = glyphs.map(glyph => glyph.content).mkString("")
@@ -275,6 +264,8 @@ object YiddishAltoTransformer extends XmlImplicits with StringUtils {
       }
   }
 
-  val yiddishConfig: YiddishConfig = YiddishConfig.fromConfig
-  def apply(): YiddishAltoTransformer = YiddishAltoTransformer(yiddishConfig)
+  def apply(yiddishConfig: YiddishConfig): YiddishAltoTransformer = YiddishAltoTransformer(
+    yiddishConfig,
+    YivoLexicon.fromYiddishConfig(yiddishConfig),
+  )
 }

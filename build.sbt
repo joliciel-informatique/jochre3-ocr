@@ -78,14 +78,14 @@ val projectSettings = commonSettings ++ Seq(
 lazy val downloadZip = taskKey[Unit]("Download the zip files to resource directory")
 
 downloadZip := {
-  val lexiconPath = "modules/yiddish/resources/jochre-yiddish-lexicon-1.0.1.zip"
+  val lexiconPath = "modules/yiddish/resources/jochre2/jochre-yiddish-lexicon-1.0.1.zip"
   if(java.nio.file.Files.notExists(new File(lexiconPath).toPath())) {
     println(f"Path ${lexiconPath} does not exist, downloading...")
     url("https://github.com/urieli/jochre/releases/download/v2.3.5/jochre-yiddish-lexicon-1.0.1.zip") #> file(lexiconPath) !
   } else {
     println(f"Path ${lexiconPath} exists, no need to download.")
   }
-  val modelPath = "modules/yiddish/resources/yiddish_letter_model.zip"
+  val modelPath = "modules/yiddish/resources/jochre2/yiddish_letter_model.zip"
   if (java.nio.file.Files.notExists(new File(modelPath).toPath())) {
     println(f"Path ${modelPath} does not exist, downloading...")
     url("https://github.com/urieli/jochre/releases/download/v2.3.5/yiddish_letter_model.zip") #> file(modelPath) !
@@ -188,8 +188,8 @@ lazy val api = project
     Docker / version     := version.value,
     dockerExposedPorts := Seq(3434),
     dockerExposedVolumes := Seq("/opt/docker/index"),
-    Universal / mappings += file("modules/yiddish/resources/jochre-yiddish-lexicon-1.0.1.zip") -> "modules/yiddish/resources/jochre-yiddish-lexicon-1.0.1.zip",
-    Universal / mappings += file("modules/yiddish/resources/yiddish_letter_model.zip") -> "modules/yiddish/resources/yiddish_letter_model.zip",
+    Universal / mappings += file("modules/yiddish/resources/jochre2/jochre-yiddish-lexicon-1.0.1.zip") -> "modules/yiddish/resources/jochre2/jochre-yiddish-lexicon-1.0.1.zip",
+    Universal / mappings += file("modules/yiddish/resources/jochre2/yiddish_letter_model.zip") -> "modules/yiddish/resources/jochre2/yiddish_letter_model.zip",
     // Add docker commands before changing user
     Docker / dockerCommands := dockerCommands.value.flatMap {
       case Cmd("USER", args@_*) if args.contains("1001:0") => Seq(
