@@ -28,7 +28,7 @@ private[text] class UnsegmentedPageTextGuesser(imageToAltoConverter: ImageToAlto
     (for {
       alto <- imageToAltoConverter.analyze(image)
     } yield {
-      Page.fromXML(alto)
+      Page.fromXML(alto).withCleanIds
     }).catchSome {
       case _: AnalysisExceptionToIgnore =>
         ZIO.succeed(page)

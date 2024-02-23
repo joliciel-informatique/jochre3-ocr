@@ -6,9 +6,10 @@ import org.bytedeco.opencv.global.opencv_imgproc
 import org.bytedeco.opencv.global.opencv_imgproc.LINE_8
 import org.bytedeco.opencv.opencv_core.{AbstractScalar, Mat, Point}
 
+import java.util.UUID
 import scala.xml.{Elem, Node}
 
-case class Illustration(rectangle: Rectangle) extends Block {
+case class Illustration(rectangle: Rectangle, id: String = UUID.randomUUID().toString) extends Block {
   override def translate(xDiff: Int, yDiff: Int): Illustration =
     Illustration(rectangle.translate(xDiff, yDiff))
 
@@ -19,7 +20,7 @@ case class Illustration(rectangle: Rectangle) extends Block {
     rectangle = this.rectangle.rescale(scale)
   )
 
-  override def toXml(id: String): Elem =
+  override def toXml: Elem =
     <Illustration ID={id} HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString}>
     </Illustration>
 
@@ -38,6 +39,9 @@ case class Illustration(rectangle: Rectangle) extends Block {
 
 object Illustration {
   def fromXML(node: Node): Illustration = {
-    Illustration(Rectangle.fromXML(BlockType.Image.entryName, node))
+    val id = node \@ "ID"
+    val idOption = Option.when(id.nonEmpty)(id).getOrElse(UUID.randomUUID().toString)
+
+    Illustration(Rectangle.fromXML(BlockType.Image.entryName, node), id = idOption)
   }
 }

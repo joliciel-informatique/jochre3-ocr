@@ -40,12 +40,16 @@ object BlockOnlySegmenterTest extends JUnitRunnableSpec with ImageUtils {
         blockOnlySegmenter = new BlockOnlySegmenter(yoloPredictorService)
         result <- blockOnlySegmenter.segment(mat, fileName, outputLocation)
       } yield {
+        val blocks = result.blocks.map {
+          case textBlock: TextBlock => textBlock.copy(id = "")
+          case illustration: Illustration => illustration.copy(id = "")
+        }
         val expected = Seq(
-          TextBlock(Rectangle(BlockType.Paragraph.entryName, 60, 10, 100, 100), Seq.empty),
-          TextBlock(Rectangle(BlockType.TextBox.entryName, 10, 10, 50, 50), Seq.empty),
-          Illustration(Rectangle(BlockType.Image.entryName, 20, 120, 50, 50)),
+          TextBlock(Rectangle(BlockType.Paragraph.entryName, 60, 10, 100, 100), Seq.empty, id = ""),
+          TextBlock(Rectangle(BlockType.TextBox.entryName, 10, 10, 50, 50), Seq.empty, id = ""),
+          Illustration(Rectangle(BlockType.Image.entryName, 20, 120, 50, 50), id = ""),
         )
-        assertTrue(result.blocks==expected)
+        assertTrue(blocks==expected)
       }
     }
   )

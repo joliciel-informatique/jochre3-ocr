@@ -53,7 +53,7 @@ case class Jochre2LetterGuesser() extends TextGuesser with ImageUtils {
     val jochreSession = jochreYiddish.getJochreSession
     val originalImage = toBufferedImage(mat)
     val jochreImage = new SourceImage(fileName, originalImage, jochreSession)
-    jochreImage.setImageStatus(ImageStatus.AUTO_NEW);
+    jochreImage.setImageStatus(ImageStatus.AUTO_NEW)
     jochreImage.setWidth(mat.cols())
     jochreImage.setHeight(mat.rows())
 
@@ -78,16 +78,16 @@ case class Jochre2LetterGuesser() extends TextGuesser with ImageUtils {
             }
 
             // need to calculate actual shape left/top/right/bottom
-            val left = (0 until initialShape.getWidth).find(x => (0 until initialShape.getHeight).find(y => isPixelBlack(x,y)).isDefined).getOrElse(-1)
-            val top = (0 until initialShape.getHeight).find(y => (0 until initialShape.getWidth).find(x => isPixelBlack(x,y)).isDefined).getOrElse(-1)
-            val right = (0 until initialShape.getWidth).reverse.find(x => (0 until initialShape.getHeight).find(y => isPixelBlack(x,y)).isDefined).getOrElse(-1)
-            val bottom = (0 until initialShape.getHeight).reverse.find(y => (0 until initialShape.getWidth).find(x => isPixelBlack(x,y)).isDefined).getOrElse(-1)
+            val left = (0 until initialShape.getWidth).find(x => (0 until initialShape.getHeight).exists(y => isPixelBlack(x, y))).getOrElse(-1)
+            val top = (0 until initialShape.getHeight).find(y => (0 until initialShape.getWidth).exists(x => isPixelBlack(x, y))).getOrElse(-1)
+            val right = (0 until initialShape.getWidth).findLast(x => (0 until initialShape.getHeight).exists(y => isPixelBlack(x, y))).getOrElse(-1)
+            val bottom = (0 until initialShape.getHeight).findLast(y => (0 until initialShape.getWidth).exists(x => isPixelBlack(x, y))).getOrElse(-1)
 
             val shape = Option.when(right>=0)(new Shape(jochreImage, baseLeft+left, baseTop+top, baseLeft+right, baseTop+bottom, jochreSession))
             glyph -> shape
           }
 
-          val hasShapes = glyphToShape.find(_._2.isDefined).isDefined
+          val hasShapes = glyphToShape.exists(_._2.isDefined)
           val group = Option.when(hasShapes){
             val group = row.newGroup()
             glyphToShape.flatMap(_._2).foreach { shape =>
@@ -140,12 +140,11 @@ case class Jochre2LetterGuesser() extends TextGuesser with ImageUtils {
     analyser.analyse(jochreImage)
 
     val analysedPage = page.copy(blocks = page.blocks.map{
-      case TextBlock(rectangle, textLines) =>
-        TextBlock(rectangle, textLines.map{
-          case textLine@TextLine(_, wordsAndSpaces) =>
-          textLine.copy(wordsAndSpaces = wordsAndSpaces.flatMap{
-            case word@Word(rectangle, glyphs, _,  _) =>
-              val newGlyphs = glyphs.flatMap{
+      case textBlock:TextBlock =>
+        textBlock.copy(rectangle = textBlock.rectangle, textLines = textBlock.textLines.map{ textLine =>
+          textLine.copy(wordsAndSpaces = textLine.wordsAndSpaces.flatMap{
+            case word:Word =>
+              val newGlyphs = word.glyphs.flatMap{
                 case glyph@Glyph(rectangle, _) =>
                   glyphToShapeMap(glyph) match {
                     case Some(shape) => Some(glyph.copy(rectangle = rectangle.copy(label = shape.getLetter), confidence = shape.getConfidence))
@@ -155,7 +154,7 @@ case class Jochre2LetterGuesser() extends TextGuesser with ImageUtils {
               wordToGroupMap(word) match {
                 case Some(group) =>
                   val wordContent = group.getWord
-                  Some(word.copy(rectangle = rectangle.copy(label = wordContent), glyphs = newGlyphs, confidence = group.getConfidence))
+                  Some(word.copy(rectangle = word.rectangle.copy(label = wordContent), glyphs = newGlyphs, confidence = group.getConfidence))
                 case None => None
               }
 
@@ -165,6 +164,6 @@ case class Jochre2LetterGuesser() extends TextGuesser with ImageUtils {
       case other => other
     })
 
-    analysedPage
+    analysedPage.withCleanIds
   }.tapError(exception => ZIO.succeed(log.error("Failed to analyze image", exception)))
 }

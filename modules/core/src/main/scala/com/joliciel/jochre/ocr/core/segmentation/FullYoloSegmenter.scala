@@ -64,7 +64,7 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
           language = "yi",
           confidence = 1.0,
           blocks = blocks
-        )
+        ).withCleanIds
       }
       croppedPrintArea <- ZIO.attempt{
         if (cropToPrintArea) {

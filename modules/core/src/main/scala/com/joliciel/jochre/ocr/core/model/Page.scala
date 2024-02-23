@@ -126,16 +126,16 @@ case class Page(
     )
   }
 
-  override def toXml(idToIgnore: String): Elem =
+  override def toXml: Elem =
     <Page ID={id} HEIGHT={height.toString} WIDTH={width.toString} PHYSICAL_IMG_NR={physicalPageNumber.toString} ROTATION={rotation.roundTo(2).toString}
           LANG={language} PC={confidence.roundTo(2).toString}>
       <PrintSpace HEIGHT={height.toString} WIDTH={width.toString} HPOS="0" VPOS="0">
-        {blocks.zipWithIndex.map{ case (block, i) => block.toXml(f"${id}_B${i}")}}
+        {blocks.map(_.toXml)}
       </PrintSpace>
     </Page>
 
   override def draw(mat: Mat): Unit = {
-    this.blocks.map(_.draw(mat))
+    this.blocks.foreach(_.draw(mat))
   }
 
   override def content: String = this.blocks.map{
@@ -149,6 +149,31 @@ case class Page(
     val newBlocks = transformed.blocks.map(_.transform(partialFunction)).collect{ case block: Block => block }
     transformed.copy(blocks = newBlocks)
   }
+
+  def withCleanIds: Page = {
+    val baseId = f"$physicalPageNumber%05d"
+    val newBlocks = blocks.zipWithIndex.map{
+      case (composedBlock: ComposedBlock, i) =>
+        val newTextBlocks = composedBlock.textBlocks.zipWithIndex.map{
+          case (textBlock: TextBlock, j) => textBlock.copy(id = f"TB_${baseId}_${i+1}%03d_${j+1}%03d")
+        }
+        composedBlock.copy(id = f"CB_${baseId}_${i+1}%03d", textBlocks = newTextBlocks)
+      case (textBlock: TextBlock, i) =>
+        textBlock.copy(id = f"TB_${baseId}_${i+1}%03d_${0}%03d")
+      case (illustration: Illustration, i) =>
+        illustration.copy(id = f"IL_${baseId}_${i+1}%03d")
+    }
+    this.copy(blocks = newBlocks)
+  }
+
+  /**
+   * For simpler comparison when testing.
+   */
+  def withoutIds: Page = this.transform{
+    case textBlock: TextBlock => textBlock.copy(id = "")
+    case composedBlock: ComposedBlock => composedBlock.copy(id = "")
+    case illustration: Illustration => illustration.copy(id = "")
+  }
 }
 
 object Page {
@@ -158,8 +183,8 @@ object Page {
     val height = (page \@ "HEIGHT").toIntOption.getOrElse(0)
     val width = (page \@ "WIDTH").toIntOption.getOrElse(0)
     val physicalPageNumber = (page \@ "PHYSICAL_IMG_NR").toIntOption.getOrElse(0)
-    val rotationStr = (page \@ "ROTATION")
-    val rotation = if (!rotationStr.isEmpty) {
+    val rotationStr = page \@ "ROTATION"
+    val rotation = if (rotationStr.nonEmpty) {
       rotationStr.toDouble
     } else {
       val blockRotationStr = (page \\ "TextBlock").headOption.map(_ \@ "ROTATION").getOrElse("0")
@@ -167,7 +192,7 @@ object Page {
     }
     val imageInfo = ImageInfo(width, height, rotation)
     val printSpace = (page \ "PrintSpace").headOption
-    val languageStr = (page \@"LANG")
+    val languageStr = page \@"LANG"
     val language = if (languageStr.isEmpty) {
       "en"
     } else {

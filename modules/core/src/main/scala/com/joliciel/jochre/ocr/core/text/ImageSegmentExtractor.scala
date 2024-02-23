@@ -23,7 +23,7 @@ private[text] case class ImageSegmentExtractor(image: Mat, blocks: Seq[ImageLabe
 
     blocks.filter(_.label==BlockType.Image.entryName)
       .map{ illustration =>
-        graph.fill(illustration.toAWT())
+        graph.fill(illustration.toAWT)
       }
 
     graph.dispose()

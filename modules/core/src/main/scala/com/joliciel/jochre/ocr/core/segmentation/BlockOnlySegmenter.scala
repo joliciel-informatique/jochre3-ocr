@@ -50,7 +50,7 @@ private[segmentation] class BlockOnlySegmenter(yoloPredictorService: YoloPredict
           language = "yi",
           confidence = 1.0,
           blocks = blocks
-        )
+        ).withCleanIds
       }
     } yield page
   }

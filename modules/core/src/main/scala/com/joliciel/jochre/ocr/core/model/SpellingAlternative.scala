@@ -3,7 +3,7 @@ package com.joliciel.jochre.ocr.core.model
 import scala.xml.{Elem, Node}
 
 case class SpellingAlternative(purpose: String, content: String) extends AltoElement {
-  def toXml(id: String = ""): Elem =
+  def toXml: Elem =
     <ALTERNATIVE PURPOSE={purpose}>{content}</ALTERNATIVE>
 
   override def transform(partialFunction: PartialFunction[AltoElement, AltoElement]): SpellingAlternative = {

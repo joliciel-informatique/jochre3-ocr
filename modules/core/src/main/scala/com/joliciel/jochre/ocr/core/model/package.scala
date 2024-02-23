@@ -11,8 +11,8 @@ package object model {
     private val cosR = Math.cos(r)
     private val sinR = Math.sin(r)
 
-    private val centerX = (width.toDouble / 2.0)
-    private val centerY = (height.toDouble / 2.0)
+    private val centerX = width.toDouble / 2.0
+    private val centerY = height.toDouble / 2.0
 
     def rotate(x: Int, y: Int): (Int, Int) = {
       val rotX = (centerX + (x - centerX) * cosR - (y - centerY) * sinR).toInt
@@ -22,7 +22,7 @@ package object model {
   }
 
   trait AltoElement {
-    def toXml(id: String = ""): Elem
+    def toXml: Elem
 
     def transform(partialFunction: PartialFunction[AltoElement, AltoElement]): AltoElement
   }

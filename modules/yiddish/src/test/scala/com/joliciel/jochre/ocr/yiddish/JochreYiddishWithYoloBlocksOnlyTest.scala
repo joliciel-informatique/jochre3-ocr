@@ -23,7 +23,7 @@ object JochreYiddishWithYoloBlocksOnlyTest extends JUnitRunnableSpec with XmlImp
       } yield {
         if (log.isDebugEnabled) {
           val prettyPrinter = new PrettyPrinter(80, 2)
-          log.debug(prettyPrinter.format(page.toXml()))
+          log.debug(prettyPrinter.format(page.toXml))
         }
 
         assertTrue(page.content == "מאַמע - לשון")

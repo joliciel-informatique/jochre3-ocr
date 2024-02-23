@@ -135,7 +135,7 @@ object ImageLabel {
       Rectangle(label, x1r, y1r, x2r-x1r, y2r-y1r)
     }
 
-    def toAWT(): java.awt.Rectangle = new awt.Rectangle(this.left, this.top, this.width, this.height)
+    def toAWT: java.awt.Rectangle = new awt.Rectangle(this.left, this.top, this.width, this.height)
 
     lazy val coordinates: String = f"Rectangle(l$left,t$top,r$right,b$bottom)"
   }
@@ -153,15 +153,15 @@ object ImageLabel {
     )
 
     object HorizontalOrdering extends Ordering[Rectangle] {
-      def compare(a: Rectangle, b: Rectangle) = a.horizontalCompare(b)
+      def compare(a: Rectangle, b: Rectangle): Int = a.horizontalCompare(b)
     }
 
     object VerticalOrdering extends Ordering[Rectangle] {
-      def compare(a: Rectangle, b: Rectangle) = a.verticalCompare(b)
+      def compare(a: Rectangle, b: Rectangle): Int = a.verticalCompare(b)
     }
 
     object SimplePageLayoutOrdering extends Ordering[Rectangle] {
-      def compare(a: Rectangle, b: Rectangle) = a.simplePageLayoutCompare(b)
+      def compare(a: Rectangle, b: Rectangle): Int = a.simplePageLayoutCompare(b)
     }
   }
 
@@ -200,7 +200,7 @@ object ImageLabel {
     def fromXML(imageInfo: ImageInfo, node: Node): Line = {
       // BASELINE: According to Alto: Pixel coordinates based on the left-hand top corner of an image which define a polyline on which a line of text rests
       // In Jochre2, this is a single INT (indicating the Y coordinate only, with X taken from LEFT)
-      val baseLineText = (node \@ "BASELINE")
+      val baseLineText = node \@ "BASELINE"
 
       val left = (node \@ "HPOS").toIntOption.getOrElse(0)
       val width = (node \@ "WIDTH").toIntOption.getOrElse(1)

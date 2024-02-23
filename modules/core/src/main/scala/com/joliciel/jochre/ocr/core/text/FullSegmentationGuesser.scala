@@ -87,14 +87,14 @@ case class FullSegmentationGuesser(
   }
 
   private case class Guess(guesses: Seq[Prediction]) extends Ordered[Guess] {
-    val score = Math.exp(guesses.foldLeft(0.0){ case (score, prediction) => score + Math.log(prediction.confidence) } / guesses.size)
+    val score: Double = Math.exp(guesses.foldLeft(0.0){ case (score, prediction) => score + Math.log(prediction.confidence) } / guesses.size)
     override def compare(that: Guess): Int = {
       this.score.compare(that.score)
     }
 
     private lazy val unsimplifiedWord = guesses.map(_.outcome).mkString
 
-    lazy val word = lexicon.textSimplifier.map(_.simplify(unsimplifiedWord)).getOrElse(unsimplifiedWord)
+    lazy val word: String = lexicon.textSimplifier.map(_.simplify(unsimplifiedWord)).getOrElse(unsimplifiedWord)
   }
 
   private case class GuessWithScore(guess: Guess, score: Double)

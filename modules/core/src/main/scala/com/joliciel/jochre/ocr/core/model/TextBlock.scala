@@ -6,9 +6,17 @@ import org.bytedeco.opencv.global.opencv_imgproc
 import org.bytedeco.opencv.global.opencv_imgproc.LINE_8
 import org.bytedeco.opencv.opencv_core.{AbstractScalar, Mat, Point}
 
+import java.util.UUID
 import scala.xml.{Elem, Node}
 
-case class TextBlock(rectangle: Rectangle, textLines: Seq[TextLine]) extends Block {
+case class TextBlock(
+  rectangle: Rectangle,
+  textLines: Seq[TextLine],
+  id: String = UUID.randomUUID().toString,
+  idNext: Option[String] = None,
+  styleRefs: Option[String] = None,
+  tagRefs: Option[String] = None
+) extends Block {
   lazy val textLinesWithRectangles: Seq[(TextLine, Rectangle)] = {
     val optionalTextLinesAfter = textLines.drop(1).map(Some(_)) :+ None
 
@@ -30,19 +38,19 @@ case class TextBlock(rectangle: Rectangle, textLines: Seq[TextLine]) extends Blo
   lazy val combinedWords: Seq[Word] = textLines.flatMap(_.combinedWords)
 
   override def translate(xDiff: Int, yDiff: Int): TextBlock =
-    TextBlock(rectangle.translate(xDiff, yDiff), textLines.map(_.translate(xDiff, yDiff)))
+    this.copy(rectangle = rectangle.translate(xDiff, yDiff), textLines = textLines.map(_.translate(xDiff, yDiff)))
 
   override def rotate(imageInfo: ImageInfo): TextBlock =
-    TextBlock(rectangle.rotate(imageInfo), textLines.map(_.rotate(imageInfo)))
+    this.copy(rectangle = rectangle.rotate(imageInfo), textLines = textLines.map(_.rotate(imageInfo)))
 
   override def rescale(scale: Double): TextBlock = this.copy(
     rectangle = this.rectangle.rescale(scale),
     textLines = this.textLines.map(_.rescale(scale)).collect { case tl: TextLine => tl }
   )
 
-  override def toXml(id: String): Elem =
-    <TextBlock ID={id} HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString} >
-      {textLines.map(_.toXml())}
+  override def toXml: Elem =
+    <TextBlock ID={id} HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString} STYLEREFS={styleRefs.getOrElse(null)} TAGREFS={tagRefs.getOrElse(null)} IDNEXT={idNext.getOrElse(null)}>
+      {textLines.map(_.toXml)}
     </TextBlock>
 
   def allWords: Seq[Word] = textLines.flatMap(_.words)
@@ -50,7 +58,7 @@ case class TextBlock(rectangle: Rectangle, textLines: Seq[TextLine]) extends Blo
   override def draw(mat: Mat): Unit = {
     opencv_imgproc.rectangle(mat, new Point(rectangle.left - 2, rectangle.top - 2), new Point(rectangle.left + rectangle.width + 4, rectangle.top + rectangle.height + 4), AbstractScalar.BLACK,
       2, LINE_8, 0)
-    this.textLines.map(_.draw(mat))
+    this.textLines.foreach(_.draw(mat))
   }
 
   override lazy val content: String = textLines.map(_.content).mkString("\n")
@@ -67,6 +75,16 @@ object TextBlock {
     val textLines = node.child.collect {
       case elem: Elem if elem.label == "TextLine" => TextLine.fromXML(imageInfo, elem)
     }.toSeq
-    TextBlock(Rectangle.fromXML(BlockType.TextBox.entryName, node), textLines)
+
+    val id = node \@ "ID"
+    val idOption = Option.when(id.nonEmpty)(id).getOrElse(UUID.randomUUID().toString)
+    val idNext = node \@ "IDNEXT"
+    val idNextOption = Option.when(idNext.nonEmpty)(idNext)
+    val tagRefs = node \@ "TAGREFS"
+    val tagRefsOption = Option.when(tagRefs.nonEmpty)(tagRefs)
+    val styleRefs = node \@ "STYLEREFS"
+    val styleRefsOption = Option.when(styleRefs.nonEmpty)(styleRefs)
+
+    TextBlock(Rectangle.fromXML(BlockType.TextBox.entryName, node), textLines, id = idOption, idNext = idNextOption, styleRefs = styleRefsOption, tagRefs = tagRefsOption)
   }
 }

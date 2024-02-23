@@ -16,7 +16,7 @@ case class Space(rectangle: Rectangle) extends WordOrSpace {
     rectangle = this.rectangle.rescale(scale)
   )
 
-  override def toXml(id: String): Elem =
+  override def toXml: Elem =
     <SP HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString}>
     </SP>
 

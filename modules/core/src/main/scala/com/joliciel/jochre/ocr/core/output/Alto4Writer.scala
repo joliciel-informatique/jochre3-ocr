@@ -32,7 +32,7 @@ case class Alto4Writer(pages: Seq[Page], fileName: String) {
       </Processing>
     </Description>
     <Layout>
-      {pages.map(_.toXml())}
+      {pages.map(_.toXml)}
     </Layout>
   </alto>
 

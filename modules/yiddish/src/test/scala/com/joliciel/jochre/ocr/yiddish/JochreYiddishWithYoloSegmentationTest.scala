@@ -25,7 +25,7 @@ object JochreYiddishWithYoloSegmentationTest extends JUnitRunnableSpec with XmlI
       } yield {
         if (log.isDebugEnabled) {
           val prettyPrinter = new PrettyPrinter(80, 2)
-          log.debug(prettyPrinter.format(page.toXml()))
+          log.debug(prettyPrinter.format(page.toXml))
         }
         val testRectangle = Rectangle("", 732, 1638, 2319, 240)
         val myTextBlock = page.textBlocks.filter(_.rectangle.percentageIntersection(testRectangle) > 0.75).headOption

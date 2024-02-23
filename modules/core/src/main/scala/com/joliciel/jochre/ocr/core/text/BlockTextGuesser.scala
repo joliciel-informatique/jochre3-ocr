@@ -65,7 +65,7 @@ private[text] class BlockTextGuesser(imageToAltoConverter: ImageToAltoConverter)
 
         page.copy(
           blocks = sortedBlocks
-        )
+        ).withCleanIds
       }
     } yield pageWithContent
   }
