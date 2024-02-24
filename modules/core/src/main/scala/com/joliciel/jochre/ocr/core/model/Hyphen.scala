@@ -19,8 +19,7 @@ case class Hyphen(rectangle: Rectangle) extends WordOrSpace {
   )
 
   override def toXml: Elem =
-    <HYP HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString} CONTENT={rectangle.label}>
-    </HYP>
+    <HYP HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString} CONTENT={rectangle.label}></HYP>
 
   override def compare(that: WordOrSpace): Int = this.rectangle.horizontalCompare(that.rectangle)
 

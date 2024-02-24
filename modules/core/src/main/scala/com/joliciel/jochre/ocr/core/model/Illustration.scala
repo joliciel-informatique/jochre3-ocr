@@ -21,8 +21,7 @@ case class Illustration(rectangle: Rectangle, id: String = UUID.randomUUID().toS
   )
 
   override def toXml: Elem =
-    <Illustration ID={id} HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString}>
-    </Illustration>
+    <Illustration ID={id} HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString}></Illustration>
 
   override def draw(mat: Mat): Unit = {
     opencv_imgproc.rectangle(mat, new Point(rectangle.left - 2, rectangle.top - 2), new Point(rectangle.left + rectangle.width + 4, rectangle.top + rectangle.height + 4), AbstractScalar.MAGENTA,

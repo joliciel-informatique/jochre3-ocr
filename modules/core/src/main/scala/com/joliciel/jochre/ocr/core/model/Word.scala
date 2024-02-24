@@ -6,7 +6,7 @@ import org.bytedeco.opencv.global.opencv_imgproc
 import org.bytedeco.opencv.global.opencv_imgproc.LINE_8
 import org.bytedeco.opencv.opencv_core.{AbstractScalar, Mat, Point}
 
-import scala.xml.{Elem, Node, Text}
+import scala.xml.{Elem, Node}
 
 case class Word(rectangle: Rectangle, glyphs: Seq[Glyph], alternatives: Seq[SpellingAlternative], confidence: Double, styleRefs: Option[String] = None, tagRefs: Option[String] = None) extends WordOrSpace {
   override val content: String = rectangle.label
@@ -23,10 +23,9 @@ case class Word(rectangle: Rectangle, glyphs: Seq[Glyph], alternatives: Seq[Spel
 
   override def toXml: Elem =
     <String HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString}
-            CONTENT={rectangle.label} WC={confidence.roundTo(2).toString} STYLEREFS={styleRefs.getOrElse(null)} TAGREFS={tagRefs.getOrElse(null)}>
+            CONTENT={rectangle.label} WC={confidence.roundTo(2).toString} STYLEREFS={styleRefs.orNull} TAGREFS={tagRefs.orNull}>
       {alternatives.map(_.toXml)}
-      {glyphs.map(_.toXml)}
-    </String>
+      {glyphs.map(_.toXml)}</String>
 
   override def compare(that: WordOrSpace): Int = this.rectangle.horizontalCompare(that.rectangle)
 

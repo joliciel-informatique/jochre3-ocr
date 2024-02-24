@@ -1,7 +1,7 @@
 package com.joliciel.jochre.ocr.core.corpus
 
 import com.joliciel.jochre.ocr.core.corpus.YoloAnnotator.YoloTask
-import com.joliciel.jochre.ocr.core.model.Page
+import com.joliciel.jochre.ocr.core.model.Alto
 import com.joliciel.jochre.ocr.core.utils.{FileUtils, ImageUtils}
 import com.typesafe.config.ConfigFactory
 import enumeratum._
@@ -58,7 +58,7 @@ case class YoloAnnotator(
     }
   }
 
-  override def annotateOneFile(mat: Mat, alto: Page, parentDir: File, baseName: String, index: Int): Unit = {
+  override def annotateOneFile(mat: Mat, alto: Alto, parentDir: File, baseName: String, index: Int): Unit = {
     // YOLO format: see https://docs.ultralytics.com/datasets/segment/
     // Labels for this format should be exported to YOLO format with one *.txt file per image.
     // If there are no objects in an image, no *.txt file is required.
@@ -67,13 +67,14 @@ case class YoloAnnotator(
     // If your boxes are in pixels, you should divide x_center and width by image width, and y_center and height by image height.
     // Class numbers should be zero-indexed (start with 0).
 
+    val page = alto.pages.head
     val (croppedAlto, croppedMat) = if (cropToPrintArea) {
-      val cropRectangle = alto.croppedPrintArea(cropMargin)
-      val croppedAlto = alto.crop(cropRectangle)
+      val cropRectangle = page.croppedPrintArea(cropMargin)
+      val croppedAlto = page.crop(cropRectangle)
       val croppedMat = crop(mat, cropRectangle)
       croppedAlto -> croppedMat
     } else {
-      alto -> mat
+      page -> mat
     }
 
     val width = croppedAlto.width.toDouble
@@ -89,8 +90,8 @@ case class YoloAnnotator(
           YoloObjectType.NonFinalBaseLine
         }
 
-        val baseLineY = ((textLine.baseLine.y1 + textLine.baseLine.y2).toDouble / 2.0)
-        val baseLineHeightInPixels = (lineThickness * height)
+        val baseLineY = (textLine.baseLine.y1 + textLine.baseLine.y2).toDouble / 2.0
+        val baseLineHeightInPixels = lineThickness * height
 
         val baseLineBox = YoloBox(YoloObjectType.BaseLine,
           xCenter = ((textLine.baseLine.x1 + textLine.baseLine.x2).toDouble / 2.0) / width,
@@ -150,14 +151,14 @@ case class YoloAnnotator(
         }
       }.getOrElse("train")
 
-    val imageFileName = f"${baseName}.${extension}"
-    val imageFile = new File(parentDir, f"images/${trainOrVal}/${imageFileName}")
+    val imageFileName = f"$baseName.$extension"
+    val imageFile = new File(parentDir, f"images/$trainOrVal/$imageFileName")
     imageFile.getParentFile.mkdirs()
     log.info(f"Saving image to ${imageFile.getPath}")
     saveImage(croppedMat, imageFile.toPath)
 
     debugDir.foreach{ debugDir =>
-      val imageFileName = f"${baseName}-annotation.${extension}"
+      val imageFileName = f"$baseName-annotation.$extension"
       val debugParentDir = new File(outDir.toFile, debugDir)
       debugParentDir.mkdirs()
       val imageFile = new File(debugParentDir, imageFileName)
@@ -187,25 +188,25 @@ case class YoloAnnotator(
           graphics.setColor(color)
           val xPoints = Array(xCenter - boxWidth / 2.0, xCenter - boxWidth / 2.0, xCenter + boxWidth / 2.0, xCenter + boxWidth / 2.0).map(_ * width).map(_.toInt)
           val yPoints = Array(yCenter - boxHeight / 2.0, yCenter + boxHeight / 2.0, yCenter + boxHeight / 2.0, yCenter - boxHeight / 2.0).map(_ * height).map(_.toInt)
-          val polygon = new Polygon(xPoints, yPoints, xPoints.size)
-          log.debug(f"Color: ${color}. Polygon: ${polygon.xpoints.zip(polygon.ypoints).map{ case (x,y) => f"($x, $y)"}.mkString(", ")}")
+          val polygon = new Polygon(xPoints, yPoints, xPoints.length)
+          log.debug(f"Color: $color. Polygon: ${polygon.xpoints.zip(polygon.ypoints).map{ case (x,y) => f"($x, $y)"}.mkString(", ")}")
           graphics.fillPolygon(polygon)
       }
       graphics.dispose()
 
       val imageSize = 1280.0
-      val scaledImage = new BufferedImage(imageSize.toInt, imageSize.toInt, image.getType());
+      val scaledImage = new BufferedImage(imageSize.toInt, imageSize.toInt, image.getType)
       val scaledGraphics = scaledImage.createGraphics
       val scaledWidth = if (height > width) { (width / height) * imageSize } else { imageSize }
       val scaledHeight = if (height > width) { imageSize } else { (height / width ) * imageSize }
-      scaledGraphics.drawImage(image, ((imageSize - scaledWidth) / 2.0).toInt, ((imageSize - scaledHeight) / 2.0).toInt, scaledWidth.toInt, scaledHeight.toInt, null);
+      scaledGraphics.drawImage(image, ((imageSize - scaledWidth) / 2.0).toInt, ((imageSize - scaledHeight) / 2.0).toInt, scaledWidth.toInt, scaledHeight.toInt, null)
       scaledGraphics.dispose()
 
       ImageIO.write(scaledImage, extension, imageFile)
     }
 
-    val labelFileName = f"${baseName}.txt"
-    val labelFile = new File(parentDir, f"labels/${trainOrVal}/${labelFileName}")
+    val labelFileName = f"$baseName.txt"
+    val labelFile = new File(parentDir, f"labels/$trainOrVal/$labelFileName")
     labelFile.getParentFile.mkdirs()
 
     log.info(f"Saving label to ${labelFile.getPath}")
@@ -226,7 +227,7 @@ case class YoloAnnotator(
               f"${df(xCenter)} ${df(yCenter)} ${df(boxWidth)} ${df(boxHeight)}"
 
           }
-          writer.write(f"${pad(yoloObjectTypeToIndex.get(yoloClass).get)} ${segmentString}\n")
+          writer.write(f"${pad(yoloObjectTypeToIndex(yoloClass))} $segmentString\n")
           writer.flush()
       }
     }
@@ -241,18 +242,18 @@ object YoloAnnotator {
   sealed trait YoloTask extends EnumEntry
 
   object YoloTask extends Enum[YoloTask] {
-    val values = findValues
+    val values: IndexedSeq[YoloTask] = findValues
 
     case object Segmentation extends YoloTask
     case object ObjectDetection extends YoloTask
   }
 
-  class YoloLineAnnotatorForSegmentationCLI(arguments: Seq[String]) extends ScallopConf(arguments) {
+  private class YoloLineAnnotatorForSegmentationCLI(arguments: Seq[String]) extends ScallopConf(arguments) {
     val task: ScallopOption[String] = opt[String](required = true, descr = s"The annotation task among: ${YoloTask.values.map(_.entryName).mkString(", ")}")
     val corpusDir: ScallopOption[String] = opt[String](required = true, descr = "The directory containing original images and labels in Alto4 format")
     val outDir: ScallopOption[String] = opt[String](required = true, descr = "The directory where the processed images will be placed")
     val debugDir: ScallopOption[String] = opt[String](required = false, descr = "A directory where to write debug images, relative to the out-dir")
-    val maxFiles = opt[Int](descr = "If present, only transform this many files at most")
+    val maxFiles: ScallopOption[Int] = opt[Int](descr = "If present, only transform this many files at most")
     val extension: ScallopOption[String] = choice(Seq("png", "jpg"), default = Some("png"))
     val fileList: ScallopOption[String] = opt[String](required = false, descr = "If present, limit the files to this list only")
     val yamlFile: ScallopOption[String] = opt[String](required = false, descr = "If present, the file to which we write the YOLO YAML configuration, placed in the out-dir")
@@ -278,7 +279,7 @@ object YoloAnnotator {
     val validationOneEvery = options.validationOneEvery.toOption
 
     val objectsToInclude = options.objectsToInclude.toOption.map(_.map(obj => YoloObjectType.withName(obj))).get
-    val task = options.task.toOption.map(YoloTask.withName(_)).get
+    val task = options.task.toOption.map(YoloTask.withName).get
 
     val yoloAnnotator = YoloAnnotator(corpusPath, outPath, debugDir, options.maxFiles.toOption, extension, fileList,
       task,

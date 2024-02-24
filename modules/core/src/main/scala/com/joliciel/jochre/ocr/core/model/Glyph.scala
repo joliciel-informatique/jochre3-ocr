@@ -20,8 +20,7 @@ case class Glyph(rectangle: Rectangle, confidence: Double) extends PageElement w
 
   override def toXml: Elem =
     <Glyph HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString}
-           CONTENT={rectangle.label} GC={confidence.roundTo(2).toString}>
-    </Glyph>
+           CONTENT={rectangle.label} GC={confidence.roundTo(2).toString}></Glyph>
 
   override def compare(that: Glyph): Int = this.rectangle.horizontalCompare(that.rectangle)
 

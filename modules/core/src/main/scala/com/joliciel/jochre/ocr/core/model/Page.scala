@@ -129,10 +129,7 @@ case class Page(
   override def toXml: Elem =
     <Page ID={id} HEIGHT={height.toString} WIDTH={width.toString} PHYSICAL_IMG_NR={physicalPageNumber.toString} ROTATION={rotation.roundTo(2).toString}
           LANG={language} PC={confidence.roundTo(2).toString}>
-      <PrintSpace HEIGHT={height.toString} WIDTH={width.toString} HPOS="0" VPOS="0">
-        {blocks.map(_.toXml)}
-      </PrintSpace>
-    </Page>
+      <PrintSpace HEIGHT={height.toString} WIDTH={width.toString} HPOS="0" VPOS="0">{blocks.map(_.toXml)}</PrintSpace></Page>
 
   override def draw(mat: Mat): Unit = {
     this.blocks.foreach(_.draw(mat))
@@ -178,27 +175,26 @@ case class Page(
 
 object Page {
   def fromXML(node: Node): Page = {
-    val page = (node \\ "Page").headOption.getOrElse(throw new Exception("No Page element found"))
-    val id = page \@ "ID"
-    val height = (page \@ "HEIGHT").toIntOption.getOrElse(0)
-    val width = (page \@ "WIDTH").toIntOption.getOrElse(0)
-    val physicalPageNumber = (page \@ "PHYSICAL_IMG_NR").toIntOption.getOrElse(0)
-    val rotationStr = page \@ "ROTATION"
+    val id = node \@ "ID"
+    val height = (node \@ "HEIGHT").toIntOption.getOrElse(0)
+    val width = (node \@ "WIDTH").toIntOption.getOrElse(0)
+    val physicalPageNumber = (node \@ "PHYSICAL_IMG_NR").toIntOption.getOrElse(0)
+    val rotationStr = node \@ "ROTATION"
     val rotation = if (rotationStr.nonEmpty) {
       rotationStr.toDouble
     } else {
-      val blockRotationStr = (page \\ "TextBlock").headOption.map(_ \@ "ROTATION").getOrElse("0")
+      val blockRotationStr = (node \\ "TextBlock").headOption.map(_ \@ "ROTATION").getOrElse("0")
       if (blockRotationStr.isEmpty) { 0 } else { blockRotationStr.toDouble }
     }
     val imageInfo = ImageInfo(width, height, rotation)
-    val printSpace = (page \ "PrintSpace").headOption
-    val languageStr = page \@"LANG"
+    val printSpace = (node \ "PrintSpace").headOption
+    val languageStr = node \@"LANG"
     val language = if (languageStr.isEmpty) {
       "en"
     } else {
       languageStr
     }
-    val confidence = (page \@ "PC").toDoubleOption.getOrElse(0.0)
+    val confidence = (node \@ "PC").toDoubleOption.getOrElse(0.0)
 
     val blocks = printSpace.map(_.child.collect{
       case elem: Elem if elem.label == "TextBlock" => TextBlock.fromXML(imageInfo, elem)

@@ -28,7 +28,7 @@ case class Evaluator(
     ZIO.foreach(files.zipWithIndex){
       case ((file, mat), i) =>
         log.info(f"Evaluating file $i: ${file.getPath}")
-        val expected = altoFinder.getAltoPage(file.toPath)
+        val expected = altoFinder.getAlto(file.toPath)
         val startTime = Instant.now()
         for {
           predicted <- jochre.processMat(mat, file.getName, outputFormats, outputDir, debugDir, testRectangle)

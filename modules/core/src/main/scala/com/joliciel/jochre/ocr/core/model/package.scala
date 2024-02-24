@@ -84,4 +84,8 @@ package object model {
 
     override def compareTo(that: WordOrSpace): Int = this.rectangle.left.compare(that.rectangle.left)
   }
+
+  trait Tag {
+    def toXml: Elem
+  }
 }

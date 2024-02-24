@@ -19,14 +19,14 @@ case class GlyphEvaluator(
   private val log = LoggerFactory.getLogger(getClass)
 
   private val images = recursiveListImages(corpusDir.toFile)
-  private val pages = images.map(image => altoFinder.getAltoPage(image.toPath))
+  private val altoDocuments = images.map(image => altoFinder.getAlto(image.toPath))
 
   private val guesser = GlyphGuesser(modelDir, modelName, modelType, imageSize)
 
   def evaluate(): Double = {
-    val results = images.zip(pages).flatMap { case (imageFile, page) =>
+    val results = images.zip(altoDocuments).flatMap { case (imageFile, altoDocument) =>
       val mat = loadImage(imageFile.toPath)
-
+      val page = altoDocument.pages.head
       val (transformedMat, transformedAlto) = transforms.foldLeft(mat -> page) {
         case ((mat, alto), transformer) =>
           val (newMat, newAlto, _) = transformer.transform(imageFile.getPath, mat, alto)

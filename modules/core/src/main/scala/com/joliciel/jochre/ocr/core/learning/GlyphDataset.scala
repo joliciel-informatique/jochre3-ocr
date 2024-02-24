@@ -24,17 +24,18 @@ case class GlyphDataset(builder: GlyphDatasetBuilder) extends RandomAccessDatase
   private val textSimplifier = builder.textSimplifier
 
   private val images = recursiveListImages(builder.corpusDir.toFile)
-  private val pages = images.map(image => builder.altoFinder.getAltoPage(image.toPath))
+  private val altoDocuments = images.map(image => builder.altoFinder.getAlto(image.toPath))
 
+  private val pages = altoDocuments.flatMap(_.pages)
   private val allGlyphs = pages.flatMap(_.allGlyphs)
   private val totalSize = allGlyphs.size
   private val alphabet = SortedSet(allGlyphs
     .map(_.content)
-    .map(builder.textSimplifier.simplify(_)): _*)
+    .map(builder.textSimplifier.simplify): _*)
 
   private val alphabetToIndex = alphabet.zipWithIndex.toMap
 
-  val classes = (alphabet.toSeq :+ "")
+  val classes: Seq[String] = alphabet.toSeq :+ ""
 
   private def getImages(manager: NDManager): Seq[Array[Float]] = images.zip(pages).flatMap{ case (imageFile, page) =>
     log.info(f"Loading image ${imageFile.getPath}")
@@ -64,8 +65,8 @@ case class GlyphDataset(builder: GlyphDatasetBuilder) extends RandomAccessDatase
     }
   }
 
-  val manager = Engine.getInstance().newBaseManager()
-  val allImages: Seq[Array[Float]] = getImages(manager)
+  private val manager = Engine.getInstance().newBaseManager()
+  private val allImages: Seq[Array[Float]] = getImages(manager)
 
   override def get(manager: NDManager, index: Long): dataset.Record = {
     val array: NDArray = manager.create(allImages(index.toInt))
@@ -75,7 +76,7 @@ case class GlyphDataset(builder: GlyphDatasetBuilder) extends RandomAccessDatase
     new dataset.Record(data, label)
   }
 
-  def getClassNumber(index: Long): Long = {
+  private def getClassNumber(index: Long): Long = {
     val content = textSimplifier.simplify(allGlyphs(index.toInt).content)
     alphabetToIndex.getOrElse(content, alphabet.size).toLong
   }

@@ -1,7 +1,7 @@
 package com.joliciel.jochre.ocr.core.corpus
 
 import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
-import com.joliciel.jochre.ocr.core.model.Page
+import com.joliciel.jochre.ocr.core.model.{Alto, Page}
 import com.joliciel.jochre.ocr.core.utils.{FileUtils, ImageUtils, StringUtils}
 import org.bytedeco.opencv.opencv_core.Mat
 import org.rogach.scallop.{ScallopConf, ScallopOption}
@@ -28,7 +28,7 @@ case class GlyphExtractor(
 
   var alphabet: Set[String] = Set.empty
 
-  def annotateOneFile(mat: Mat, alto: Page, parentDir: File, baseName: String, index: Int): Unit = {
+  def annotateOneFile(mat: Mat, alto: Alto, parentDir: File, baseName: String, index: Int): Unit = {
     debugDir.foreach(debugDir => saveImage(mat, debugDir.resolve(f"${baseName}_rotated.png")))
 
     val imageFileName = f"${baseName}.${extension}"
@@ -43,7 +43,8 @@ case class GlyphExtractor(
     val imageValFile = new File(imageValDir, imageFileName)
     saveImage(mat, imageValFile.toPath)
 
-    alto.combinedWords.flatMap(_.glyphs).zipWithIndex.map { case (glyph, i) =>
+    val page = alto.pages.head
+    page.combinedWords.flatMap(_.glyphs).zipWithIndex.map { case (glyph, i) =>
       log.debug(f"Next glyph: $glyph")
 
       val trainOrVal = validationOneEvery.map { validationOneEvery =>
@@ -61,7 +62,7 @@ case class GlyphExtractor(
       val topMargin = (height - glyph.rectangle.height) / 2
       val cropRectangle = Rectangle("", glyph.rectangle.left - leftMargin, glyph.rectangle.top - topMargin, adjustedWidth, height)
 
-      val rect = cropRectangle.intersection(alto.rectangle).get
+      val rect = cropRectangle.intersection(page.rectangle).get
 
       val content = textSimplifier.simplify(glyph.content)
 
@@ -81,9 +82,6 @@ case class GlyphExtractor(
 
 
     }
-  }
-
-  def cleanUp(): Unit = {
   }
 }
 

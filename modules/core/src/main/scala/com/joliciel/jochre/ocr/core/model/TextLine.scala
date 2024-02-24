@@ -45,9 +45,8 @@ case class TextLine(baseLine: Line, wordsAndSpaces: Seq[WordOrSpace], styleRefs:
 
   override def toXml: Elem =
     <TextLine HPOS={baseLine.x1.toString} VPOS={baseLine.y1.toString} WIDTH={baseLine.width.toString} HEIGHT={baseLine.height.toString}
-              BASELINE={f"${baseLine.x1},${baseLine.y1} ${baseLine.x2},${baseLine.y2}"} STYLEREFS={styleRefs.getOrElse(null)} TAGREFS={tagRefs.getOrElse(null)}>
-      {wordsAndSpaces.map(_.toXml)}
-    </TextLine>
+              BASELINE={f"${baseLine.x1},${baseLine.y1} ${baseLine.x2},${baseLine.y2}"} STYLEREFS={styleRefs.orNull} TAGREFS={tagRefs.orNull}>
+      {wordsAndSpaces.map(_.toXml)}</TextLine>
 
   override def compare(that: TextLine): Int =
     this.baseLine.compare(that.baseLine)
