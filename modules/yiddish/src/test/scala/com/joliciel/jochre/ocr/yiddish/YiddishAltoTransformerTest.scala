@@ -130,7 +130,7 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
 
     val expectedPage = Page.fromXML(expected)
 
-    actualPage shouldEqual expectedPage
+    actualPage.withoutIds shouldEqual expectedPage.withoutIds
   }
 
   it should "split on punctuation" in {
@@ -171,7 +171,7 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
 
     val expectedPage = Page.fromXML(expected)
 
-    actualPage shouldEqual expectedPage
+    actualPage.withoutIds shouldEqual expectedPage.withoutIds
   }
 
   it should "correctly remove non-abbreviation apostrophes from words" in {
@@ -239,7 +239,7 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
 
     val expectedPage = Page.fromXML(expected)
 
-    actualPage shouldEqual expectedPage
+    actualPage.withoutIds shouldEqual expectedPage.withoutIds
   }
 
   "punctuationSplitRule" should "calculate coordinates correctly when splitting punctuation" in {

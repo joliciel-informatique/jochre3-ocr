@@ -58,11 +58,11 @@ trait AltoTransformer extends XmlImplicits {
 
   def simplifyContent(textSimplifier: TextSimplifier): PartialFunction[AltoElement, AltoElement] = {
     case word: Word =>
-      word.copy(rectangle = word.rectangle.copy(label = textSimplifier.simplify(word.rectangle.label)))
+      word.copy(content = textSimplifier.simplify(word.content))
     case glyph: Glyph =>
-      glyph.copy(rectangle = glyph.rectangle.copy(label = textSimplifier.simplify(glyph.rectangle.label)))
+      glyph.copy(content = textSimplifier.simplify(glyph.content))
     case hyphen: Hyphen =>
-      hyphen.copy(rectangle = hyphen.rectangle.copy(label = textSimplifier.simplify(hyphen.rectangle.label)))
+      hyphen.copy(content = textSimplifier.simplify(hyphen.content))
   }
 
   def glyphRemover: PartialFunction[AltoElement, AltoElement] = {

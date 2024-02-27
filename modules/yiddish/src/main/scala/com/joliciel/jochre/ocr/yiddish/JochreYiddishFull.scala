@@ -49,9 +49,6 @@ object JochreYiddishFull extends ZIOAppDefault with JochreAppBase {
 
   private val noDepSegmenterService: ZLayer[Any, Throwable, SegmenterService] = sttpClient >>> yoloPredictorService >>> segmenterService
 
-  val blah = (YiddishConfig.configLayer >>> (yivoLexiconService ++ ZLayer.service[YiddishConfig]) >>>
-    (noDepSegmenterService ++ ZLayer.service[YivoLexiconService] ++ ZLayer.service[YiddishConfig] ++ (glyphGuesserLayer ++ textSimplifierLayer ++ lexiconService ++ fullSegmentationConfigLayer >>> textGuesserService)))
-
   val jochreYiddishLayer: ZLayer[Any, Throwable, Jochre] = (YiddishConfig.configLayer >>> (yivoLexiconService ++ ZLayer.service[YiddishConfig]) >>>
     (noDepSegmenterService ++ ZLayer.service[YivoLexiconService] ++ ZLayer.service[YiddishConfig] ++
       (glyphGuesserLayer ++ textSimplifierLayer ++ lexiconService ++ fullSegmentationConfigLayer >>> textGuesserService ++ ZLayer.service[YivoLexicon]))) >>>

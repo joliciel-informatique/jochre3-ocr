@@ -56,14 +56,14 @@ case class Page(
     case _: Illustration => Seq.empty
   }
 
-  val rectangle: Rectangle = Rectangle("", 0, 0, width, height)
+  val rectangle: Rectangle = Rectangle(0, 0, width, height)
 
   lazy val printArea: Rectangle = {
     val minLeft = this.blocks.map(_.rectangle.left).minOption.getOrElse(0)
     val minTop = this.blocks.map(_.rectangle.top).minOption.getOrElse(0)
     val maxRight = this.blocks.map(_.rectangle.right).maxOption.getOrElse(width)
     val maxBottom = this.blocks.map(_.rectangle.bottom).maxOption.getOrElse(height)
-    Rectangle("",
+    Rectangle(
       left = minLeft,
       top = minTop,
       width = maxRight - minLeft,
@@ -80,7 +80,7 @@ case class Page(
     val newWidth = printArea.width + (2 * xMargin)
     val newHeight = printArea.height + (2 * yMargin)
 
-    Rectangle("",
+    Rectangle(
       left = newLeft,
       top = newTop,
       width = if (newLeft + newWidth > width) {
@@ -126,54 +126,73 @@ case class Page(
     )
   }
 
-  override def toXml(idToIgnore: String): Elem =
+  override def toXml: Elem =
     <Page ID={id} HEIGHT={height.toString} WIDTH={width.toString} PHYSICAL_IMG_NR={physicalPageNumber.toString} ROTATION={rotation.roundTo(2).toString}
           LANG={language} PC={confidence.roundTo(2).toString}>
-      <PrintSpace HEIGHT={height.toString} WIDTH={width.toString} HPOS="0" VPOS="0">
-        {blocks.zipWithIndex.map{ case (block, i) => block.toXml(f"${id}_B${i}")}}
-      </PrintSpace>
-    </Page>
+      <PrintSpace HEIGHT={height.toString} WIDTH={width.toString} HPOS="0" VPOS="0">{blocks.map(_.toXml)}</PrintSpace></Page>
 
   override def draw(mat: Mat): Unit = {
-    this.blocks.map(_.draw(mat))
+    this.blocks.foreach(_.draw(mat))
   }
 
-  override def content: String = this.blocks.map{
-    case composedBlock:ComposedBlock => composedBlock.content
-    case textBlock:TextBlock => f"${textBlock.content}\n"
-    case illustration:Illustration => illustration.content
-  }.mkString
+  override def content: String = this.blocks.collect{
+    case textContainer: TextContainer => textContainer.content
+  }.mkString("\n")
 
   override def transform(partialFunction: PartialFunction[AltoElement, AltoElement]): Page = {
     val transformed = if (partialFunction.isDefinedAt(this)) { partialFunction(this).asInstanceOf[Page] } else { this }
     val newBlocks = transformed.blocks.map(_.transform(partialFunction)).collect{ case block: Block => block }
     transformed.copy(blocks = newBlocks)
   }
+
+  def withCleanIds: Page = {
+    val baseId = f"$physicalPageNumber%05d"
+    val newBlocks = blocks.zipWithIndex.map{
+      case (composedBlock: ComposedBlock, i) =>
+        val newTextBlocks = composedBlock.textBlocks.zipWithIndex.map{
+          case (textBlock: TextBlock, j) => textBlock.copy(id = f"TB_${baseId}_${i+1}%03d_${j+1}%03d")
+        }
+        composedBlock.copy(id = f"CB_${baseId}_${i+1}%03d", textBlocks = newTextBlocks)
+      case (textBlock: TextBlock, i) =>
+        textBlock.copy(id = f"TB_${baseId}_${i+1}%03d_${0}%03d")
+      case (illustration: Illustration, i) =>
+        illustration.copy(id = f"IL_${baseId}_${i+1}%03d")
+    }
+    this.copy(blocks = newBlocks)
+  }
+
+  /**
+   * For simpler comparison when testing.
+   */
+  def withoutIds: Page = this.transform{
+    case textBlock: TextBlock => textBlock.copy(id = "")
+    case composedBlock: ComposedBlock => composedBlock.copy(id = "")
+    case illustration: Illustration => illustration.copy(id = "")
+  }
 }
 
 object Page {
   def fromXML(node: Node): Page = {
-    val page = (node \\ "Page").headOption.getOrElse(throw new Exception("No Page element found"))
-    val id = page \@ "ID"
-    val height = (page \@ "HEIGHT").toIntOption.getOrElse(0)
-    val width = (page \@ "WIDTH").toIntOption.getOrElse(0)
-    val physicalPageNumber = (page \@ "PHYSICAL_IMG_NR").toIntOption.getOrElse(0)
-    val rotationStr = (page \@ "ROTATION")
-    val rotation = if (!rotationStr.isEmpty) {
+    val id = node \@ "ID"
+    val height = (node \@ "HEIGHT").toIntOption.getOrElse(0)
+    val width = (node \@ "WIDTH").toIntOption.getOrElse(0)
+    val physicalPageNumber = (node \@ "PHYSICAL_IMG_NR").toIntOption.getOrElse(0)
+    val rotationStr = node \@ "ROTATION"
+    val rotation = if (rotationStr.nonEmpty) {
       rotationStr.toDouble
     } else {
-      val blockRotationStr = (page \\ "TextBlock").headOption.map(_ \@ "ROTATION").getOrElse("0")
+      val blockRotationStr = (node \\ "TextBlock").headOption.map(_ \@ "ROTATION").getOrElse("0")
       if (blockRotationStr.isEmpty) { 0 } else { blockRotationStr.toDouble }
     }
     val imageInfo = ImageInfo(width, height, rotation)
-    val printSpace = (page \ "PrintSpace").headOption
-    val languageStr = (page \@"LANG")
+    val printSpace = (node \ "PrintSpace").headOption
+    val languageStr = node \@"LANG"
     val language = if (languageStr.isEmpty) {
       "en"
     } else {
       languageStr
     }
-    val confidence = (page \@ "PC").toDoubleOption.getOrElse(0.0)
+    val confidence = (node \@ "PC").toDoubleOption.getOrElse(0.0)
 
     val blocks = printSpace.map(_.child.collect{
       case elem: Elem if elem.label == "TextBlock" => TextBlock.fromXML(imageInfo, elem)

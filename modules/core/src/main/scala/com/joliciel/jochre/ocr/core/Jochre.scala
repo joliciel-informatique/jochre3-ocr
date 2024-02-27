@@ -2,8 +2,8 @@ package com.joliciel.jochre.ocr.core
 
 import com.joliciel.jochre.ocr.core.alto.AltoTransformer
 import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
-import com.joliciel.jochre.ocr.core.model.{ComposedBlock, Page, TextBlock}
-import com.joliciel.jochre.ocr.core.output.{Alto4Writer, OutputFormat}
+import com.joliciel.jochre.ocr.core.model.{Alto, ComposedBlock, Page, TextBlock}
+import com.joliciel.jochre.ocr.core.output.OutputFormat
 import com.joliciel.jochre.ocr.core.pdf.PDFToImageConverter
 import com.joliciel.jochre.ocr.core.segmentation.SegmenterService
 import com.joliciel.jochre.ocr.core.text.TextGuesserService
@@ -21,11 +21,11 @@ import java.nio.file.{Files, Path}
 import scala.xml.PrettyPrinter
 
 trait Jochre {
-  def processPdf(pdfFile: Path, fileName: Option[String] = None, outputFormats: Seq[OutputFormat] = Seq(OutputFormat.Alto4), outputDir: Option[Path] = None, debugDir: Option[Path] = None, startPage: Option[Int] = None, endPage: Option[Int] = None, dpi: Option[Int] = None, testRectangle: Option[Rectangle] = None): Task[Seq[Page]]
-  def processDirectory(inputDir: Path, outputFormats: Seq[OutputFormat] = Seq(OutputFormat.Alto4), outputDir: Option[Path] = None, debugDir: Option[Path] = None, maxImages: Option[Int] = None, testRectangle: Option[Rectangle] = None): Task[Map[String, Seq[Page]]]
-  def processImageFile(imageFile: Path, fileName: Option[String] = None, outputFormats: Seq[OutputFormat] = Seq(OutputFormat.Alto4), outputDir: Option[Path] = None, debugDir: Option[Path] = None, testRectangle: Option[Rectangle] = None): Task[Page]
-  def processImage(bufferedImage: BufferedImage, fileName: String, outputFormats: Seq[OutputFormat] = Seq(OutputFormat.Alto4), outputDir: Option[Path] = None, debugDir: Option[Path] = None, testRectangle: Option[Rectangle] = None): Task[Page]
-  def processMat(mat: Mat, fileName: String, outputFormats: Seq[OutputFormat] = Seq(OutputFormat.Alto4), outputDir: Option[Path] = None, debugDir: Option[Path] = None, testRectangle: Option[Rectangle] = None): Task[Page]
+  def processPdf(pdfFile: Path, fileName: Option[String] = None, outputFormats: Seq[OutputFormat] = Seq(OutputFormat.Alto4), outputDir: Option[Path] = None, debugDir: Option[Path] = None, startPage: Option[Int] = None, endPage: Option[Int] = None, dpi: Option[Int] = None, testRectangle: Option[Rectangle] = None): Task[Alto]
+  def processDirectory(inputDir: Path, outputFormats: Seq[OutputFormat] = Seq(OutputFormat.Alto4), outputDir: Option[Path] = None, debugDir: Option[Path] = None, maxImages: Option[Int] = None, testRectangle: Option[Rectangle] = None): Task[Map[String, Alto]]
+  def processImageFile(imageFile: Path, fileName: Option[String] = None, outputFormats: Seq[OutputFormat] = Seq(OutputFormat.Alto4), outputDir: Option[Path] = None, debugDir: Option[Path] = None, testRectangle: Option[Rectangle] = None): Task[Alto]
+  def processImage(bufferedImage: BufferedImage, fileName: String, outputFormats: Seq[OutputFormat] = Seq(OutputFormat.Alto4), outputDir: Option[Path] = None, debugDir: Option[Path] = None, testRectangle: Option[Rectangle] = None): Task[Alto]
+  def processMat(mat: Mat, fileName: String, outputFormats: Seq[OutputFormat] = Seq(OutputFormat.Alto4), outputDir: Option[Path] = None, debugDir: Option[Path] = None, testRectangle: Option[Rectangle] = None): Task[Alto]
 }
 
 trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImplicits {
@@ -57,24 +57,25 @@ trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImpli
       .take(maxImages.getOrElse(allFiles.size))
   }
 
-  override def processPdf(pdfFile: Path, fileName: Option[String] = None, outputFormats: Seq[OutputFormat] = Seq(OutputFormat.Alto4), outputDir: Option[Path], debugDir: Option[Path], startPage: Option[Int] = None, endPage: Option[Int] = None, dpi: Option[Int] = None, testRectangle: Option[Rectangle]): Task[Seq[Page]] = {
+  override def processPdf(pdfFile: Path, fileName: Option[String] = None, outputFormats: Seq[OutputFormat] = Seq(OutputFormat.Alto4), outputDir: Option[Path], debugDir: Option[Path], startPage: Option[Int] = None, endPage: Option[Int] = None, dpi: Option[Int] = None, testRectangle: Option[Rectangle]): Task[Alto] = {
     val pdfFileName = fileName.getOrElse(pdfFile.toFile.getName)
-    log.debug(f"Processing file: ${pdfFileName}")
+    log.debug(f"Processing file: $pdfFileName")
     val baseName = FileUtils.removeFileExtension(pdfFileName)
     val converter = PDFToImageConverter(() => Files.newInputStream(pdfFile), startPage, endPage, dpi)
     for {
       pages <- converter.process((image: BufferedImage, i: Int) => {
-        val imageFileName = f"${baseName}_${i}%04d.png"
+        val imageFileName = f"${baseName}_$i%04d.png"
         processImageInternal(image, imageFileName, i, debugDir, testRectangle)
       }).run {
         ZSink.collectAll
       }
+      altoXml = Alto(pdfFileName, pages)
       _ <- ZIO.attempt{
         val baseName = FileUtils.removeFileExtension(pdfFileName)
         val outputLocation = outputDir.map(OutputLocation(_, baseName))
 
         outputFormats.foreach { outputFormat =>
-          val result = outputFormat.apply(pdfFileName, pages)
+          val result = outputFormat.apply(altoXml)
 
           outputLocation.foreach { outputLocation =>
             val altoFile = outputLocation.resolve(outputFormat.suffix)
@@ -82,43 +83,44 @@ trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImpli
           }
         }
       }
-    } yield pages
+    } yield altoXml
   }
 
-  override def processDirectory(inputDir: Path, outputFormats: Seq[OutputFormat] = Seq(OutputFormat.Alto4), outputDir: Option[Path], debugDir: Option[Path], maxImages: Option[Int], testRectangle: Option[Rectangle] = None): Task[Map[String, Seq[Page]]] = {
+  override def processDirectory(inputDir: Path, outputFormats: Seq[OutputFormat] = Seq(OutputFormat.Alto4), outputDir: Option[Path], debugDir: Option[Path], maxImages: Option[Int], testRectangle: Option[Rectangle] = None): Task[Map[String, Alto]] = {
     val files = getFilesFromDir(inputDir, maxImages)
 
     ZIO.foreach(files.zipWithIndex)
       { case (inputFile, i) =>
         log.debug(f"Processing file $i: ${inputFile.getPath}")
-        val pages = if (inputFile.getName.endsWith(".pdf")) {
+        val altoXml = if (inputFile.getName.endsWith(".pdf")) {
           this.processPdf(inputFile.toPath, None, outputFormats, outputDir, debugDir, testRectangle = testRectangle)
         } else {
-          this.processImageFile(inputFile.toPath, None, outputFormats, outputDir, debugDir, testRectangle).map(Seq(_))
+          this.processImageFile(inputFile.toPath, None, outputFormats, outputDir, debugDir, testRectangle)
         }
-        pages.map(pages => inputFile.getName -> pages)
+        altoXml.map(altoXml => inputFile.getName -> altoXml)
       }.map(_.toMap)
   }
 
-  override def processImageFile(imageFile: Path, fileName: Option[String], outputFormats: Seq[OutputFormat], outputDir: Option[Path], debugDir: Option[Path], testRectangle: Option[Rectangle]): Task[Page] = {
+  override def processImageFile(imageFile: Path, fileName: Option[String], outputFormats: Seq[OutputFormat], outputDir: Option[Path], debugDir: Option[Path], testRectangle: Option[Rectangle]): Task[Alto] = {
     val mat = loadImage(imageFile)
     this.processMat(mat, fileName.getOrElse(imageFile.toFile.getName), outputFormats, outputDir, debugDir, testRectangle)
   }
 
-  override def processImage(bufferedImage: BufferedImage, fileName: String, outputFormats: Seq[OutputFormat] = Seq(OutputFormat.Alto4), outputDir: Option[Path] = None, debugDir: Option[Path] = None, testRectangle: Option[Rectangle] = None): Task[Page] = {
+  override def processImage(bufferedImage: BufferedImage, fileName: String, outputFormats: Seq[OutputFormat] = Seq(OutputFormat.Alto4), outputDir: Option[Path] = None, debugDir: Option[Path] = None, testRectangle: Option[Rectangle] = None): Task[Alto] = {
     val mat = fromBufferedImage(bufferedImage)
     this.processMat(mat, fileName, outputFormats, outputDir, debugDir, testRectangle)
   }
 
-  override def processMat(mat: Mat, fileName: String, outputFormats: Seq[OutputFormat] = Seq(OutputFormat.Alto4), outputDir: Option[Path] = None, debugDir: Option[Path] = None, testRectangle: Option[Rectangle] = None): Task[Page] = {
+  override def processMat(mat: Mat, fileName: String, outputFormats: Seq[OutputFormat] = Seq(OutputFormat.Alto4), outputDir: Option[Path] = None, debugDir: Option[Path] = None, testRectangle: Option[Rectangle] = None): Task[Alto] = {
     for {
       page <- processMatInternal(mat, fileName, 1, debugDir, testRectangle)
+      altoXml = Alto(fileName, Seq(page))
       _ <- ZIO.attempt {
         val baseName = FileUtils.removeFileExtension(fileName)
         val outputLocation = outputDir.map(OutputLocation(_, baseName))
 
         outputFormats.foreach { outputFormat =>
-          val result = outputFormat.apply(fileName, Seq(page))
+          val result = outputFormat.apply(altoXml)
 
           outputLocation.foreach { outputLocation =>
             val altoFile = outputLocation.resolve(outputFormat.suffix)
@@ -126,7 +128,7 @@ trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImpli
           }
         }
       }
-    } yield page
+    } yield altoXml
   }
 
   private def processImageInternal(bufferedImage: BufferedImage, fileName: String, physicalPageNumber: Int = 1, debugDir: Option[Path] = None, testRectangle: Option[Rectangle] = None): Task[Page] = {
@@ -180,7 +182,7 @@ trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImpli
           case _ => Seq()
         }.map(_.confidence)
 
-        val meanConfidence = if (allConfidences.size==0) {
+        val meanConfidence = if (allConfidences.isEmpty) {
           0.0
         } else {
           allConfidences.sum / allConfidences.size
@@ -201,11 +203,9 @@ trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImpli
         debugLocation.foreach { debugLocation =>
           val prettyPrinter = new PrettyPrinter(80, 2)
 
-          val initialAltoWriter = Alto4Writer(Seq(rotatedPage), fileName)
-          val initialAlto = initialAltoWriter.alto
-
+          val initialAltoXml = Alto(fileName, Seq(rotatedPage))
           val initialAltoFile = debugLocation.resolve("_initial_alto4.xml")
-          writeFile(initialAltoFile, prettyPrinter.format(initialAlto))
+          writeFile(initialAltoFile, prettyPrinter.format(initialAltoXml.toXml))
 
           val contentFile = debugLocation.resolve("_predicted.txt")
           writeFile(contentFile, fixedPage.content)

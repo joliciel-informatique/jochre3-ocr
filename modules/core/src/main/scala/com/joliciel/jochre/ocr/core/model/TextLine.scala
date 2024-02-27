@@ -7,7 +7,7 @@ import org.bytedeco.opencv.opencv_core.{AbstractScalar, Mat, Point}
 
 import scala.xml.{Elem, Node}
 
-case class TextLine(baseLine: Line, wordsAndSpaces: Seq[WordOrSpace]) extends PageElement with Ordered[TextLine] {
+case class TextLine(baseLine: Line, wordsAndSpaces: Seq[WordOrSpace], styleRefs: Option[String] = None, tagRefs: Option[String] = None) extends PageElement with Ordered[TextLine] {
   override lazy val content: String = wordsAndSpaces.map(_.content).mkString
 
   lazy val words: Seq[Word] = wordsAndSpaces.collect{ case w: Word => w }
@@ -43,11 +43,10 @@ case class TextLine(baseLine: Line, wordsAndSpaces: Seq[WordOrSpace]) extends Pa
     wordsAndSpaces = this.wordsAndSpaces.map(_.rescale(scale)).collect { case wos: WordOrSpace => wos }
   )
 
-  override def toXml(id: String): Elem =
+  override def toXml: Elem =
     <TextLine HPOS={baseLine.x1.toString} VPOS={baseLine.y1.toString} WIDTH={baseLine.width.toString} HEIGHT={baseLine.height.toString}
-              BASELINE={f"${baseLine.x1},${baseLine.y1} ${baseLine.x2},${baseLine.y2}"}>
-      {wordsAndSpaces.map(_.toXml())}
-    </TextLine>
+              BASELINE={f"${baseLine.x1},${baseLine.y1} ${baseLine.x2},${baseLine.y2}"} STYLEREFS={styleRefs.orNull} TAGREFS={tagRefs.orNull}>
+      {wordsAndSpaces.map(_.toXml)}</TextLine>
 
   override def compare(that: TextLine): Int =
     this.baseLine.compare(that.baseLine)
@@ -55,7 +54,7 @@ case class TextLine(baseLine: Line, wordsAndSpaces: Seq[WordOrSpace]) extends Pa
   override def draw(mat: Mat): Unit = {
     opencv_imgproc.line(mat, new Point(baseLine.x1, baseLine.y1), new Point(baseLine.x2, baseLine.y2), AbstractScalar.BLUE,
       3, LINE_8, 0)
-    this.wordsAndSpaces.map(_.draw(mat))
+    this.wordsAndSpaces.foreach(_.draw(mat))
   }
 
   override def transform(partialFunction: PartialFunction[AltoElement, AltoElement]): TextLine = {
@@ -72,6 +71,12 @@ object TextLine {
       case elem: Elem if elem.label == "SP" => Space.fromXML(elem)
       case elem: Elem if elem.label == "HYP" => Hyphen.fromXML(elem)
     }.toSeq
-    TextLine(Line.fromXML(imageInfo, node), wordsAndSpaces)
+
+    val tagRefs = node \@ "TAGREFS"
+    val tagRefsOption = Option.when(tagRefs.nonEmpty)(tagRefs)
+    val styleRefs = node \@ "STYLEREFS"
+    val styleRefsOption = Option.when(styleRefs.nonEmpty)(styleRefs)
+
+    TextLine(Line.fromXML(imageInfo, node), wordsAndSpaces, styleRefs = styleRefsOption, tagRefs = tagRefsOption)
   }
 }

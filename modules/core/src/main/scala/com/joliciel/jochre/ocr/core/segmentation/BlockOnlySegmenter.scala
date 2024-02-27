@@ -31,7 +31,7 @@ private[segmentation] class BlockOnlySegmenter(yoloPredictorService: YoloPredict
           }
 
         val blocks = sortedBlockPredictions.flatMap{
-          case PredictedRectangle(rect@Rectangle(label, _, _, _, _), _) =>
+          case PredictedRectangle(label, rect, _) =>
             val blockType = BlockType.withName(label)
             blockType match {
               case BlockType.TextBox => Some(TextBlock(rect, Seq.empty))
@@ -50,7 +50,7 @@ private[segmentation] class BlockOnlySegmenter(yoloPredictorService: YoloPredict
           language = "yi",
           confidence = 1.0,
           blocks = blocks
-        )
+        ).withCleanIds
       }
     } yield page
   }

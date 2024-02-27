@@ -81,20 +81,20 @@ case class FullSegmentationGuesser(
       }
       val guess = Guess(predictionPerGlyph)
       val glyphsWithContent = word.glyphs.zip(guess.guesses).map{ case (glyph, prediction) =>
-        glyph.copy(rectangle = glyph.rectangle.copy(label = prediction.outcome), confidence = prediction.confidence)
+        glyph.copy(content = prediction.outcome, confidence = prediction.confidence)
       }
-      word.copy(glyphs = glyphsWithContent, rectangle = word.rectangle.copy(label = guess.word), confidence = guess.score)
+      word.copy(glyphs = glyphsWithContent, content = guess.word, confidence = guess.score)
   }
 
   private case class Guess(guesses: Seq[Prediction]) extends Ordered[Guess] {
-    val score = Math.exp(guesses.foldLeft(0.0){ case (score, prediction) => score + Math.log(prediction.confidence) } / guesses.size)
+    val score: Double = Math.exp(guesses.foldLeft(0.0){ case (score, prediction) => score + Math.log(prediction.confidence) } / guesses.size)
     override def compare(that: Guess): Int = {
       this.score.compare(that.score)
     }
 
     private lazy val unsimplifiedWord = guesses.map(_.outcome).mkString
 
-    lazy val word = lexicon.textSimplifier.map(_.simplify(unsimplifiedWord)).getOrElse(unsimplifiedWord)
+    lazy val word: String = lexicon.textSimplifier.map(_.simplify(unsimplifiedWord)).getOrElse(unsimplifiedWord)
   }
 
   private case class GuessWithScore(guess: Guess, score: Double)
@@ -126,9 +126,9 @@ case class FullSegmentationGuesser(
       }
       val topGuess = topGuesses.head
       val glyphsWithContent = word.glyphs.zip(topGuess.guess.guesses).map{ case (glyph, guess) =>
-        glyph.copy(rectangle = glyph.rectangle.copy(label = guess.outcome), confidence = guess.confidence)
+        glyph.copy(content = guess.outcome, confidence = guess.confidence)
       }
-      word.copy(glyphs = glyphsWithContent, rectangle = word.rectangle.copy(label = topGuess.guess.word), confidence = topGuess.score)
+      word.copy(content = topGuess.guess.word, glyphs = glyphsWithContent, confidence = topGuess.score)
   }
 
   private def getBeam(mat: Mat, word: Word): mutable.PriorityQueue[Guess] = {

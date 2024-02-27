@@ -28,7 +28,7 @@ object FullYoloSegmenterIntegrationTest extends JUnitRunnableSpec with ImageUtil
         fullYoloSegmenter = new FullYoloSegmenter(yoloPredictorService)
         result <- fullYoloSegmenter.segment(mat, fileName, outputLocation)
       } yield {
-        val expectedBlock = Rectangle("", 636, 2272, 2450, 622)
+        val expectedBlock = Rectangle(636, 2272, 2450, 622)
         val foundBlock = result.textBlocks.find(_.rectangle.percentageIntersection(expectedBlock) > 0.9)
         assertTrue(foundBlock.isDefined
           && foundBlock.get.textLines.size==5

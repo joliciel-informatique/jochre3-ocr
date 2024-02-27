@@ -43,7 +43,7 @@ case class GlyphGuesser(modelDir: Path,
     val height = (glyph.rectangle.height * 1.1).toInt
     val leftMargin = (height - glyph.rectangle.width) / 2
     val topMargin = (height - glyph.rectangle.height) / 2
-    val rectangle = Rectangle("", glyph.rectangle.left - leftMargin, glyph.rectangle.top - topMargin, height, height)
+    val rectangle = Rectangle(glyph.rectangle.left - leftMargin, glyph.rectangle.top - topMargin, height, height)
 
     val image = crop(mat, rectangle)
     val bufferedImage = toBufferedImage(image)

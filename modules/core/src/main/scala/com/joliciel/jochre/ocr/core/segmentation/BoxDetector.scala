@@ -10,16 +10,16 @@ import org.bytedeco.opencv.opencv_core.{Mat, MatVector, RotatedRect}
  * Detects boxes based on black pixels in an image.
  */
 class BoxDetector(thresh: Int = 240, override val outputLocation: Option[OutputLocation] = None) extends ImageLabelDetector[Rectangle] with ImageUtils {
-  def detect(image: Mat, label: String): Seq[Rectangle] = {
-    outputLocation.foreach(outputLocation => saveImage(image, outputLocation.resolve(f"_${label}_box0_image.png")))
+  def detect(image: Mat): Seq[Rectangle] = {
+    outputLocation.foreach(outputLocation => saveImage(image, outputLocation.resolve(f"_box0_image.png")))
 
     val gray = new Mat()
     threshold(image, gray, thresh, 255, THRESH_BINARY)
-    outputLocation.foreach(outputLocation => saveImage(gray, outputLocation.resolve(f"_${label}_box1_thresh.png")))
+    outputLocation.foreach(outputLocation => saveImage(gray, outputLocation.resolve(f"_box1_thresh.png")))
 
     val canny = new Mat()
     Canny(gray, canny, 175.0, 200.0, 3, true)
-    outputLocation.foreach(outputLocation => saveImage(canny, outputLocation.resolve(f"_${label}_box4_canny.png")))
+    outputLocation.foreach(outputLocation => saveImage(canny, outputLocation.resolve(f"_box4_canny.png")))
 
     val contours: MatVector = new MatVector
     val mode = opencv_imgproc.CV_RETR_EXTERNAL
@@ -29,7 +29,7 @@ class BoxDetector(thresh: Int = 240, override val outputLocation: Option[OutputL
     val rectangles = (0 until contours.size().toInt).map { i =>
       val contour: Mat = contours.get(i)
       val rect: RotatedRect = minAreaRect(contour)
-      Rectangle(label, rect)
+      Rectangle(rect)
     }.sortBy(0 - _.area)
 
     val noContains = rectangles.zipWithIndex.filterNot { case (rect, i) => rectangles.slice(0, i).exists(_.contains(rect)) }.map(_._1)

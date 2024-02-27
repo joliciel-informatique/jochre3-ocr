@@ -8,8 +8,7 @@ import org.bytedeco.opencv.opencv_core.{AbstractScalar, Mat, Point}
 
 import scala.xml.{Elem, Node}
 
-case class Word(rectangle: Rectangle, glyphs: Seq[Glyph], alternatives: Seq[SpellingAlternative], confidence: Double) extends WordOrSpace {
-  override val content = rectangle.label
+case class Word(content: String, rectangle: Rectangle, glyphs: Seq[Glyph], alternatives: Seq[SpellingAlternative], confidence: Double, styleRefs: Option[String] = None, tagRefs: Option[String] = None) extends WordOrSpace {
   override def translate(xDiff: Int, yDiff: Int): Word =
     this.copy(rectangle = rectangle.translate(xDiff, yDiff), glyphs = glyphs.map(_.translate(xDiff, yDiff)))
 
@@ -21,20 +20,19 @@ case class Word(rectangle: Rectangle, glyphs: Seq[Glyph], alternatives: Seq[Spel
     glyphs = this.glyphs.map(_.rescale(scale)).collect { case g: Glyph => g }
   )
 
-  override def toXml(id: String): Elem =
+  override def toXml: Elem =
     <String HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString}
-            CONTENT={rectangle.label} WC={confidence.roundTo(2).toString}>
-      {alternatives.map(_.toXml())}
-      {glyphs.map(_.toXml())}
-    </String>
+            CONTENT={content} WC={confidence.roundTo(2).toString} STYLEREFS={styleRefs.orNull} TAGREFS={tagRefs.orNull}>
+      {alternatives.map(_.toXml)}
+      {glyphs.map(_.toXml)}</String>
 
   override def compare(that: WordOrSpace): Int = this.rectangle.horizontalCompare(that.rectangle)
 
-  def combineWith(that: Word): Word = Word(this.rectangle.union(that.rectangle), this.glyphs ++ that.glyphs, this.alternatives ++ that.alternatives, Math.sqrt(this.confidence * that.confidence))
+  def combineWith(that: Word): Word = Word(f"${this.content}${that.content}", this.rectangle.union(that.rectangle), this.glyphs ++ that.glyphs, this.alternatives ++ that.alternatives, Math.sqrt(this.confidence * that.confidence))
 
   def combineWith(hyphen: Hyphen): Word = {
     val newRectangle = this.rectangle.union(hyphen.rectangle)
-    val newGlyphs = this.glyphs :+ Glyph(hyphen.rectangle, 0.5)
+    val newGlyphs = this.glyphs :+ Glyph(hyphen.content, hyphen.rectangle, 0.5)
     this.copy(rectangle = newRectangle, glyphs = newGlyphs)
   }
 
@@ -67,6 +65,10 @@ object Word {
     }.toSeq
     val content = node \@ "CONTENT"
     val confidence = (node \@ "WC").toDoubleOption.getOrElse(0.0)
-    Word(Rectangle.fromXML(content, node), glyphs, alternatives, confidence)
+    val tagRefs = node \@ "TAGREFS"
+    val tagRefsOption = Option.when(tagRefs.nonEmpty)(tagRefs)
+    val styleRefs = node \@ "STYLEREFS"
+    val styleRefsOption = Option.when(styleRefs.nonEmpty)(styleRefs)
+    Word(content = content, rectangle = Rectangle.fromXML(node), glyphs, alternatives, confidence, styleRefs = styleRefsOption, tagRefs = tagRefsOption)
   }
 }

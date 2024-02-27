@@ -8,7 +8,7 @@ import zio.test.junit.JUnitRunnableSpec
 import zio.test.{Spec, TestAspect, TestEnvironment, assertTrue}
 
 import javax.imageio.ImageIO
-import scala.xml.{PrettyPrinter, Text}
+import scala.xml.PrettyPrinter
 
 object JochreYiddishWithYoloBlocksOnlyTest extends JUnitRunnableSpec with XmlImplicits {
   private val log = LoggerFactory.getLogger(getClass)
@@ -19,15 +19,16 @@ object JochreYiddishWithYoloBlocksOnlyTest extends JUnitRunnableSpec with XmlImp
       val image = ImageIO.read(inputStream)
       for {
         jochreYiddish <- ZIO.service[Jochre]
-        page <- jochreYiddish.processImage(image, "yiddish_sample.jpg")
+        alto <- jochreYiddish.processImage(image, "yiddish_sample.jpg")
       } yield {
         if (log.isDebugEnabled) {
           val prettyPrinter = new PrettyPrinter(80, 2)
-          log.debug(prettyPrinter.format(page.toXml()))
+          log.debug(prettyPrinter.format(alto.toXml))
         }
 
-        assertTrue(page.content == "מאַמע - לשון")
+        assertTrue(alto.content == "מאַמע - לשון")
 
+        val page = alto.pages.head
         val wcs = page.allWords.map(_.confidence)
         assertTrue(wcs.forall(_>0.0))
       }

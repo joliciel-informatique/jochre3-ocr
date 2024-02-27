@@ -1,6 +1,6 @@
 package com.joliciel.jochre.ocr.core.corpus
 
-import com.joliciel.jochre.ocr.core.model.Page
+import com.joliciel.jochre.ocr.core.model.{Alto, Page}
 import com.joliciel.jochre.ocr.core.utils.{FileUtils, ImageUtils, StringUtils}
 import org.bytedeco.opencv.opencv_core.Mat
 import org.rogach.scallop.{ScallopConf, ScallopOption}
@@ -27,10 +27,11 @@ case class WordExtractor(
 
   var alphabet: Set[String] = Set.empty
 
-  def annotateOneFile(mat: Mat, alto: Page, parentDir: File, baseName: String, index: Int): Unit = {
+  def annotateOneFile(mat: Mat, alto: Alto, parentDir: File, baseName: String, index: Int): Unit = {
     debugDir.foreach(debugDir => saveImage(mat, debugDir.resolve(f"${baseName}_rotated.png")))
 
-    alto.combinedWords.zipWithIndex.map { case (word, i) =>
+    val page = alto.pages.head
+    page.combinedWords.zipWithIndex.map { case (word, i) =>
       log.debug(f"Next word: $word")
 
       val trainOrVal = validationOneEvery.map { validationOneEvery =>
@@ -66,9 +67,6 @@ case class WordExtractor(
       val imageFile = new File(imageDir, imageFileName)
       saveImage(cropped, imageFile.toPath)
     }
-  }
-
-  def cleanUp(): Unit = {
   }
 }
 

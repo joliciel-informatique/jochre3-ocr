@@ -8,18 +8,18 @@ import org.rogach.scallop.{ScallopConf, ScallopOption}
 import java.nio.file.Path
 
 object YiddishGlyphTrainer {
-  class TrainerCLI(arguments: Seq[String]) extends ScallopConf(arguments) {
+  private class TrainerCLI(arguments: Seq[String]) extends ScallopConf(arguments) {
     val corpusDir: ScallopOption[String] = opt[String](required = true)
     val outputDir: ScallopOption[String] = opt[String](required = true)
     val modelName: ScallopOption[String] = opt[String](required = true)
-    val numEpochs: ScallopOption[Int] = opt[Int](default = Some(20), descr = "Number of training epochs, default = 20.")
+    val numEpochs: ScallopOption[Int] = opt[Int](default = Some(10), descr = "Number of training epochs, default = 10.")
     val batchSize: ScallopOption[Int] = opt[Int](default = Some(32), descr = "Batch size, default = 32.")
     val modelType: ScallopOption[String] = opt[String](required = true, descr = f"Model type, among ${ModelType.values.map(_.entryName).mkString(", ")}")
 
     verify()
   }
 
-  val textSimplifier = YiddishTextSimpifier(true)
+  val textSimplifier: YiddishTextSimpifier = YiddishTextSimpifier(true)
 
   def main(args: Array[String]): Unit = {
     val cli = new TrainerCLI(args)

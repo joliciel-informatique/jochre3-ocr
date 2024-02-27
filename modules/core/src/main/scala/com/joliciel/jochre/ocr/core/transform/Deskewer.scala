@@ -92,7 +92,7 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) 
 
         drawRotatedRect(colored, rotatedRect, Color.green, thickness = 5)
 
-        (contour, area, rotatedRect, Rectangle("candidate", rotatedRect))
+        (contour, area, rotatedRect, Rectangle(rotatedRect))
     }
 
     val noContains = contoursWithRectangles
@@ -131,14 +131,14 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) 
           angle
         }
 
-        log.debug(f"angle: ${correctedAngle}")
+        log.debug(f"angle: $correctedAngle")
         ContourWithAngle(contour, area, rotatedRect, container, correctedAngle)
     }.sortBy(_.correctedAngle)
 
-    Option.when(contoursWithAngles.size > 0) {
+    Option.when(contoursWithAngles.nonEmpty) {
       // remove outliers
       val medianAngle = contoursWithAngles(contoursWithAngles.size / 2).correctedAngle
-      log.debug(f"medianAngle: ${medianAngle}")
+      log.debug(f"medianAngle: $medianAngle")
 
       val inliers = contoursWithAngles.filter {
         case ContourWithAngle(_, _, rotatedRect, container, angle) =>
@@ -165,7 +165,7 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) 
 object Deskewer extends ImageUtils {
   private val log = LoggerFactory.getLogger(getClass)
 
-  class DeskewerCLI(arguments: Seq[String]) extends ScallopConf(arguments) {
+  private class DeskewerCLI(arguments: Seq[String]) extends ScallopConf(arguments) {
     val inputDir: ScallopOption[String] = opt[String](required = true)
     val outDir: ScallopOption[String] = opt[String](required = true)
     val debugDir: ScallopOption[String] = opt[String](required = false)
@@ -200,8 +200,8 @@ object Deskewer extends ImageUtils {
 
       val calculated = deskewer.getSkewAngle(transformed, Some(file.getPath))
       val altoFinder = AltoFinder.default
-      val alto = altoFinder.getAltoPage(file.toPath)
-      val expected = alto.rotation
+      val alto = altoFinder.getAlto(file.toPath)
+      val expected = alto.pages.head.rotation
       val calculatedOrZero = calculated.getOrElse(0.0)
 
       log.info(f"Calculated: $calculatedOrZero")

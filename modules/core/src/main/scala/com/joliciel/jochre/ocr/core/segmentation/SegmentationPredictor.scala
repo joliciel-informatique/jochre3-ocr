@@ -38,17 +38,17 @@ trait SegmentationPredictorBase[T <: ImageLabel] extends SegmentationPredictor[T
           val labelled: Mat = toRGB(mat.clone())
 
           predictions.foreach {
-            case ImageLabel.PredictedRectangle(ImageLabel.Rectangle(label, left, top, width, height), confidence) =>
+            case ImageLabel.PredictedRectangle(_, ImageLabel.Rectangle(left, top, width, height), confidence) =>
               opencv_imgproc.rectangle(labelled, new Point(left, top), new Point(left + width, top + height), AbstractScalar.RED)
               //opencv_imgproc.putText(labelled, label, new Point(left + width, top + height + 40), opencv_imgproc.FONT_HERSHEY_DUPLEX, 1, AbstractScalar.GREEN)
               val confidenceForPrint = (confidence * 100).toInt
               opencv_imgproc.putText(labelled, f"$confidenceForPrint", new Point(left + 2, top + 20), opencv_imgproc.FONT_HERSHEY_DUPLEX, 0.5, AbstractScalar.BLACK)
-            case ImageLabel.Rectangle(label, left, top, width, height) =>
+            case ImageLabel.Rectangle(left, top, width, height) =>
               opencv_imgproc.rectangle(labelled, new Point(left, top), new Point(left + width, top + height), AbstractScalar.RED)
-              opencv_imgproc.putText(labelled, label, new Point(left + width + 2, top + height + 20), opencv_imgproc.FONT_HERSHEY_DUPLEX, 3, AbstractScalar.GREEN)
-            case ImageLabel.Line(label, x1, y1, x2, y2) =>
+              //opencv_imgproc.putText(labelled, label, new Point(left + width + 2, top + height + 20), opencv_imgproc.FONT_HERSHEY_DUPLEX, 3, AbstractScalar.GREEN)
+            case ImageLabel.Line(x1, y1, x2, y2) =>
               opencv_imgproc.line(labelled, new Point(x1, y1), new Point(x2, y2), AbstractScalar.RED)
-              opencv_imgproc.putText(labelled, label, new Point(x2 + 20, y2 + 5), opencv_imgproc.FONT_HERSHEY_DUPLEX, 1, AbstractScalar.GREEN)
+              //opencv_imgproc.putText(labelled, label, new Point(x2 + 20, y2 + 5), opencv_imgproc.FONT_HERSHEY_DUPLEX, 1, AbstractScalar.GREEN)
           }
 
           saveImage(labelled, outputLocation.resolve(extension))

@@ -29,7 +29,7 @@ import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
  * e.g. 3 comes before 6, 4 comes before 7, 4 comes before 5, 4 comes before 6, 5 comes before 6
  */
 case class BlockSorter(blocks: Seq[WithRectangle]) extends Ordering[WithRectangle] {
-  val topOrdered = blocks.sortBy(_.top)
+  private val topOrdered = blocks.sortBy(_.top)
 
   def compare(a: WithRectangle, b: WithRectangle): Int = {
     val (topBlock, bottomBlock) = if (a.top < b.top) {

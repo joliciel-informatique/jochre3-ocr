@@ -28,7 +28,7 @@ trait JochreAppBase {
       testRectangle <- ZIO.attempt {
         options.testRectangle.toOption.map { rectString =>
           val ltwh = rectString.split(",").map(_.toInt)
-          Rectangle("", ltwh(0), ltwh(1), ltwh(2), ltwh(3))
+          Rectangle(ltwh(0), ltwh(1), ltwh(2), ltwh(3))
         }
       }
       _ <- ZIO.attempt {
