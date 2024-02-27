@@ -7,5 +7,5 @@ import org.bytedeco.opencv.opencv_core.Mat
 trait ImageLabelDetector[T <: ImageLabel] {
   def outputLocation: Option[OutputLocation]
 
-  def detect(image: Mat, label: String): Seq[T]
+  def detect(image: Mat): Seq[T]
 }

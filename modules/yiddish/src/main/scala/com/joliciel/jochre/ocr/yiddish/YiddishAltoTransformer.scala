@@ -172,7 +172,7 @@ object YiddishAltoTransformer extends XmlImplicits with StringUtils {
       confidence
     }
 
-    Word(Rectangle(simplifiedContent, left, top, width, height), glyphs, Seq.empty, myConfidence)
+    Word(simplifiedContent, Rectangle(left, top, width, height), glyphs, Seq.empty, myConfidence)
   }
 
   private val numberRegex = raw"\d+\.?\d+".r
@@ -182,7 +182,7 @@ object YiddishAltoTransformer extends XmlImplicits with StringUtils {
       val content = word.content
       if (numberRegex.matches(content)) {
         val inverseNumber = content.reverse
-        word.copy(rectangle = word.rectangle.copy(label = inverseNumber))
+        word.copy(content = inverseNumber)
       } else {
         word
       }
@@ -215,15 +215,17 @@ object YiddishAltoTransformer extends XmlImplicits with StringUtils {
                     val widthHyphen = width / numLetters
                     val widthLetters = widthHyphen * (numLetters - 1)
                     // TODO: left here only works for right-to-left text (Yiddish)
-                    val letterGlyph = lastGlyph.copy(rectangle = lastGlyph.rectangle.copy(
-                      label = lastGlyph.content.substring(0, numLetters - 1),
-                      left = lastGlyph.rectangle.left + widthHyphen,
-                      width = widthLetters
-                    ))
-                    val hyphenGlyph = lastGlyph.copy(rectangle = lastGlyph.rectangle.copy(
-                      label = lastGlyph.content.substring(numLetters - 1),
-                      width = widthHyphen
-                    ))
+                    val letterGlyph = lastGlyph.copy(
+                      content = lastGlyph.content.substring(0, numLetters - 1),
+                      rectangle = lastGlyph.rectangle.copy(
+                        left = lastGlyph.rectangle.left + widthHyphen,
+                        width = widthLetters
+                      ))
+                    val hyphenGlyph = lastGlyph.copy(
+                      content = lastGlyph.content.substring(numLetters - 1),
+                      rectangle = lastGlyph.rectangle.copy(
+                        width = widthHyphen
+                      ))
                     Some(letterGlyph) -> hyphenGlyph
                   }
 
@@ -233,7 +235,7 @@ object YiddishAltoTransformer extends XmlImplicits with StringUtils {
                     Seq.empty
                   } else {
                     val stringElemWithoutHyphen = glyphsToWord(newStringGlyphs, confidence, textSimplifier)
-                    val hyphen = Hyphen(hyphenGlyph.rectangle)
+                    val hyphen = Hyphen(hyphenGlyph.content, hyphenGlyph.rectangle)
                     Seq(stringElemWithoutHyphen, hyphen)
                   }
                 case None =>
@@ -245,8 +247,8 @@ object YiddishAltoTransformer extends XmlImplicits with StringUtils {
                   val widthLetters = widthHyphen * (totalChars - 1)
                   Seq(
                     // TODO: this is for right-to-left only
-                    word.copy(rectangle = word.rectangle.copy(label = contentBeforeHyphen, left = word.rectangle.left - widthHyphen, width = widthLetters)),
-                    Hyphen(Rectangle(hyphenContent, word.rectangle.left, word.rectangle.height, widthHyphen, word.rectangle.top))
+                    word.copy(content = contentBeforeHyphen, rectangle = word.rectangle.copy(left = word.rectangle.left - widthHyphen, width = widthLetters)),
+                    Hyphen(hyphenContent, Rectangle(word.rectangle.left, word.rectangle.height, widthHyphen, word.rectangle.top))
                   )
               }
             case _ =>

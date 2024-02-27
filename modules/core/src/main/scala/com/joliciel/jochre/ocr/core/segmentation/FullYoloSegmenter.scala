@@ -45,7 +45,7 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
         val sortedWithoutOverlaps = removeOverlapsUnordered(sortedBlockPredictions)
 
         val blocks = sortedWithoutOverlaps.flatMap {
-          case PredictedRectangle(rect@Rectangle(label, _, _, _, _), _) =>
+          case PredictedRectangle(label, rect, _) =>
             val blockType = BlockType.withName(label)
             blockType match {
               case BlockType.TextBox => Some(TextBlock(rect, Seq.empty))
@@ -121,7 +121,7 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
         val textBlocksWithLines = textBlocksToConsider.map{ textBlock =>
           val myLineRects = textBlockToLineMap.get(textBlock).getOrElse(Seq.empty).sortBy(_.rectangle)(Rectangle.VerticalOrdering)
           val myLineRectsWithoutOverlaps = removeOverlaps(myLineRects)
-          val myLines = myLineRectsWithoutOverlaps.map(lineRect => TextLine(Line("", textBlock.rectangle.left, lineRect.rectangle.bottom, textBlock.rectangle.right, lineRect.rectangle.bottom), Seq.empty))
+          val myLines = myLineRectsWithoutOverlaps.map(lineRect => TextLine(Line(textBlock.rectangle.left, lineRect.rectangle.bottom, textBlock.rectangle.right, lineRect.rectangle.bottom), Seq.empty))
           textBlock.copy(textLines = myLines)
         }
 
@@ -140,7 +140,7 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
 
           textBlock.copy(textLines = textBlock.textLines.map{ textLine =>
             val myWordRects = textLineToWordMap.get(textLine).getOrElse(Seq.empty)
-            val myWords = myWordRects.map(rect => Word(rect.rectangle.copy(label=""), Seq.empty, Seq.empty, 1.0))
+            val myWords = myWordRects.map(rect => Word("", rect.rectangle, Seq.empty, Seq.empty, 1.0))
 
             textLine.copy(wordsAndSpaces = myWords)
           })
@@ -170,7 +170,7 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
                     val rightLeftPairs = (myGlyphRects.head.rectangle.right +: borders).zip(borders :+ myGlyphRects.last.rectangle.left)
 
                     val myGlyphs = rightLeftPairs.map{
-                      case (right, left) => Glyph(Rectangle("", left = left, top = word.rectangle.top, width = right-left, height = word.rectangle.height), 1.0)
+                      case (right, left) => Glyph("", Rectangle( left = left, top = word.rectangle.top, width = right-left, height = word.rectangle.height), 1.0)
                     }
                     word.copy(glyphs = myGlyphs)
                   }
@@ -180,7 +180,7 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
               val wordsAndSpaces = Option.when(nonEmptyWords.size > 1)(nonEmptyWords.zip(nonEmptyWords.tail).flatMap { case (word, nextWord) =>
                 val spaceWidth = word.rectangle.left - nextWord.rectangle.right
                 if (spaceWidth > 0) {
-                  Seq(word, Space(Rectangle("", nextWord.rectangle.right, word.rectangle.top, spaceWidth, word.rectangle.height)))
+                  Seq(word, Space(Rectangle(nextWord.rectangle.right, word.rectangle.top, spaceWidth, word.rectangle.height)))
                 } else {
                   Seq(word)
                 }
@@ -254,7 +254,7 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
           val currentRectangles = textBlockMap.get(container).getOrElse(Seq.empty)
           val newLeft = Math.max(rect.rectangle.left, container.rectangle.left)
           val newRight = Math.min(rect.rectangle.right, container.rectangle.right)
-          val newRectangle = rect.copy(rectangle = Rectangle("",
+          val newRectangle = rect.copy(rectangle = Rectangle(
             left = newLeft,
             top = rect.rectangle.top,
             width = newRight - newLeft,

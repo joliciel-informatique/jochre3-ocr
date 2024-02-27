@@ -60,7 +60,7 @@ case class GlyphExtractor(
       val adjustedWidth = if (width < height) { height } else { width }
       val leftMargin = (adjustedWidth - glyph.rectangle.width) / 2
       val topMargin = (height - glyph.rectangle.height) / 2
-      val cropRectangle = Rectangle("", glyph.rectangle.left - leftMargin, glyph.rectangle.top - topMargin, adjustedWidth, height)
+      val cropRectangle = Rectangle(glyph.rectangle.left - leftMargin, glyph.rectangle.top - topMargin, adjustedWidth, height)
 
       val rect = cropRectangle.intersection(page.rectangle).get
 

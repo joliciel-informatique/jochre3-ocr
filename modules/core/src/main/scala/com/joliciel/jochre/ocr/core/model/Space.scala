@@ -36,6 +36,6 @@ case class Space(rectangle: Rectangle) extends WordOrSpace {
 
 object Space {
   def fromXML(node: Node): Space = {
-    Space(Rectangle.fromXML("", node))
+    Space(Rectangle.fromXML(node))
   }
 }

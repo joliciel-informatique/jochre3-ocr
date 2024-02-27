@@ -28,11 +28,11 @@ object YoloPredictorTest extends JUnitRunnableSpec with ImageUtils {
         result <- blockPredictor.predict()
       } yield {
         val expected = Seq(
-          Rectangle("Paragraph", 600, 2254, 2477, 605),
-          Rectangle("Paragraph", 608, 2880, 2468, 1281),
-          Rectangle("TextBox", 671, 1610, 2370, 214),
-          Rectangle("TextBox", 1765, 2040, 154, 117),
-          Rectangle("TextBox", 1784, 4176, 121, 93)
+          Rectangle(600, 2254, 2477, 605),
+          Rectangle(608, 2880, 2468, 1281),
+          Rectangle(671, 1610, 2370, 214),
+          Rectangle(1765, 2040, 154, 117),
+          Rectangle(1784, 4176, 121, 93)
         )
         assertTrue(result.forall(rect => expected.find(other => rect.rectangle.iou(other) > 0.9).isDefined))
       }

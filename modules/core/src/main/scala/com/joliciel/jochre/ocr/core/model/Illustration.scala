@@ -41,6 +41,6 @@ object Illustration {
     val id = node \@ "ID"
     val idOption = Option.when(id.nonEmpty)(id).getOrElse(UUID.randomUUID().toString)
 
-    Illustration(Rectangle.fromXML(BlockType.Image.entryName, node), id = idOption)
+    Illustration(Rectangle.fromXML(node), id = idOption)
   }
 }

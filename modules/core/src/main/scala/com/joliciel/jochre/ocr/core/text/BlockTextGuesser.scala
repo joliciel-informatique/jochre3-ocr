@@ -32,9 +32,7 @@ private[text] class BlockTextGuesser(imageToAltoConverter: ImageToAltoConverter)
     for {
       // convert existing blocks to image segments
       segments <- ZIO.attempt {
-          // re-scale coordinates
-          val rectangles = page.blocks.map(_.rectangle)
-          val imageSegmentExtractor = ImageSegmentExtractor(mat, rectangles, debugLocation)
+          val imageSegmentExtractor = ImageSegmentExtractor(mat, page.blocks, debugLocation)
           imageSegmentExtractor.segments
         }
       pageWithContent <- ZIO.foreach(segments.zipWithIndex){

@@ -28,7 +28,7 @@ case class YiddishCorpusTransformer(
           case Nil => (newGlyphs :+ glyph) -> somethingChanged
           case _ =>
             if (glyph.content=="יַ" && newGlyphs.last.content=="י") {
-              val combinedGlyph = Glyph(glyph.rectangle.union(newGlyphs.last.rectangle).copy(label = "ײַ"), confidence = 1.0)
+              val combinedGlyph = Glyph("ײַ", glyph.rectangle.union(newGlyphs.last.rectangle), confidence = 1.0)
               (newGlyphs.init :+ combinedGlyph) -> true
             } else {
               (newGlyphs :+ glyph) -> somethingChanged
@@ -36,7 +36,7 @@ case class YiddishCorpusTransformer(
         }}
         if (somethingChanged) {
           val newContent = newGlyphs.map(_.content).mkString
-          word.copy(glyphs = newGlyphs, rectangle = word.rectangle.copy(label = newContent))
+          word.copy(glyphs = newGlyphs, content = newContent)
         } else {
           word
         }

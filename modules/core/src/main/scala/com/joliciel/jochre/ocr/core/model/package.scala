@@ -79,6 +79,8 @@ package object model {
     def rectangle: Rectangle
   }
 
+  trait TextContainer extends Block
+
   trait WordOrSpace extends PageElement with Ordered[WordOrSpace] {
     def rectangle: Rectangle
 

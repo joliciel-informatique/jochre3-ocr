@@ -145,16 +145,16 @@ case class Jochre2LetterGuesser() extends TextGuesser with ImageUtils {
           textLine.copy(wordsAndSpaces = textLine.wordsAndSpaces.flatMap{
             case word:Word =>
               val newGlyphs = word.glyphs.flatMap{
-                case glyph@Glyph(rectangle, _) =>
+                case glyph@Glyph(_, rectangle, _) =>
                   glyphToShapeMap(glyph) match {
-                    case Some(shape) => Some(glyph.copy(rectangle = rectangle.copy(label = shape.getLetter), confidence = shape.getConfidence))
+                    case Some(shape) => Some(glyph.copy(content = shape.getLetter, confidence = shape.getConfidence))
                     case None => None
                   }
               }
               wordToGroupMap(word) match {
                 case Some(group) =>
                   val wordContent = group.getWord
-                  Some(word.copy(rectangle = word.rectangle.copy(label = wordContent), glyphs = newGlyphs, confidence = group.getConfidence))
+                  Some(word.copy(content = wordContent, glyphs = newGlyphs, confidence = group.getConfidence))
                 case None => None
               }
 

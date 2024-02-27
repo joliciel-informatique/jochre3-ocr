@@ -92,7 +92,7 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) 
 
         drawRotatedRect(colored, rotatedRect, Color.green, thickness = 5)
 
-        (contour, area, rotatedRect, Rectangle("candidate", rotatedRect))
+        (contour, area, rotatedRect, Rectangle(rotatedRect))
     }
 
     val noContains = contoursWithRectangles

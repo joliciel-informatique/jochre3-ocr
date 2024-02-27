@@ -17,9 +17,9 @@ object BlockOnlySegmenterTest extends JUnitRunnableSpec with ImageUtils {
     override def getYoloPredictor(predictionType: YoloPredictionType, mat: Mat, fileName: String, outputLocation: Option[OutputLocation], minConfidence: Option[Double]): Task[SegmentationPredictor[PredictedRectangle]] = ZIO.attempt {
       new SegmentationPredictor[PredictedRectangle] {
         override def predict(): Task[Seq[PredictedRectangle]] = ZIO.attempt(Seq(
-          PredictedRectangle(Rectangle(BlockType.TextBox.entryName, 10, 10, 50, 50), 0.9),
-          PredictedRectangle(Rectangle(BlockType.Paragraph.entryName, 60, 10, 100, 100), 0.8),
-          PredictedRectangle(Rectangle(BlockType.Image.entryName, 20, 120, 50, 50), 0.9),
+          PredictedRectangle(BlockType.TextBox.entryName, Rectangle(10, 10, 50, 50), 0.9),
+          PredictedRectangle(BlockType.Paragraph.entryName, Rectangle(60, 10, 100, 100), 0.8),
+          PredictedRectangle(BlockType.Image.entryName, Rectangle(20, 120, 50, 50), 0.9),
         ))
       }
     }
@@ -45,9 +45,9 @@ object BlockOnlySegmenterTest extends JUnitRunnableSpec with ImageUtils {
           case illustration: Illustration => illustration.copy(id = "")
         }
         val expected = Seq(
-          TextBlock(Rectangle(BlockType.Paragraph.entryName, 60, 10, 100, 100), Seq.empty, id = ""),
-          TextBlock(Rectangle(BlockType.TextBox.entryName, 10, 10, 50, 50), Seq.empty, id = ""),
-          Illustration(Rectangle(BlockType.Image.entryName, 20, 120, 50, 50), id = ""),
+          TextBlock(Rectangle(60, 10, 100, 100), Seq.empty, id = ""),
+          TextBlock(Rectangle(10, 10, 50, 50), Seq.empty, id = ""),
+          Illustration(Rectangle(20, 120, 50, 50), id = ""),
         )
         assertTrue(blocks==expected)
       }

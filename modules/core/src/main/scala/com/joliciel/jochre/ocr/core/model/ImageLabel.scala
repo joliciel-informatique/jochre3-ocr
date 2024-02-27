@@ -5,16 +5,13 @@ import org.bytedeco.opencv.opencv_core.RotatedRect
 import java.awt
 import scala.xml.Node
 
-sealed trait ImageLabel {
-  def label: String
-}
+sealed trait ImageLabel {}
 
 object ImageLabel {
-  case class PredictedRectangle(rectangle: Rectangle, confidence: Double) extends ImageLabel with WithRectangle {
-    override val label: String = rectangle.label
+  case class PredictedRectangle(label: String, rectangle: Rectangle, confidence: Double) extends ImageLabel with WithRectangle {
   }
 
-  case class Rectangle(label: String, override val left: Int, override val top: Int, override val width: Int, height: Int) extends ImageLabel with WithRectangle {
+  case class Rectangle(override val left: Int, override val top: Int, override val width: Int, height: Int) extends ImageLabel with WithRectangle {
     val rectangle: Rectangle = this
     val area: Int = width * height
 
@@ -33,7 +30,7 @@ object ImageLabel {
       val minRight = math.min(this.right, that.right)
       val minBottom = math.min(this.bottom, that.bottom)
 
-      Option.when(maxTop < minBottom && maxLeft < minRight)(Rectangle(label, maxLeft, maxTop, minRight - maxLeft, minBottom - maxTop))
+      Option.when(maxTop < minBottom && maxLeft < minRight)(Rectangle(maxLeft, maxTop, minRight - maxLeft, minBottom - maxTop))
     }
 
     def union(that: Rectangle): Rectangle = {
@@ -41,7 +38,7 @@ object ImageLabel {
       val minTop = math.min(this.top, that.top)
       val maxRight = math.max(this.right, that.right)
       val maxBottom = math.max(this.bottom, that.bottom)
-      Rectangle(f"${this.label}${that.label}", minLeft, minTop, maxRight - minLeft, maxBottom - minTop)
+      Rectangle(minLeft, minTop, maxRight - minLeft, maxBottom - minTop)
     }
 
     def areaOfIntersection(that: Rectangle): Double = intersection(that).map(_.area.toDouble).getOrElse(0.0)
@@ -71,7 +68,7 @@ object ImageLabel {
       if (that.right > this.right) return 1
       if (this.left < that.left) return 1
       if (that.left < this.left) return -1
-      this.label.compareTo(that.label)
+      0
     }
 
     def horizontalCompare(that: Rectangle): Int = {
@@ -79,7 +76,7 @@ object ImageLabel {
       if (that.right > this.right) return 1
       if (this.left < that.left) return 1
       if (that.left < this.left) return -1
-      this.label.compareTo(that.label)
+      0
     }
 
     def verticalCompare(that: Rectangle): Int = {
@@ -87,7 +84,7 @@ object ImageLabel {
       if (that.top < this.top) return 1
       if (this.bottom < that.bottom) return -1
       if (that.bottom < this.bottom) return 1
-      this.label.compareTo(that.label)
+      0
     }
 
     /**
@@ -124,15 +121,15 @@ object ImageLabel {
     }
 
     def rescale(scale: Double): Rectangle =
-      Rectangle(label, (left.toDouble * scale).toInt, (top.toDouble * scale).toInt, (width.toDouble * scale).toInt, (height.toDouble * scale).toInt)
+      Rectangle((left.toDouble * scale).toInt, (top.toDouble * scale).toInt, (width.toDouble * scale).toInt, (height.toDouble * scale).toInt)
 
     def translate(xDiff: Int, yDiff: Int): Rectangle =
-      Rectangle(label, left + xDiff, top + yDiff, width, height)
+      Rectangle(left + xDiff, top + yDiff, width, height)
 
     def rotate(imageInfo: ImageInfo): Rectangle = {
       val (x1r, y1r) = imageInfo.rotate(left, top)
       val (x2r, y2r) = imageInfo.rotate(left+width, top+height)
-      Rectangle(label, x1r, y1r, x2r-x1r, y2r-y1r)
+      Rectangle(x1r, y1r, x2r-x1r, y2r-y1r)
     }
 
     def toAWT: java.awt.Rectangle = new awt.Rectangle(this.left, this.top, this.width, this.height)
@@ -141,11 +138,10 @@ object ImageLabel {
   }
 
   object Rectangle {
-    def apply(label: String, rotatedRect: RotatedRect): Rectangle =
-      Rectangle(label, rotatedRect.boundingRect().x, rotatedRect.boundingRect().y, rotatedRect.boundingRect().width, rotatedRect.boundingRect.height)
+    def apply(rotatedRect: RotatedRect): Rectangle =
+      Rectangle(rotatedRect.boundingRect().x, rotatedRect.boundingRect().y, rotatedRect.boundingRect().width, rotatedRect.boundingRect.height)
 
-    def fromXML(label: String, node: Node): Rectangle = Rectangle(
-      label,
+    def fromXML(node: Node): Rectangle = Rectangle(
       left=(node \@ "HPOS").toIntOption.getOrElse(0),
       top=(node \@ "VPOS").toIntOption.getOrElse(0),
       width=(node \@ "WIDTH").toIntOption.getOrElse(1),
@@ -165,7 +161,7 @@ object ImageLabel {
     }
   }
 
-  case class Line(label: String, x1: Int, y1: Int, x2: Int, y2: Int) extends ImageLabel with Ordered[Line] {
+  case class Line(x1: Int, y1: Int, x2: Int, y2: Int) extends ImageLabel with Ordered[Line] {
     val height: Int = Math.abs(y2 - y1)
     val width: Int = Math.abs(x2 - x1)
 
@@ -181,19 +177,19 @@ object ImageLabel {
 
     import scala.math.Ordered.orderingToOrdered
 
-    def compare(that: Line): Int = (this.y1, this.x1, this.y2, this.x2, this.label) compare (that.y1, that.x1, that.y2, that.x2, that.label)
+    def compare(that: Line): Int = (this.y1, this.x1, this.y2, this.x2) compare (that.y1, that.x1, that.y2, that.x2)
 
     def rescale(scale: Double): Line =
-      Line(label, (x1.toDouble * scale).toInt, (y1.toDouble * scale).toInt, (x2.toDouble * scale).toInt, (y2.toDouble * scale).toInt)
+      Line((x1.toDouble * scale).toInt, (y1.toDouble * scale).toInt, (x2.toDouble * scale).toInt, (y2.toDouble * scale).toInt)
 
     def rotate(imageInfo: ImageInfo): Line = {
       val (x1r, y1r) = imageInfo.rotate(x1, y1)
       val (x2r, y2r) = imageInfo.rotate(x2, y2)
-      Line(label, x1r, y1r, x2r, y2r)
+      Line(x1r, y1r, x2r, y2r)
     }
 
     def translate(xDiff: Int, yDiff: Int): Line =
-      Line(label, x1 + xDiff, y1 + yDiff, x2 + xDiff, y2 + yDiff)
+      Line(x1 + xDiff, y1 + yDiff, x2 + xDiff, y2 + yDiff)
   }
 
   object Line {
@@ -236,7 +232,7 @@ object ImageLabel {
           }
       }
 
-      Line("", x1, y1, x2, y2)
+      Line(x1, y1, x2, y2)
     }
   }
 }

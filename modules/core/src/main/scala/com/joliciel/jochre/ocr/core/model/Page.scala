@@ -56,14 +56,14 @@ case class Page(
     case _: Illustration => Seq.empty
   }
 
-  val rectangle: Rectangle = Rectangle("", 0, 0, width, height)
+  val rectangle: Rectangle = Rectangle(0, 0, width, height)
 
   lazy val printArea: Rectangle = {
     val minLeft = this.blocks.map(_.rectangle.left).minOption.getOrElse(0)
     val minTop = this.blocks.map(_.rectangle.top).minOption.getOrElse(0)
     val maxRight = this.blocks.map(_.rectangle.right).maxOption.getOrElse(width)
     val maxBottom = this.blocks.map(_.rectangle.bottom).maxOption.getOrElse(height)
-    Rectangle("",
+    Rectangle(
       left = minLeft,
       top = minTop,
       width = maxRight - minLeft,
@@ -80,7 +80,7 @@ case class Page(
     val newWidth = printArea.width + (2 * xMargin)
     val newHeight = printArea.height + (2 * yMargin)
 
-    Rectangle("",
+    Rectangle(
       left = newLeft,
       top = newTop,
       width = if (newLeft + newWidth > width) {

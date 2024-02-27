@@ -16,7 +16,7 @@ case class ComposedBlock(
   idNext: Option[String] = None,
   styleRefs: Option[String] = None,
   tagRefs: Option[String] = None
-) extends Block {
+) extends TextContainer {
   override def translate(xDiff: Int, yDiff: Int): ComposedBlock =
     ComposedBlock(rectangle.translate(xDiff, yDiff), textBlocks.map(_.translate(xDiff, yDiff)))
 
@@ -66,6 +66,6 @@ object ComposedBlock {
     val styleRefs = node \@ "STYLEREFS"
     val styleRefsOption = Option.when(styleRefs.nonEmpty)(styleRefs)
 
-    ComposedBlock(Rectangle.fromXML(BlockType.Paragraph.entryName, node), paragraphs, id = idOption, idNext = idNextOption, styleRefs = styleRefsOption, tagRefs = tagRefsOption)
+    ComposedBlock(Rectangle.fromXML(node), paragraphs, id = idOption, idNext = idNextOption, styleRefs = styleRefsOption, tagRefs = tagRefsOption)
   }
 }

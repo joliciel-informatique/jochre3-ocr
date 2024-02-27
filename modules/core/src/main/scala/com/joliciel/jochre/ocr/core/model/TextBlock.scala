@@ -16,7 +16,7 @@ case class TextBlock(
   idNext: Option[String] = None,
   styleRefs: Option[String] = None,
   tagRefs: Option[String] = None
-) extends Block {
+) extends TextContainer {
   lazy val textLinesWithRectangles: Seq[(TextLine, Rectangle)] = {
     val optionalTextLinesAfter = textLines.drop(1).map(Some(_)) :+ None
 
@@ -29,7 +29,7 @@ case class TextBlock(
         val distanceToNext = after.baseLine.y1 - current.baseLine.y1
         distanceToTop + (distanceToNext * 0.25).toInt
       }.getOrElse(rectangle.bottom - top)
-      val myRectangle = Rectangle(current.content, current.baseLine.x1, top, current.baseLine.x2 - current.baseLine.x1, height)
+      val myRectangle = Rectangle(current.baseLine.x1, top, current.baseLine.x2 - current.baseLine.x1, height)
       rectangles :+ myRectangle
     }
     textLines.zip(rectangles)
@@ -84,6 +84,6 @@ object TextBlock {
     val styleRefs = node \@ "STYLEREFS"
     val styleRefsOption = Option.when(styleRefs.nonEmpty)(styleRefs)
 
-    TextBlock(Rectangle.fromXML(BlockType.TextBox.entryName, node), textLines, id = idOption, idNext = idNextOption, styleRefs = styleRefsOption, tagRefs = tagRefsOption)
+    TextBlock(Rectangle.fromXML(node), textLines, id = idOption, idNext = idNextOption, styleRefs = styleRefsOption, tagRefs = tagRefsOption)
   }
 }
