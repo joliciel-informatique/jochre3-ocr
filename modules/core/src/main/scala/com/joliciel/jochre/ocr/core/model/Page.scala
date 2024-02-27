@@ -135,11 +135,9 @@ case class Page(
     this.blocks.foreach(_.draw(mat))
   }
 
-  override def content: String = this.blocks.map{
-    case composedBlock:ComposedBlock => composedBlock.content
-    case textBlock:TextBlock => f"${textBlock.content}\n"
-    case illustration:Illustration => illustration.content
-  }.mkString
+  override def content: String = this.blocks.collect{
+    case textContainer: TextContainer => textContainer.content
+  }.mkString("\n")
 
   override def transform(partialFunction: PartialFunction[AltoElement, AltoElement]): Page = {
     val transformed = if (partialFunction.isDefinedAt(this)) { partialFunction(this).asInstanceOf[Page] } else { this }

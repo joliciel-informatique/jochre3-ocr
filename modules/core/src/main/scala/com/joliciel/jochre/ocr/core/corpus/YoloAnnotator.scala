@@ -45,7 +45,7 @@ case class YoloAnnotator(
   yamlFileName.foreach{ yamlFileName =>
     val yamlFile = new File(outDir.toFile, yamlFileName)
     Using(new OutputStreamWriter(new FileOutputStream(yamlFile), StandardCharsets.UTF_8)) { writer =>
-      writer.write("path: /some/path # dataset root dir\n")
+      writer.write(f"path: ${outDir.toFile.getName} # dataset root dir\n")
       writer.write("train: images/train # train images (relative to 'path')\n")
       writer.write("val: images/val # validation images (relative to 'path')\n")
       writer.write("test:  # test images (relative to 'path') - optional\n")
