@@ -2,7 +2,8 @@ package com.joliciel.jochre.ocr.core.text
 
 import com.joliciel.jochre.ocr.core.alto.ImageToAltoConverter
 import com.joliciel.jochre.ocr.core.model.{Block, BlockSorter, Illustration, Page}
-import com.joliciel.jochre.ocr.core.utils.{ImageUtils, OutputLocation}
+import com.joliciel.jochre.ocr.core.utils.{ImageUtils, OutputLocation, StringUtils}
+import com.typesafe.config.ConfigFactory
 import org.bytedeco.opencv.opencv_core.Mat
 import org.slf4j.LoggerFactory
 import zio.{Task, ZIO, ZLayer}
@@ -22,6 +23,9 @@ private[text] case class BlockTextGuesserServiceImpl(imageToAltoConverter: Image
  */
 private[text] class BlockTextGuesser(imageToAltoConverter: ImageToAltoConverter) extends TextGuesser with ImageUtils {
   private val log = LoggerFactory.getLogger(getClass)
+
+  private val language = ConfigFactory.load().getConfig("jochre.ocr").getString("language")
+  private val leftToRight = StringUtils.isLeftToRight(language)
 
   /**
    * Given an image and a pre-segmented [[Page]] structure, attempt to guess the text within the page
@@ -55,7 +59,7 @@ private[text] class BlockTextGuesser(imageToAltoConverter: ImageToAltoConverter)
         case (IllustrationSegment(block), _) =>
           ZIO.succeed(Seq(Illustration(block)))
       }.mapAttempt{ blocks =>
-        val sortedBlocks = BlockSorter.sort(blocks.flatten)
+        val sortedBlocks = BlockSorter.sort(blocks.flatten, leftToRight)
           .collect{
             case b: Block => b
           }
@@ -63,7 +67,7 @@ private[text] class BlockTextGuesser(imageToAltoConverter: ImageToAltoConverter)
 
         page.copy(
           blocks = sortedBlocks
-        ).withCleanIds
+        ).withCleanIds.withDefaultLanguage
       }
     } yield pageWithContent
   }

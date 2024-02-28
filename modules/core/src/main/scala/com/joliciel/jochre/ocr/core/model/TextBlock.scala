@@ -1,7 +1,6 @@
 package com.joliciel.jochre.ocr.core.model
 
 import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
-import com.joliciel.jochre.ocr.core.segmentation.BlockType
 import org.bytedeco.opencv.global.opencv_imgproc
 import org.bytedeco.opencv.global.opencv_imgproc.LINE_8
 import org.bytedeco.opencv.opencv_core.{AbstractScalar, Mat, Point}
@@ -13,10 +12,12 @@ case class TextBlock(
   rectangle: Rectangle,
   textLines: Seq[TextLine],
   id: String = UUID.randomUUID().toString,
+  language: Option[String] = None,
   idNext: Option[String] = None,
   styleRefs: Option[String] = None,
-  tagRefs: Option[String] = None
-) extends TextContainer {
+  tagRefs: Option[String] = None,
+  defaultLanguage: Option[String] = None,
+) extends TextContainer with WithLanguage {
   lazy val textLinesWithRectangles: Seq[(TextLine, Rectangle)] = {
     val optionalTextLinesAfter = textLines.drop(1).map(Some(_)) :+ None
 
@@ -67,6 +68,11 @@ case class TextBlock(
     val newLines = transformed.textLines.map(_.transform(partialFunction)).collect{ case textLine: TextLine => textLine }
     transformed.copy(textLines = newLines)
   }
+
+  def withDefaultLanguage(defaultLanguage: String): TextBlock = {
+    val myLanguage = this.language.getOrElse(defaultLanguage)
+    this.copy(defaultLanguage = Some(defaultLanguage), textLines = this.textLines.map(_.withDefaultLanguage(myLanguage)))
+  }
 }
 
 object TextBlock {
@@ -83,7 +89,9 @@ object TextBlock {
     val tagRefsOption = Option.when(tagRefs.nonEmpty)(tagRefs)
     val styleRefs = node \@ "STYLEREFS"
     val styleRefsOption = Option.when(styleRefs.nonEmpty)(styleRefs)
+    val languageAttribute = node \@ "LANG"
+    val languageOption = Option.when(languageAttribute.nonEmpty)(languageAttribute)
 
-    TextBlock(Rectangle.fromXML(node), textLines, id = idOption, idNext = idNextOption, styleRefs = styleRefsOption, tagRefs = tagRefsOption)
+    TextBlock(Rectangle.fromXML(node), textLines, id = idOption, language = languageOption, idNext = idNextOption, styleRefs = styleRefsOption, tagRefs = tagRefsOption)
   }
 }

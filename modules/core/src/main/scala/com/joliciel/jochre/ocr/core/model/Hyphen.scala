@@ -17,8 +17,6 @@ case class Hyphen(content: String, rectangle: Rectangle) extends WordOrSpace {
   override def toXml: Elem =
     <HYP HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString} CONTENT={content}></HYP>
 
-  override def compare(that: WordOrSpace): Int = this.rectangle.horizontalCompare(that.rectangle)
-
   def toWord: Word =
     Word(this.content, this.rectangle, Seq(Glyph(this.content, this.rectangle, 0.5)), Seq.empty, 0.5)
 

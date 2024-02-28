@@ -15,8 +15,9 @@ case class ComposedBlock(
   id: String = UUID.randomUUID().toString,
   idNext: Option[String] = None,
   styleRefs: Option[String] = None,
-  tagRefs: Option[String] = None
-) extends TextContainer {
+  tagRefs: Option[String] = None,
+  defaultLanguage: Option[String] = None,
+) extends TextContainer with WithLanguage {
   override def translate(xDiff: Int, yDiff: Int): ComposedBlock =
     ComposedBlock(rectangle.translate(xDiff, yDiff), textBlocks.map(_.translate(xDiff, yDiff)))
 
@@ -49,6 +50,12 @@ case class ComposedBlock(
     val newTextBlocks = transformed.textBlocks.map(_.transform(partialFunction)).collect { case block: TextBlock => block }
     transformed.copy(textBlocks = newTextBlocks)
   }
+
+  def withDefaultLanguage(defaultLanguage: String): ComposedBlock = {
+    this.copy(defaultLanguage = Some(defaultLanguage), textBlocks = this.textBlocks.map(_.withDefaultLanguage(defaultLanguage)))
+  }
+
+  override val language: Option[String] = None
 }
 
 object ComposedBlock {

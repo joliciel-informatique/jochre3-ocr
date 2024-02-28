@@ -2,7 +2,8 @@ package com.joliciel.jochre.ocr.core.segmentation
 
 import com.joliciel.jochre.ocr.core.model.ImageLabel.{PredictedRectangle, Rectangle}
 import com.joliciel.jochre.ocr.core.model.{BlockSorter, Illustration, Page, TextBlock}
-import com.joliciel.jochre.ocr.core.utils.OutputLocation
+import com.joliciel.jochre.ocr.core.utils.{OutputLocation, StringUtils}
+import com.typesafe.config.ConfigFactory
 import org.bytedeco.opencv.opencv_core.Mat
 import zio.{Task, ZIO, ZLayer}
 
@@ -20,12 +21,15 @@ private[segmentation] case class BlockOnlySegmenterServiceImpl(yoloPredictorServ
  * Given an image, creates a page with top-level blocks only (text blocks, illustrations).
  */
 private[segmentation] class BlockOnlySegmenter(yoloPredictorService: YoloPredictorService) extends Segmenter {
+  private val language = ConfigFactory.load().getConfig("jochre.ocr").getString("language")
+  private val leftToRight = StringUtils.isLeftToRight(language)
+
   override def segment(mat: Mat, fileName: String, debugLocation: Option[OutputLocation], testRectangle: Option[Rectangle] = None): Task[Page] = {
     for {
       blockPredictor <- yoloPredictorService.getYoloPredictor(YoloPredictionType.Blocks, mat, fileName, debugLocation)
       blockPredictions <- blockPredictor.predict()
       page <- ZIO.attempt{
-        val sortedBlockPredictions = BlockSorter.sort(blockPredictions)
+        val sortedBlockPredictions = BlockSorter.sort(blockPredictions, leftToRight)
           .collect {
             case p: PredictedRectangle => p
           }
@@ -47,10 +51,10 @@ private[segmentation] class BlockOnlySegmenter(yoloPredictorService: YoloPredict
           width = mat.cols(),
           physicalPageNumber = 1,
           rotation = 0,
-          language = "yi",
+          language = language,
           confidence = 1.0,
           blocks = blocks
-        ).withCleanIds
+        ).withCleanIds.withDefaultLanguage
       }
     } yield page
   }

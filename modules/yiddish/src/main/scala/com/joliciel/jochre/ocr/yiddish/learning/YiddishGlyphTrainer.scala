@@ -1,11 +1,13 @@
 package com.joliciel.jochre.ocr.yiddish.learning
 
+import com.joliciel.jochre.ocr.core.corpus.TextSimplifier
 import com.joliciel.jochre.ocr.core.learning.{GlyphTrainer, ModelBuilder}
 import com.joliciel.jochre.ocr.yiddish.YiddishTextSimpifier
 import enumeratum._
 import org.rogach.scallop.{ScallopConf, ScallopOption}
 
 import java.nio.file.Path
+import scala.util.matching.Regex
 
 object YiddishGlyphTrainer {
   private class TrainerCLI(arguments: Seq[String]) extends ScallopConf(arguments) {
@@ -15,11 +17,10 @@ object YiddishGlyphTrainer {
     val numEpochs: ScallopOption[Int] = opt[Int](default = Some(10), descr = "Number of training epochs, default = 10.")
     val batchSize: ScallopOption[Int] = opt[Int](default = Some(32), descr = "Batch size, default = 32.")
     val modelType: ScallopOption[String] = opt[String](required = true, descr = f"Model type, among ${ModelType.values.map(_.entryName).mkString(", ")}")
-
+    val alphabet: ScallopOption[String] = opt[String](default = Some(Alphabet.Hebrew.entryName), descr = f"Alphabet, among ${Alphabet.values.map(_.entryName).mkString(", ")}")
     verify()
   }
 
-  val textSimplifier: YiddishTextSimpifier = YiddishTextSimpifier(true)
 
   def main(args: Array[String]): Unit = {
     val cli = new TrainerCLI(args)
@@ -29,6 +30,7 @@ object YiddishGlyphTrainer {
     val numEpochs = cli.numEpochs()
     val batchSize = cli.batchSize()
     val modelType = ModelType.withName(cli.modelType())
+    val alphabet = Alphabet.withName(cli.alphabet())
 
     val glyphModel = modelType.glyphTrainerModelType
 
@@ -39,7 +41,8 @@ object YiddishGlyphTrainer {
       modelName = modelName,
       numEpochs = numEpochs,
       batchSize = batchSize,
-      textSimplifier = textSimplifier
+      textSimplifier = alphabet.textSimpifier,
+      wordSelectionRegex = alphabet.regex,
     )
     trainer.train()
   }
@@ -61,6 +64,27 @@ object YiddishGlyphTrainer {
 
     case object MLP extends ModelType {
       override def glyphTrainerModelType: ModelBuilder.ModelType = ModelBuilder.ModelType.MLPModel()
+    }
+  }
+
+  private sealed trait Alphabet extends EnumEntry {
+    def regex: Option[Regex]
+    def textSimpifier: TextSimplifier = TextSimplifier.default
+  }
+
+  private object Alphabet extends Enum[Alphabet] {
+    val values = findValues
+
+    case object Hebrew extends Alphabet {
+      val regex: Option[Regex] = None
+      val textSimplifier = YiddishTextSimpifier(replaceNotYiddishAlphabets = true)
+    }
+
+    case object Latin extends Alphabet {
+      val regex: Option[Regex] = Some(raw""".*\p{IsLatin}.*""".r)
+    }
+    case object Cyrillic extends Alphabet {
+      val regex: Option[Regex] = Some(raw""".*\p{IsCyrillic}.*""".r)
     }
   }
 }

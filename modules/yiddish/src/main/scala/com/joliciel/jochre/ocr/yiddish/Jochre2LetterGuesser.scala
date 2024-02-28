@@ -145,7 +145,7 @@ case class Jochre2LetterGuesser() extends TextGuesser with ImageUtils {
           textLine.copy(wordsAndSpaces = textLine.wordsAndSpaces.flatMap{
             case word:Word =>
               val newGlyphs = word.glyphs.flatMap{
-                case glyph@Glyph(_, rectangle, _) =>
+                case glyph: Glyph =>
                   glyphToShapeMap(glyph) match {
                     case Some(shape) => Some(glyph.copy(content = shape.getLetter, confidence = shape.getConfidence))
                     case None => None
@@ -164,6 +164,6 @@ case class Jochre2LetterGuesser() extends TextGuesser with ImageUtils {
       case other => other
     })
 
-    analysedPage.withCleanIds
+    analysedPage.withCleanIds.withDefaultLanguage
   }.tapError(exception => ZIO.succeed(log.error("Failed to analyze image", exception)))
 }

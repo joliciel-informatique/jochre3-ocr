@@ -56,27 +56,48 @@ object ImageLabel {
      * Use BlockSorter instead (which tries this compare and, if it fails,
      * performs a more complex compare).
      */
-    def simplePageLayoutCompare(that: Rectangle): Int = {
-      // We'll assume right-to-left for now
-      if (this.left >= that.right) return -1
-      if (this.right <= that.left) return 1
-      if (this.top < that.top) return -1
-      if (that.top < this.top) return 1
-      if (this.bottom < that.bottom) return -1
-      if (that.bottom < this.bottom) return 1
-      if (this.right > that.right) return -1
-      if (that.right > this.right) return 1
-      if (this.left < that.left) return 1
-      if (that.left < this.left) return -1
-      0
+    def simplePageLayoutCompare(that: Rectangle, leftToRight: Boolean): Int = {
+      if (leftToRight) {
+        if (this.right >= that.left) return 1
+        if (this.left <= that.right) return -1
+        if (this.top < that.top) return -1
+        if (that.top < this.top) return 1
+        if (this.bottom < that.bottom) return -1
+        if (that.bottom < this.bottom) return 1
+        if (this.left > that.left) return 1
+        if (that.left > this.left) return -1
+        if (this.right < that.right) return -1
+        if (that.right < this.right) return 1
+        0
+      } else {
+        if (this.left >= that.right) return -1
+        if (this.right <= that.left) return 1
+        if (this.top < that.top) return -1
+        if (that.top < this.top) return 1
+        if (this.bottom < that.bottom) return -1
+        if (that.bottom < this.bottom) return 1
+        if (this.right > that.right) return -1
+        if (that.right > this.right) return 1
+        if (this.left < that.left) return 1
+        if (that.left < this.left) return -1
+        0
+      }
     }
 
-    def horizontalCompare(that: Rectangle): Int = {
-      if (this.right > that.right) return -1
-      if (that.right > this.right) return 1
-      if (this.left < that.left) return 1
-      if (that.left < this.left) return -1
-      0
+    def horizontalCompare(that: Rectangle, leftToRight: Boolean): Int = {
+      if (leftToRight) {
+        if (this.left > that.left) return 1
+        if (that.left > this.left) return -1
+        if (this.right < that.right) return -1
+        if (that.right < this.right) return 1
+        0
+      } else {
+        if (this.right > that.right) return -1
+        if (that.right > this.right) return 1
+        if (this.left < that.left) return 1
+        if (that.left < this.left) return -1
+        0
+      }
     }
 
     def verticalCompare(that: Rectangle): Int = {
@@ -108,16 +129,26 @@ object ImageLabel {
      * Return -1 if we should check later rectangles.
      * Return 1 if we should check earlier rectangles.
      */
-    def testHorizontalOverlap(that: Rectangle): Int = {
-      // We'll assume right-to-left for now
-      if (this.left >= that.right) return -1
-      if (this.right <= that.left) return 1
-      if (areaOfIntersection(that) / that.area.toDouble > 0.5) return 0
-      if (this.right > that.right) return 1
-      if (that.right > this.right) return -1
-      if (this.left < that.left) return -1
-      if (that.left < this.left) return 1
-      -1
+    def testHorizontalOverlap(that: Rectangle, leftToRight: Boolean): Int = {
+      if (leftToRight) {
+        if (this.right >= that.left) return 1
+        if (this.left <= that.right) return -1
+        if (areaOfIntersection(that) / that.area.toDouble > 0.5) return 0
+        if (this.left > that.left) return -1
+        if (that.left > this.left) return 1
+        if (this.right < that.right) return 1
+        if (that.right < this.right) return -1
+        -1
+      } else {
+        if (this.left >= that.right) return -1
+        if (this.right <= that.left) return 1
+        if (areaOfIntersection(that) / that.area.toDouble > 0.5) return 0
+        if (this.right > that.right) return 1
+        if (that.right > this.right) return -1
+        if (this.left < that.left) return -1
+        if (that.left < this.left) return 1
+        -1
+      }
     }
 
     def rescale(scale: Double): Rectangle =
@@ -147,18 +178,6 @@ object ImageLabel {
       width=(node \@ "WIDTH").toIntOption.getOrElse(1),
       height = (node \@ "HEIGHT").toIntOption.getOrElse(1)
     )
-
-    object HorizontalOrdering extends Ordering[Rectangle] {
-      def compare(a: Rectangle, b: Rectangle): Int = a.horizontalCompare(b)
-    }
-
-    object VerticalOrdering extends Ordering[Rectangle] {
-      def compare(a: Rectangle, b: Rectangle): Int = a.verticalCompare(b)
-    }
-
-    object SimplePageLayoutOrdering extends Ordering[Rectangle] {
-      def compare(a: Rectangle, b: Rectangle): Int = a.simplePageLayoutCompare(b)
-    }
   }
 
   case class Line(x1: Int, y1: Int, x2: Int, y2: Int) extends ImageLabel with Ordered[Line] {

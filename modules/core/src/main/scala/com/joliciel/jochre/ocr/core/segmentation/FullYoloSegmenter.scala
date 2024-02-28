@@ -2,7 +2,7 @@ package com.joliciel.jochre.ocr.core.segmentation
 
 import com.joliciel.jochre.ocr.core.model.ImageLabel.{Line, PredictedRectangle, Rectangle}
 import com.joliciel.jochre.ocr.core.model.{Block, BlockSorter, Glyph, Illustration, Page, Space, TextBlock, TextLine, WithRectangle, Word}
-import com.joliciel.jochre.ocr.core.utils.{ImageUtils, MathUtils, OutputLocation}
+import com.joliciel.jochre.ocr.core.utils.{ImageUtils, MathUtils, OutputLocation, StringUtils}
 import com.typesafe.config.ConfigFactory
 import org.bytedeco.opencv.opencv_core.Mat
 import org.slf4j.LoggerFactory
@@ -29,6 +29,9 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
   private val cropToPrintArea = config.getBoolean("crop-to-print-area")
   private val cropMargin = config.getDouble("crop-margin")
 
+  private val language = ConfigFactory.load().getConfig("jochre.ocr").getString("language")
+  private val leftToRight = StringUtils.isLeftToRight(language)
+
   /** Transform an image into a segmented [[Page]] structure.
    * The page might only be segmented down to a given level (e.g. blocks, lines, strings, or glyphs) */
   override def segment(mat: Mat, fileName: String, debugLocation: Option[OutputLocation], testRectangle: Option[Rectangle] = None): Task[Page] = {
@@ -36,7 +39,7 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
       blockPredictor <- yoloPredictorService.getYoloPredictor(YoloPredictionType.Blocks, mat, fileName, debugLocation, Some(0.20))
       blockPredictions <- blockPredictor.predict()
       pageWithBlocks <- ZIO.attempt {
-        val sortedBlockPredictions = BlockSorter.sort(blockPredictions)
+        val sortedBlockPredictions = BlockSorter.sort(blockPredictions, leftToRight)
           .collect{
             case p: PredictedRectangle => p
           }
@@ -61,10 +64,10 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
           width = mat.cols(),
           physicalPageNumber = 1,
           rotation = 0,
-          language = "yi",
+          language = language,
           confidence = 1.0,
           blocks = blocks
-        ).withCleanIds
+        ).withCleanIds.withDefaultLanguage
       }
       croppedPrintArea <- ZIO.attempt{
         if (cropToPrintArea) {
@@ -119,7 +122,7 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
         val textBlockToLineMap = placeRectanglesInTextBlocks(textBlocksToConsider, linesToPlace, "TextLine", minIntersection = 0.01, splitHorizontally = true)
 
         val textBlocksWithLines = textBlocksToConsider.map{ textBlock =>
-          val myLineRects = textBlockToLineMap.get(textBlock).getOrElse(Seq.empty).sortBy(_.rectangle)(Rectangle.VerticalOrdering)
+          val myLineRects = textBlockToLineMap.get(textBlock).getOrElse(Seq.empty).sorted(WithRectangle.VerticalOrdering())
           val myLineRectsWithoutOverlaps = removeOverlaps(myLineRects)
           val myLines = myLineRectsWithoutOverlaps.map(lineRect => TextLine(Line(textBlock.rectangle.left, lineRect.rectangle.bottom, textBlock.rectangle.right, lineRect.rectangle.bottom), Seq.empty))
           textBlock.copy(textLines = myLines)
@@ -176,13 +179,21 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
                   }
               }
 
-              //TODO: adapt to right-to-left or left-to-right
               val wordsAndSpaces = Option.when(nonEmptyWords.size > 1)(nonEmptyWords.zip(nonEmptyWords.tail).flatMap { case (word, nextWord) =>
-                val spaceWidth = word.rectangle.left - nextWord.rectangle.right
-                if (spaceWidth > 0) {
-                  Seq(word, Space(Rectangle(nextWord.rectangle.right, word.rectangle.top, spaceWidth, word.rectangle.height)))
+                if (leftToRight) {
+                  val spaceWidth = nextWord.rectangle.left - word.rectangle.right
+                  if (spaceWidth > 0) {
+                    Seq(word, Space(Rectangle(word.rectangle.right, word.rectangle.top, spaceWidth, word.rectangle.height)))
+                  } else {
+                    Seq(word)
+                  }
                 } else {
-                  Seq(word)
+                  val spaceWidth = word.rectangle.left - nextWord.rectangle.right
+                  if (spaceWidth > 0) {
+                    Seq(word, Space(Rectangle(nextWord.rectangle.right, word.rectangle.top, spaceWidth, word.rectangle.height)))
+                  } else {
+                    Seq(word)
+                  }
                 }
               } :+ nonEmptyWords.last).getOrElse(nonEmptyWords)
 
@@ -195,7 +206,7 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
           textBlock.copy(textLines = nonEmptyLines)
         }.filter(_.textLines.size > 0)
 
-        val newBlocks = BlockSorter.sort(textBlocksWithGlyphs ++ illustrations)
+        val newBlocks = BlockSorter.sort(textBlocksWithGlyphs ++ illustrations, leftToRight)
           .collect{
             case b: Block => b
           }
@@ -206,10 +217,10 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
           width = mat.cols(),
           physicalPageNumber = 1,
           rotation = 0,
-          language = "yi",
+          language = language,
           confidence = 1.0,
           blocks = newBlocks
-        )
+        ).withCleanIds.withDefaultLanguage
 
         page
       }
@@ -346,7 +357,7 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
     }
 
     textLineMap.view
-      .mapValues(_.sortBy(_.rectangle)(Rectangle.HorizontalOrdering))
+      .mapValues(_.sorted(WithRectangle.HorizontalOrdering(leftToRight)))
       .mapValues(removeOverlaps(_))
       .toMap
   }
@@ -355,10 +366,10 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
     val (wordMap, _) = rectangles.foldLeft(Map.empty[Word, Seq[PredictedRectangle]] -> Option.empty[Word]) { case ((wordMap, lastWord), rect) =>
       if (log.isDebugEnabled) log.debug(f"Trying to find word for glyph ${rect.rectangle.coordinates}")
       // Before binary search, check if glyph is in last recognized container (since glyphs are ordered)
-      val container = lastWord.filter(_.rectangle.testHorizontalOverlap(rect.rectangle)==0).map(Some(_))
+      val container = lastWord.filter(_.rectangle.testHorizontalOverlap(rect.rectangle, leftToRight)==0).map(Some(_))
         .getOrElse {
           // Run the binary search
-          val containerIndex = findContainer(rect.rectangle, textLine.words.map(_.rectangle), _.testHorizontalOverlap(_), 0, textLine.words.size-1)
+          val containerIndex = findContainer(rect.rectangle, textLine.words.map(_.rectangle), _.testHorizontalOverlap(_, leftToRight), 0, textLine.words.size-1)
           Option.when(containerIndex >= 0)(textLine.words(containerIndex))
         }
 

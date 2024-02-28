@@ -15,7 +15,24 @@ import com.joliciel.jochre.ocr.core.corpus.{AltoFinder, TextSimplifier}
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
+import scala.util.matching.Regex
 
+/**
+ *
+ * @param corpusDir
+ * @param outputDir
+ * @param modelName
+ * @param numEpochs
+ * @param modelType
+ * @param imageSize
+ * @param batchSize
+ * @param limit
+ * @param maxGpus
+ * @param checkpoints save the model at the end of the epoch every checkpoint, default is 1
+ * @param wordSelectionRegex if provided, will limit this trainer to glyphs contained in words whose content matches the regex
+ * @param textSimplifier
+ * @param altoFinder
+ */
 case class GlyphTrainer(
   corpusDir: Path,
   outputDir: Path,
@@ -26,6 +43,8 @@ case class GlyphTrainer(
   batchSize: Int = 32,
   limit: Int = 0,
   maxGpus: Int = 0,
+  checkpoint: Int = 1,
+  wordSelectionRegex: Option[Regex] = None,
   textSimplifier: TextSimplifier = TextSimplifier.default,
   altoFinder: AltoFinder = AltoFinder.default
 ) {
@@ -56,7 +75,7 @@ case class GlyphTrainer(
   }
 
   val trainingConfig: DefaultTrainingConfig = {
-    val listener = new SaveModelTrainingListener(outputDir.toFile.getPath)
+    val listener = new SaveModelTrainingListener(outputDir.toFile.getPath, modelName, checkpoint)
     listener.setSaveModelCallback(trainer => {
       val result = trainer.getTrainingResult
       val model = trainer.getModel
@@ -91,6 +110,7 @@ case class GlyphTrainer(
       imageSize,
       textSimplifier = textSimplifier,
       altoFinder = altoFinder,
+      wordSelectionRegex = wordSelectionRegex,
     ).setSampling(batchSize, false, true).build()
     dataset.prepare(new ProgressBar())
     dataset

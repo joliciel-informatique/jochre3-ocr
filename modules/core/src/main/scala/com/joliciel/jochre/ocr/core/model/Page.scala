@@ -2,6 +2,8 @@ package com.joliciel.jochre.ocr.core.model
 
 import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
 import com.joliciel.jochre.ocr.core.utils.MathUtils.MathImplicits._
+import com.joliciel.jochre.ocr.core.utils.StringUtils
+import com.typesafe.config.ConfigFactory
 import org.bytedeco.opencv.opencv_core.Mat
 
 import scala.xml.{Elem, Node}
@@ -15,6 +17,8 @@ case class Page(
   language: String,
   confidence: Double,
   blocks: Seq[Block]) extends PageElement {
+  val leftToRight = StringUtils.isLeftToRight(language)
+
   override def translate(xDiff: Int, yDiff: Int): Page = {
     this.copy(blocks = blocks.map(_.translate(xDiff, yDiff)).collect{
       case block: Block => block
@@ -33,7 +37,7 @@ case class Page(
     case illustration: Illustration => illustration
   }
 
-  lazy val allTextBoxes: Seq[TextBlock] = BlockSorter.sort(composedBlocks.flatMap(_.textBlocks) ++ textBlocks)
+  lazy val allTextBoxes: Seq[TextBlock] = BlockSorter.sort(composedBlocks.flatMap(_.textBlocks) ++ textBlocks, leftToRight)
     .collect{
       case t:TextBlock => t
     }
@@ -169,9 +173,19 @@ case class Page(
     case composedBlock: ComposedBlock => composedBlock.copy(id = "")
     case illustration: Illustration => illustration.copy(id = "")
   }
+
+  def withDefaultLanguage: Page = {
+    this.copy(blocks = this.blocks.map{
+      case composedBlock: ComposedBlock => composedBlock.withDefaultLanguage(this.language)
+      case textBlock: TextBlock => textBlock.withDefaultLanguage(this.language)
+      case other => other
+    })
+  }
 }
 
 object Page {
+  private val defaultLanguage = ConfigFactory.load().getConfig("jochre.ocr").getString("language")
+
   def fromXML(node: Node): Page = {
     val id = node \@ "ID"
     val height = (node \@ "HEIGHT").toIntOption.getOrElse(0)
@@ -188,7 +202,7 @@ object Page {
     val printSpace = (node \ "PrintSpace").headOption
     val languageStr = node \@"LANG"
     val language = if (languageStr.isEmpty) {
-      "en"
+      defaultLanguage
     } else {
       languageStr
     }
