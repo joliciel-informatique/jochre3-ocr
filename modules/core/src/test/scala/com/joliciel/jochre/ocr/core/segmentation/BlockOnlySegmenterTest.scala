@@ -45,8 +45,8 @@ object BlockOnlySegmenterTest extends JUnitRunnableSpec with ImageUtils {
           case illustration: Illustration => illustration.copy(id = "")
         }
         val expected = Seq(
-          TextBlock(Rectangle(60, 10, 100, 100), Seq.empty, id = ""),
-          TextBlock(Rectangle(10, 10, 50, 50), Seq.empty, id = ""),
+          TextBlock(Rectangle(60, 10, 100, 100), Seq.empty, id = "", defaultLanguage = Some("yi")),
+          TextBlock(Rectangle(10, 10, 50, 50), Seq.empty, id = "", defaultLanguage = Some("yi")),
           Illustration(Rectangle(20, 120, 50, 50), id = ""),
         )
         assertTrue(blocks==expected)

@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory
 
 import java.nio.file.Path
 import scala.collection.SortedSet
+import scala.util.matching.Regex
 
 case class GlyphDataset(builder: GlyphDatasetBuilder) extends RandomAccessDataset(builder)
   with ImageUtils
@@ -27,7 +28,11 @@ case class GlyphDataset(builder: GlyphDatasetBuilder) extends RandomAccessDatase
   private val altoDocuments = images.map(image => builder.altoFinder.getAlto(image.toPath))
 
   private val pages = altoDocuments.flatMap(_.pages)
-  private val allGlyphs = pages.flatMap(_.allGlyphs)
+  private val allGlyphs = pages.flatMap{
+    _.allWords.filter{
+      word => builder.wordSelectionRegex.map(_.matches(word.content)).getOrElse(true)
+    }.flatMap(_.glyphs)
+  }
   private val totalSize = allGlyphs.size
   private val alphabet = SortedSet(allGlyphs
     .map(_.content)
@@ -52,7 +57,14 @@ case class GlyphDataset(builder: GlyphDatasetBuilder) extends RandomAccessDatase
     val array = ImageFactory.getInstance().fromImage(bufferedImage)
       .toNDArray(manager, Image.Flag.GRAYSCALE)
 
-    transformedAlto.allGlyphs.map{ glyph =>
+    val allGlyphs = for {
+      word <- transformedAlto.allWords.filter { word =>
+          builder.wordSelectionRegex.map(_.matches(word.content)).getOrElse(true)
+        }
+      glyph <- word.glyphs
+    } yield glyph
+
+    allGlyphs.map{ glyph =>
       val height = (glyph.rectangle.height * 1.1).toInt
       val leftMargin = (height - glyph.rectangle.width) / 2
       val topMargin = (height - glyph.rectangle.height) / 2
@@ -92,6 +104,7 @@ case class GlyphDatasetBuilder(
   targetWidth: Int,
   altoFinder: AltoFinder = AltoFinder.default,
   textSimplifier: TextSimplifier = TextSimplifier.default,
+  wordSelectionRegex: Option[Regex] = None,
 ) extends BaseBuilder[GlyphDatasetBuilder] {
   override def self(): GlyphDatasetBuilder = this
 

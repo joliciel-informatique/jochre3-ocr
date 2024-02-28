@@ -7,7 +7,14 @@ import org.bytedeco.opencv.opencv_core.{AbstractScalar, Mat, Point}
 
 import scala.xml.{Elem, Node}
 
-case class TextLine(baseLine: Line, wordsAndSpaces: Seq[WordOrSpace], styleRefs: Option[String] = None, tagRefs: Option[String] = None) extends PageElement with Ordered[TextLine] {
+case class TextLine(
+  baseLine: Line,
+  wordsAndSpaces: Seq[WordOrSpace],
+  language: Option[String] = None,
+  styleRefs: Option[String] = None,
+  tagRefs: Option[String] = None,
+  defaultLanguage: Option[String] = None,
+) extends PageElement with WithLanguage with Ordered[TextLine] {
   override lazy val content: String = wordsAndSpaces.map(_.content).mkString
 
   lazy val words: Seq[Word] = wordsAndSpaces.collect{ case w: Word => w }
@@ -62,6 +69,21 @@ case class TextLine(baseLine: Line, wordsAndSpaces: Seq[WordOrSpace], styleRefs:
     val newWordsAndSpaces = transformed.wordsAndSpaces.map(_.transform(partialFunction)).collect { case wordOrSpace: WordOrSpace => wordOrSpace }
     transformed.copy(wordsAndSpaces = newWordsAndSpaces)
   }
+
+  def withDefaultLanguage(defaultLanguage: String): TextLine = {
+    val myLanguage = this.language.getOrElse(defaultLanguage)
+    val withLanguageSet = this.copy(defaultLanguage = Some(defaultLanguage), wordsAndSpaces = this.wordsAndSpaces.map{
+      case word: Word => word.withDefaultLanguage(myLanguage)
+      case other => other
+    })
+    val leftToRight = withLanguageSet.isLeftToRight
+    val newWordsAndSpaces = if (leftToRight != this.isLeftToRight) {
+      withLanguageSet.wordsAndSpaces.sorted(WithRectangle.HorizontalOrdering(leftToRight))
+    } else {
+      withLanguageSet.wordsAndSpaces
+    }
+    withLanguageSet.copy(wordsAndSpaces = newWordsAndSpaces)
+  }
 }
 
 object TextLine {
@@ -76,7 +98,9 @@ object TextLine {
     val tagRefsOption = Option.when(tagRefs.nonEmpty)(tagRefs)
     val styleRefs = node \@ "STYLEREFS"
     val styleRefsOption = Option.when(styleRefs.nonEmpty)(styleRefs)
+    val languageAttribute = node \@ "LANG"
+    val languageOption = Option.when(languageAttribute.nonEmpty)(languageAttribute)
 
-    TextLine(Line.fromXML(imageInfo, node), wordsAndSpaces, styleRefs = styleRefsOption, tagRefs = tagRefsOption)
+    TextLine(Line.fromXML(imageInfo, node), wordsAndSpaces, language = languageOption, styleRefs = styleRefsOption, tagRefs = tagRefsOption)
   }
 }

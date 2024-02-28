@@ -32,9 +32,9 @@ case class YiddishTextSimpifier(replaceNotYiddishAlphabets: Boolean = false) ext
   private val verticalBar = """|""".r
   private val otherSymbol = """[▼◦№⁂]""".r
 
-  private val latinAlphabet = """\p{IsLatin}""".r
-  private val cyrillicAlphabet = """\p{IsCyrillic}""".r
-  private val greekAlphabet = """\p{IsGreek}""".r
+  private val latinAlphabet = """(?U)\p{IsLatin}""".r
+  private val cyrillicAlphabet = """(?U)\p{IsCyrillic}""".r
+  private val greekAlphabet = """(?U)\p{IsGreek}""".r
 
   override def simplify(text: String): String = {
     val simplifiedText = text

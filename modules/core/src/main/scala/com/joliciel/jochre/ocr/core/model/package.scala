@@ -1,6 +1,8 @@
 package com.joliciel.jochre.ocr.core
 
 import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
+import com.joliciel.jochre.ocr.core.utils.StringUtils
+import com.typesafe.config.ConfigFactory
 import org.bytedeco.opencv.opencv_core.Mat
 
 import scala.xml.Elem
@@ -75,17 +77,45 @@ package object model {
     }
   }
 
+  object WithRectangle {
+    case class HorizontalOrdering[T <: WithRectangle](leftToRight: Boolean) extends Ordering[T] {
+      def compare(a: T, b: T): Int = a.rectangle.horizontalCompare(b.rectangle, leftToRight)
+    }
+
+    case class VerticalOrdering[T <: WithRectangle]() extends Ordering[T] {
+      def compare(a: T, b: T): Int = a.rectangle.verticalCompare(b.rectangle)
+    }
+
+    case class SimplePageLayoutOrdering[T <: WithRectangle](leftToRight: Boolean) extends Ordering[T] {
+      def compare(a: T, b: T): Int = a.rectangle.simplePageLayoutCompare(b.rectangle, leftToRight)
+    }
+  }
+
   trait Block extends PageElement with WithRectangle {
     def rectangle: Rectangle
   }
 
   trait TextContainer extends Block
 
-  trait WordOrSpace extends PageElement with Ordered[WordOrSpace] {
-    def rectangle: Rectangle
+  trait WithLanguage {
+    def language: Option[String]
+    def defaultLanguage: Option[String]
+    def withDefaultLanguage(defaultLanguage: String): WithLanguage
 
-    override def compareTo(that: WordOrSpace): Int = this.rectangle.left.compare(that.rectangle.left)
+    def languageOrDefault: String = {
+      this.language.getOrElse(
+        this.defaultLanguage.getOrElse {
+          ConfigFactory.load().getConfig("jochre.ocr").getString("language")
+        }
+      )
+    }
+
+    def isLeftToRight: Boolean = {
+      StringUtils.isLeftToRight(this.languageOrDefault)
+    }
   }
+
+  trait WordOrSpace extends PageElement with WithRectangle
 
   trait Tag {
     def toXml: Elem

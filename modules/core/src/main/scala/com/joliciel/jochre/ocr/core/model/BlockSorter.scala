@@ -28,7 +28,7 @@ import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
  * If there is no horizontal overlap, we use right-to-left ordering:
  * e.g. 3 comes before 6, 4 comes before 7, 4 comes before 5, 4 comes before 6, 5 comes before 6
  */
-case class BlockSorter(blocks: Seq[WithRectangle]) extends Ordering[WithRectangle] {
+case class BlockSorter(blocks: Seq[WithRectangle], leftToRight: Boolean) extends Ordering[WithRectangle] {
   private val topOrdered = blocks.sortBy(_.top)
 
   def compare(a: WithRectangle, b: WithRectangle): Int = {
@@ -45,22 +45,22 @@ case class BlockSorter(blocks: Seq[WithRectangle]) extends Ordering[WithRectangl
       if (a.horizontalOverlap(b) > 0) {
         a.rectangle.verticalCompare(b.rectangle)
       } else {
-        a.rectangle.horizontalCompare(b.rectangle)
+        a.rectangle.horizontalCompare(b.rectangle, leftToRight)
       }
     }
   }
 }
 
 object BlockSorter {
-  def sort(blocks: Seq[WithRectangle]): Seq[WithRectangle] = {
+  def sort(blocks: Seq[WithRectangle], leftToRight: Boolean): Seq[WithRectangle] = {
     try {
       // The simple sort should work in most simple cases
-      blocks.sortBy(_.rectangle)(Rectangle.SimplePageLayoutOrdering)
+      blocks.sorted(WithRectangle.SimplePageLayoutOrdering(leftToRight))
     } catch {
       case _: IllegalArgumentException =>
         // In complex cases as shown in the class definition above, we have to take vertical breaks into account
         // We use the slower sort algorithm
-        blocks.sorted(BlockSorter(blocks))
+        blocks.sorted(BlockSorter(blocks, leftToRight))
     }
   }
 }

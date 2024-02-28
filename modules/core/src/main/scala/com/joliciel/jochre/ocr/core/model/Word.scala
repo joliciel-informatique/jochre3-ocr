@@ -2,13 +2,24 @@ package com.joliciel.jochre.ocr.core.model
 
 import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
 import com.joliciel.jochre.ocr.core.utils.MathUtils.MathImplicits._
+import com.typesafe.config.ConfigFactory
 import org.bytedeco.opencv.global.opencv_imgproc
 import org.bytedeco.opencv.global.opencv_imgproc.LINE_8
 import org.bytedeco.opencv.opencv_core.{AbstractScalar, Mat, Point}
 
 import scala.xml.{Elem, Node}
 
-case class Word(content: String, rectangle: Rectangle, glyphs: Seq[Glyph], alternatives: Seq[SpellingAlternative], confidence: Double, styleRefs: Option[String] = None, tagRefs: Option[String] = None) extends WordOrSpace {
+case class Word(
+  content: String,
+  rectangle: Rectangle,
+  glyphs: Seq[Glyph],
+  alternatives: Seq[SpellingAlternative],
+  confidence: Double,
+  language: Option[String] = None,
+  styleRefs: Option[String] = None,
+  tagRefs: Option[String] = None,
+  defaultLanguage: Option[String] = None,
+) extends WordOrSpace with WithLanguage {
   override def translate(xDiff: Int, yDiff: Int): Word =
     this.copy(rectangle = rectangle.translate(xDiff, yDiff), glyphs = glyphs.map(_.translate(xDiff, yDiff)))
 
@@ -22,11 +33,9 @@ case class Word(content: String, rectangle: Rectangle, glyphs: Seq[Glyph], alter
 
   override def toXml: Elem =
     <String HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString}
-            CONTENT={content} WC={confidence.roundTo(2).toString} STYLEREFS={styleRefs.orNull} TAGREFS={tagRefs.orNull}>
+            CONTENT={content} WC={confidence.roundTo(2).toString} LANG={language.orNull} STYLEREFS={styleRefs.orNull} TAGREFS={tagRefs.orNull}>
       {alternatives.map(_.toXml)}
       {glyphs.map(_.toXml)}</String>
-
-  override def compare(that: WordOrSpace): Int = this.rectangle.horizontalCompare(that.rectangle)
 
   def combineWith(that: Word): Word = Word(f"${this.content}${that.content}", this.rectangle.union(that.rectangle), this.glyphs ++ that.glyphs, this.alternatives ++ that.alternatives, Math.sqrt(this.confidence * that.confidence))
 
@@ -53,6 +62,17 @@ case class Word(content: String, rectangle: Rectangle, glyphs: Seq[Glyph], alter
     val newAlternatives = transformed.alternatives.map(_.transform(partialFunction)).collect { case alternative: SpellingAlternative => alternative }
     transformed.copy(glyphs = newGlyphs, alternatives = newAlternatives)
   }
+
+  def withDefaultLanguage(defaultLanguage: String): Word = {
+    val withLanguageSet = this.copy(defaultLanguage = Some(defaultLanguage))
+    val leftToRight = withLanguageSet.isLeftToRight
+    val newGlyphs = if (leftToRight != this.isLeftToRight) {
+      withLanguageSet.glyphs.sorted(WithRectangle.HorizontalOrdering(leftToRight))
+    } else {
+      withLanguageSet.glyphs
+    }
+    withLanguageSet.copy(glyphs = newGlyphs)
+  }
 }
 
 object Word {
@@ -69,6 +89,8 @@ object Word {
     val tagRefsOption = Option.when(tagRefs.nonEmpty)(tagRefs)
     val styleRefs = node \@ "STYLEREFS"
     val styleRefsOption = Option.when(styleRefs.nonEmpty)(styleRefs)
-    Word(content = content, rectangle = Rectangle.fromXML(node), glyphs, alternatives, confidence, styleRefs = styleRefsOption, tagRefs = tagRefsOption)
+    val languageAttribute = node \@ "LANG"
+    val languageOption = Option.when(languageAttribute.nonEmpty)(languageAttribute)
+    Word(content = content, rectangle = Rectangle.fromXML(node), glyphs, alternatives, confidence, language = languageOption, styleRefs = styleRefsOption, tagRefs = tagRefsOption)
   }
 }

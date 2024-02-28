@@ -16,6 +16,25 @@ trait StringUtils {
         chars :+ f"$char"
       }
     }
+
+  private val rightToLeftLanguages = Set(
+    "ar",
+    "dv",
+    "fa",
+    "ha",
+    "he",
+    "iw",
+    "ji",
+    "ps",
+    "sd",
+    "ug",
+    "ur",
+    "yi",
+  )
+
+  def isLeftToRight(language: String): Boolean = {
+    !rightToLeftLanguages.contains(language)
+  }
 }
 
 object StringUtils extends StringUtils

@@ -1,7 +1,7 @@
 package com.joliciel.jochre.ocr.core.corpus
 
 import com.joliciel.jochre.ocr.core.corpus.YoloAnnotator.YoloTask
-import com.joliciel.jochre.ocr.core.model.Alto
+import com.joliciel.jochre.ocr.core.model.{Alto, WithRectangle}
 import com.joliciel.jochre.ocr.core.utils.{FileUtils, ImageUtils}
 import com.typesafe.config.ConfigFactory
 import enumeratum._
@@ -128,7 +128,7 @@ case class YoloAnnotator(
         }
 
         val letterSeparatorBoxes = textLine.combinedWords.flatMap { word =>
-          word.glyphs.sorted.zipWithIndex.flatMap { case (glyph, i) =>
+          word.glyphs.sorted(WithRectangle.HorizontalOrdering(word.isLeftToRight)).zipWithIndex.flatMap { case (glyph, i) =>
             Option.when(i > 0) {
               val xCenter = glyph.rectangle.left.toDouble
               val yCenter = (textLineRectangle.top.toDouble + baseLineY) / 2.0
