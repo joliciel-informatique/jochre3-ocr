@@ -70,8 +70,10 @@ case class TextBlock(
   }
 
   def withDefaultLanguage(defaultLanguage: String): TextBlock = {
-    val myLanguage = this.language.getOrElse(defaultLanguage)
-    this.copy(defaultLanguage = Some(defaultLanguage), textLines = this.textLines.map(_.withDefaultLanguage(myLanguage)))
+    val currentLanguage = this.languageOrDefault
+    val newLanguage = Option.when(currentLanguage != defaultLanguage)(currentLanguage)
+
+    this.copy(language = newLanguage, defaultLanguage = Some(defaultLanguage), textLines = this.textLines.map(_.withDefaultLanguage(this.getEffectiveLanguage(newLanguage, Some(defaultLanguage)))))
   }
 }
 

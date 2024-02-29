@@ -174,6 +174,27 @@ case class Page(
     case illustration: Illustration => illustration.copy(id = "")
   }
 
+  def withLanguage(newLanguage: String): Page = {
+    if (this.language==newLanguage) {
+      this
+    } else {
+      val newBlocks = this.blocks.map {
+        case textBlock: TextBlock => textBlock.withDefaultLanguage(newLanguage)
+        case composedBlock: ComposedBlock => composedBlock.copy(textBlocks = composedBlock.textBlocks.map(_.withDefaultLanguage(newLanguage)))
+        case other => other
+      }
+
+      val oldLeftToRight = StringUtils.isLeftToRight(this.language)
+      val newLeftToRight = StringUtils.isLeftToRight(newLanguage)
+      val sortedBlocks = if (oldLeftToRight!=newLeftToRight) {
+        BlockSorter.sort(newBlocks, newLeftToRight)
+      } else {
+        newBlocks
+      }
+      this.copy(language = newLanguage, blocks = newBlocks)
+    }
+  }
+
   def withDefaultLanguage: Page = {
     this.copy(blocks = this.blocks.map{
       case composedBlock: ComposedBlock => composedBlock.withDefaultLanguage(this.language)

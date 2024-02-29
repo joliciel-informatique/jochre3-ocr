@@ -3,7 +3,7 @@ package com.joliciel.jochre.ocr.core.text
 import com.joliciel.jochre.ocr.core.JochreCLI
 import com.joliciel.jochre.ocr.core.learning.{GlyphGuesser, GlyphGuesserForAnotherAlphabet, GlyphGuessersForOtherAlphabets, Prediction}
 import com.joliciel.jochre.ocr.core.lexicon.Lexicon
-import com.joliciel.jochre.ocr.core.model.{AltoElement, Block, BlockSorter, ComposedBlock, Page, TextBlock, TextLine, WithRectangle, Word}
+import com.joliciel.jochre.ocr.core.model.{AltoElement, Block, BlockSorter, ComposedBlock, Page, TextBlock, TextLine, WithLanguage, WithRectangle, Word}
 import com.joliciel.jochre.ocr.core.utils.{OutputLocation, StringUtils}
 import com.typesafe.config.ConfigFactory
 import org.bytedeco.opencv.opencv_core.Mat
@@ -76,68 +76,6 @@ case class FullSegmentationGuesser(
     withGuesses.transform(changeTextLineLanguageIfRequired)
       .transform(changeTextBlockLanguageIfRequired)
       .transform(changePageLanguageIfRequired)
-  }
-
-  private val punctuationOrNumberRegex = raw"""(?U)((\d)|(\p{Punct}))+""".r
-  private def changeTextLineLanguageIfRequired: PartialFunction[AltoElement, AltoElement] = {
-    case textLine: TextLine =>
-      val languages = textLine.words.flatMap { word =>
-        Option.when(!punctuationOrNumberRegex.matches(word.content))(word.language).flatten
-      }.toSet
-
-      if (languages.size == 1) {
-        if (log.isDebugEnabled) {log.debug(f"Changing language to ${languages.head} for textLine ${textLine.baseLine}")}
-        textLine.copy(
-          language = Some(languages.head),
-          wordsAndSpaces = textLine.wordsAndSpaces.map {
-            case word: Word => word.copy(language = None)
-            case other => other
-          }.sorted(WithRectangle.HorizontalOrdering(StringUtils.isLeftToRight(languages.head)))
-        )
-      } else {
-        textLine
-      }
-  }
-
-  private def changeTextBlockLanguageIfRequired: PartialFunction[AltoElement, AltoElement] = {
-    case textBlock: TextBlock =>
-      val languages = textBlock.textLines.flatMap { textLine =>
-        textLine.language
-      }.toSet
-
-      if (languages.size == 1) {
-        if (log.isDebugEnabled) {log.debug(f"Changing language to ${languages.head} for textBlock ${textBlock.rectangle.coordinates}")}
-        textBlock.copy(
-          language = Some(languages.head),
-          textLines = textBlock.textLines.map(_.copy(language = None))
-        )
-      } else {
-        textBlock
-      }
-  }
-
-  private def changePageLanguageIfRequired: PartialFunction[AltoElement, AltoElement] = {
-    case page: Page =>
-      val languagesWithEmpty = page.textBlocks.map { textBlock =>
-        textBlock.language
-      }.toSet
-
-      val hasEmpty = languagesWithEmpty.contains(None)
-      val languages = languagesWithEmpty.flatten
-
-      if (languages.size == 1 && !hasEmpty) {
-        if (log.isDebugEnabled) {log.debug(f"Changing language to ${languages.head} for page ${page.physicalPageNumber}")}
-        val newBlocks = page.blocks.map {
-          case textBlock: TextBlock => textBlock.copy(language = None)
-          case composedBlock: ComposedBlock => composedBlock.copy(textBlocks = composedBlock.textBlocks.map(_.copy(language = None)))
-          case other => other
-        }
-        page.copy(language = languages.head, blocks = BlockSorter.sort(newBlocks, StringUtils.isLeftToRight(languages.head)).collect{
-          case block: Block => block
-        })
-      } else {
-        page
-      }
   }
 
   private def guessWithoutBeam(mat: Mat): PartialFunction[AltoElement, AltoElement] = {
@@ -254,5 +192,60 @@ case class FullSegmentationGuesser(
         val updatedWord = word.copy(language = Some(language), glyphs =newGlyphs)
         guessWordWithoutBeam(mat, updatedWord, otherAlphabetGuesser)
     }
+  }
+
+  private def changeTextLineLanguageIfRequired: PartialFunction[AltoElement, AltoElement] = {
+    case textLine: TextLine =>
+      val languages = textLine.words.map(_.language).groupBy(identity).view.mapValues(_.size).toSeq.sortBy(0 - _._2)
+
+      if (languages.nonEmpty && languages.head._1.isDefined) {
+        val topLanguage = languages.head._1.get
+        if (log.isDebugEnabled) {
+          log.debug(f"Changing language to ${topLanguage} for textLine ${textLine.baseLine}. Word languages: ${textLine.words.map(_.language).mkString(", ")}")
+        }
+        textLine.copy(
+          language = Some(topLanguage),
+          wordsAndSpaces = textLine.wordsAndSpaces.map {
+            case word: Word => word.withDefaultLanguage(topLanguage)
+            case other => other
+          }.sorted(WithRectangle.HorizontalOrdering(StringUtils.isLeftToRight(topLanguage)))
+        )
+      } else {
+        textLine
+      }
+  }
+
+  private def changeTextBlockLanguageIfRequired: PartialFunction[AltoElement, AltoElement] = {
+    case textBlock: TextBlock =>
+      val languages = textBlock.textLines.map(_.language).groupBy(identity).view.mapValues(_.size).toSeq.sortBy(0 - _._2)
+
+      if (languages.nonEmpty && languages.head._1.isDefined) {
+        val topLanguage = languages.head._1.get
+        if (log.isDebugEnabled) {
+          log.debug(f"Changing language to ${topLanguage} for textBlock ${textBlock.rectangle.coordinates}. TextLine languages: ${textBlock.textLines.map(_.language).mkString(", ")}")
+        }
+        textBlock.copy(
+          language = Some(topLanguage),
+          textLines = textBlock.textLines.map(_.withDefaultLanguage(topLanguage))
+        )
+      } else {
+        textBlock
+      }
+  }
+
+  private def changePageLanguageIfRequired: PartialFunction[AltoElement, AltoElement] = {
+    case page: Page =>
+      val languages = page.textBlocks.map(_.language).groupBy(identity).view.mapValues(_.size).toSeq.sortBy(0 - _._2).map(_._1)
+
+      if (languages.nonEmpty && languages.head.isDefined) {
+        val topLanguage = languages.head.get
+        if (log.isDebugEnabled) {
+          log.debug(f"Changing language to ${topLanguage} for page ${page.physicalPageNumber}")
+          log.debug(f"Textblock languages: ${page.textBlocks.map(_.language).mkString(", ")}")
+        }
+        page.withLanguage(topLanguage)
+      } else {
+        page
+      }
   }
 }

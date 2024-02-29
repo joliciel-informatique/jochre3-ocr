@@ -64,7 +64,10 @@ case class Word(
   }
 
   def withDefaultLanguage(defaultLanguage: String): Word = {
-    val withLanguageSet = this.copy(defaultLanguage = Some(defaultLanguage))
+    val currentLanguage = this.languageOrDefault
+    val newLanguage = Option.when(currentLanguage!=defaultLanguage)(currentLanguage)
+
+    val withLanguageSet = this.copy(language = newLanguage, defaultLanguage = Some(defaultLanguage))
     val leftToRight = withLanguageSet.isLeftToRight
     val newGlyphs = if (leftToRight != this.isLeftToRight) {
       withLanguageSet.glyphs.sorted(WithRectangle.HorizontalOrdering(leftToRight))

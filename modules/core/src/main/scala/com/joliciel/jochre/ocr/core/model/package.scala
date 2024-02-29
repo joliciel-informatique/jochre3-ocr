@@ -103,15 +103,19 @@ package object model {
     def withDefaultLanguage(defaultLanguage: String): WithLanguage
 
     def languageOrDefault: String = {
-      this.language.getOrElse(
-        this.defaultLanguage.getOrElse {
-          ConfigFactory.load().getConfig("jochre.ocr").getString("language")
-        }
-      )
+      getEffectiveLanguage(this.language, this.defaultLanguage)
     }
 
     def isLeftToRight: Boolean = {
       StringUtils.isLeftToRight(this.languageOrDefault)
+    }
+
+    def getEffectiveLanguage(language: Option[String], defaultLanguage: Option[String]): String = {
+      language.getOrElse(
+        defaultLanguage.getOrElse {
+          ConfigFactory.load().getConfig("jochre.ocr").getString("language")
+        }
+      )
     }
   }
 
