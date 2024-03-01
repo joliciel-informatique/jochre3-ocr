@@ -2,7 +2,7 @@ package com.joliciel.jochre.ocr.core.evaluation
 
 import com.joliciel.jochre.ocr.core.Jochre
 import com.joliciel.jochre.ocr.core.corpus.{AltoFinder, TextSimplifier}
-import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
+import com.joliciel.jochre.ocr.core.graphics.Rectangle
 import com.joliciel.jochre.ocr.core.output.OutputFormat
 import com.joliciel.jochre.ocr.core.utils.FileUtils
 import org.slf4j.LoggerFactory

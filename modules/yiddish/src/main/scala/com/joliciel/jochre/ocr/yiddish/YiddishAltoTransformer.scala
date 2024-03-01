@@ -3,7 +3,7 @@ package com.joliciel.jochre.ocr.yiddish
 import com.joliciel.jochre.ocr.core.alto.AltoTransformer
 import com.joliciel.jochre.ocr.core.corpus.TextSimplifier
 import com.joliciel.jochre.ocr.core.lexicon.Lexicon
-import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
+import com.joliciel.jochre.ocr.core.graphics.Rectangle
 import com.joliciel.jochre.ocr.core.model.{AltoElement, Glyph, Hyphen, SpellingAlternative, TextLine, Word}
 import com.joliciel.jochre.ocr.core.utils.{StringUtils, XmlImplicits}
 import com.joliciel.jochre.ocr.yiddish.YiddishAltoTransformer.{Purpose, punctuationAndNotRegex}

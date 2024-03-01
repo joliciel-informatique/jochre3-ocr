@@ -1,6 +1,6 @@
 package com.joliciel.jochre.ocr.core.segmentation
 
-import com.joliciel.jochre.ocr.core.model.ImageLabel.PredictedRectangle
+import com.joliciel.jochre.ocr.core.graphics.PredictedRectangle
 import com.joliciel.jochre.ocr.core.transform.ResizeImageAndKeepAspectRatio
 import com.joliciel.jochre.ocr.core.utils.OutputLocation
 import com.typesafe.config.ConfigFactory
@@ -21,11 +21,11 @@ import javax.imageio.ImageIO
 import scala.jdk.DurationConverters._
 
 trait YoloPredictorService {
-  def getYoloPredictor(predictionType: YoloPredictionType, mat: Mat, fileName: String, outputLocation: Option[OutputLocation] = None, minConfidence: Option[Double] = None): Task[SegmentationPredictor[PredictedRectangle]]
+  def getYoloPredictor(predictionType: YoloPredictionType, mat: Mat, fileName: String, outputLocation: Option[OutputLocation] = None, minConfidence: Option[Double] = None): Task[SegmentationPredictor]
 }
 
 private[segmentation] case class YoloPredictorServiceImpl(httpClient: SttpBackend[Task, ZioStreams with capabilities.WebSockets]) extends YoloPredictorService {
-  def getYoloPredictor(predictionType: YoloPredictionType, mat: Mat, fileName: String, outputLocation: Option[OutputLocation] = None, minConfidence: Option[Double] = None): Task[SegmentationPredictor[PredictedRectangle]] =
+  def getYoloPredictor(predictionType: YoloPredictionType, mat: Mat, fileName: String, outputLocation: Option[OutputLocation] = None, minConfidence: Option[Double] = None): Task[SegmentationPredictor] =
     ZIO.attempt(new YoloPredictor(httpClient, predictionType, mat, fileName, outputLocation, minConfidence))
 }
 
@@ -36,7 +36,7 @@ private[segmentation] class YoloPredictor(
   override val fileName: String,
   override val outputLocation: Option[OutputLocation] = None,
   minConfidence: Option[Double] = None,
-) extends SegmentationPredictorBase[PredictedRectangle] {
+) extends SegmentationPredictorBase {
   private val log = LoggerFactory.getLogger(getClass)
 
   private val config = ConfigFactory.load().getConfig("jochre.ocr.block-predictor")

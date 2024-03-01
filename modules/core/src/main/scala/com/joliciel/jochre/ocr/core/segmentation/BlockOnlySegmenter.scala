@@ -1,7 +1,7 @@
 package com.joliciel.jochre.ocr.core.segmentation
 
-import com.joliciel.jochre.ocr.core.model.ImageLabel.{PredictedRectangle, Rectangle}
-import com.joliciel.jochre.ocr.core.model.{BlockSorter, Illustration, Page, TextBlock}
+import com.joliciel.jochre.ocr.core.graphics.{BlockSorter, PredictedRectangle, Rectangle}
+import com.joliciel.jochre.ocr.core.model.{Illustration, Page, TextBlock}
 import com.joliciel.jochre.ocr.core.utils.{OutputLocation, StringUtils}
 import com.typesafe.config.ConfigFactory
 import org.bytedeco.opencv.opencv_core.Mat

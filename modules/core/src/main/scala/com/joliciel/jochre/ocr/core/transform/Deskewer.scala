@@ -1,7 +1,7 @@
 package com.joliciel.jochre.ocr.core.transform
 
 import com.joliciel.jochre.ocr.core.corpus.AltoFinder
-import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
+import com.joliciel.jochre.ocr.core.graphics.Rectangle
 import com.joliciel.jochre.ocr.core.utils.{FileUtils, ImageUtils}
 import com.typesafe.config.ConfigFactory
 import org.bytedeco.opencv.global.opencv_core._

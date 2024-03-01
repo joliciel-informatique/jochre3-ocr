@@ -1,7 +1,7 @@
 package com.joliciel.jochre.ocr.core.text
 
 import com.joliciel.jochre.ocr.core.model.{Block, Illustration, TextBlock, TextContainer}
-import com.joliciel.jochre.ocr.core.model.ImageLabel.{PredictedRectangle, Rectangle}
+import com.joliciel.jochre.ocr.core.graphics.{PredictedRectangle, Rectangle}
 import com.joliciel.jochre.ocr.core.segmentation.BlockType
 import com.joliciel.jochre.ocr.core.utils.{ImageUtils, OutputLocation}
 import org.bytedeco.opencv.opencv_core.Mat

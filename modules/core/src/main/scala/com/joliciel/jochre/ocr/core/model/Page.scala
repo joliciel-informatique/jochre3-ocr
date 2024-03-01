@@ -1,6 +1,6 @@
 package com.joliciel.jochre.ocr.core.model
 
-import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
+import com.joliciel.jochre.ocr.core.graphics.{BlockSorter, ImageInfo, Rectangle}
 import com.joliciel.jochre.ocr.core.utils.MathUtils.MathImplicits._
 import com.joliciel.jochre.ocr.core.utils.StringUtils
 import com.typesafe.config.ConfigFactory
@@ -172,6 +172,27 @@ case class Page(
     case textBlock: TextBlock => textBlock.copy(id = "")
     case composedBlock: ComposedBlock => composedBlock.copy(id = "")
     case illustration: Illustration => illustration.copy(id = "")
+  }
+
+  def withLanguage(newLanguage: String): Page = {
+    if (this.language==newLanguage) {
+      this
+    } else {
+      val newBlocks = this.blocks.map {
+        case textBlock: TextBlock => textBlock.withDefaultLanguage(newLanguage)
+        case composedBlock: ComposedBlock => composedBlock.copy(textBlocks = composedBlock.textBlocks.map(_.withDefaultLanguage(newLanguage)))
+        case other => other
+      }
+
+      val oldLeftToRight = StringUtils.isLeftToRight(this.language)
+      val newLeftToRight = StringUtils.isLeftToRight(newLanguage)
+      val sortedBlocks = if (oldLeftToRight!=newLeftToRight) {
+        BlockSorter.sort(newBlocks, newLeftToRight)
+      } else {
+        newBlocks
+      }
+      this.copy(language = newLanguage, blocks = newBlocks)
+    }
   }
 
   def withDefaultLanguage: Page = {

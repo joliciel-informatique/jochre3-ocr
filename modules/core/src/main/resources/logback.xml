@@ -33,6 +33,7 @@
   <logger name="com.joliciel" level="INFO" />
   <logger name="com.joliciel.jochre.ocr" level="INFO" />
   <logger name="com.joliciel.jochre.ocr.core.text" level="INFO" />
+  <logger name="com.joliciel.jochre.ocr.core.graphics.BlockSorter" level="INFO" />
   <logger name="com.joliciel.jochre.graphics" level="INFO" />
 
   <root level="INFO">

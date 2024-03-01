@@ -1,6 +1,6 @@
 package com.joliciel.jochre.ocr.core.model
 
-import com.joliciel.jochre.ocr.core.model.ImageLabel.Line
+import com.joliciel.jochre.ocr.core.graphics.{ImageInfo, Line, WithRectangle}
 import org.bytedeco.opencv.global.opencv_imgproc
 import org.bytedeco.opencv.global.opencv_imgproc.LINE_8
 import org.bytedeco.opencv.opencv_core.{AbstractScalar, Mat, Point}
@@ -71,9 +71,11 @@ case class TextLine(
   }
 
   def withDefaultLanguage(defaultLanguage: String): TextLine = {
-    val myLanguage = this.language.getOrElse(defaultLanguage)
-    val withLanguageSet = this.copy(defaultLanguage = Some(defaultLanguage), wordsAndSpaces = this.wordsAndSpaces.map{
-      case word: Word => word.withDefaultLanguage(myLanguage)
+    val currentLanguage = this.languageOrDefault
+    val newLanguage = Option.when(currentLanguage != defaultLanguage)(currentLanguage)
+
+    val withLanguageSet = this.copy(language = newLanguage, defaultLanguage = Some(defaultLanguage), wordsAndSpaces = this.wordsAndSpaces.map{
+      case word: Word => word.withDefaultLanguage(this.getEffectiveLanguage(newLanguage, Some(defaultLanguage)))
       case other => other
     })
     val leftToRight = withLanguageSet.isLeftToRight

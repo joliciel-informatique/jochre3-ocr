@@ -1,6 +1,6 @@
 package com.joliciel.jochre.ocr.core.segmentation
 
-import com.joliciel.jochre.ocr.core.model.ImageLabel.{PredictedRectangle, Rectangle}
+import com.joliciel.jochre.ocr.core.graphics.{PredictedRectangle, Rectangle}
 import com.joliciel.jochre.ocr.core.model.{Illustration, TextBlock}
 import com.joliciel.jochre.ocr.core.utils.{ImageUtils, OutputLocation}
 import com.typesafe.config.ConfigFactory
@@ -14,8 +14,8 @@ import javax.imageio.ImageIO
 
 object BlockOnlySegmenterTest extends JUnitRunnableSpec with ImageUtils {
   object MockYoloPredictorService extends YoloPredictorService {
-    override def getYoloPredictor(predictionType: YoloPredictionType, mat: Mat, fileName: String, outputLocation: Option[OutputLocation], minConfidence: Option[Double]): Task[SegmentationPredictor[PredictedRectangle]] = ZIO.attempt {
-      new SegmentationPredictor[PredictedRectangle] {
+    override def getYoloPredictor(predictionType: YoloPredictionType, mat: Mat, fileName: String, outputLocation: Option[OutputLocation], minConfidence: Option[Double]): Task[SegmentationPredictor] = ZIO.attempt {
+      new SegmentationPredictor {
         override def predict(): Task[Seq[PredictedRectangle]] = ZIO.attempt(Seq(
           PredictedRectangle(BlockType.TextBox.entryName, Rectangle(10, 10, 50, 50), 0.9),
           PredictedRectangle(BlockType.Paragraph.entryName, Rectangle(60, 10, 100, 100), 0.8),

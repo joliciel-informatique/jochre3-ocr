@@ -1,6 +1,6 @@
 package com.joliciel.jochre.ocr.core.model
 
-import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
+import com.joliciel.jochre.ocr.core.graphics.{ImageInfo, Rectangle}
 import org.bytedeco.opencv.global.opencv_imgproc
 import org.bytedeco.opencv.global.opencv_imgproc.LINE_8
 import org.bytedeco.opencv.opencv_core.{AbstractScalar, Mat, Point}
@@ -70,8 +70,10 @@ case class TextBlock(
   }
 
   def withDefaultLanguage(defaultLanguage: String): TextBlock = {
-    val myLanguage = this.language.getOrElse(defaultLanguage)
-    this.copy(defaultLanguage = Some(defaultLanguage), textLines = this.textLines.map(_.withDefaultLanguage(myLanguage)))
+    val currentLanguage = this.languageOrDefault
+    val newLanguage = Option.when(currentLanguage != defaultLanguage)(currentLanguage)
+
+    this.copy(language = newLanguage, defaultLanguage = Some(defaultLanguage), textLines = this.textLines.map(_.withDefaultLanguage(this.getEffectiveLanguage(newLanguage, Some(defaultLanguage)))))
   }
 }
 

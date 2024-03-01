@@ -1,6 +1,6 @@
 package com.joliciel.jochre.ocr.core
 
-import com.joliciel.jochre.ocr.core.model.ImageLabel.{PredictedRectangle, Rectangle}
+import com.joliciel.jochre.ocr.core.graphics.{PredictedRectangle, Rectangle}
 import enumeratum.{Enum, EnumEntry}
 import io.circe.Decoder
 

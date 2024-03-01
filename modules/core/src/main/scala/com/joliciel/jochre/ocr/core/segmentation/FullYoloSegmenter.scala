@@ -1,7 +1,7 @@
 package com.joliciel.jochre.ocr.core.segmentation
 
-import com.joliciel.jochre.ocr.core.model.ImageLabel.{Line, PredictedRectangle, Rectangle}
-import com.joliciel.jochre.ocr.core.model.{Block, BlockSorter, Glyph, Illustration, Page, Space, TextBlock, TextLine, WithRectangle, Word}
+import com.joliciel.jochre.ocr.core.graphics.{BlockSorter, Line, PredictedRectangle, Rectangle, WithRectangle}
+import com.joliciel.jochre.ocr.core.model.{Block, Glyph, Illustration, Page, Space, TextBlock, TextLine, Word}
 import com.joliciel.jochre.ocr.core.utils.{ImageUtils, MathUtils, OutputLocation, StringUtils}
 import com.typesafe.config.ConfigFactory
 import org.bytedeco.opencv.opencv_core.Mat
@@ -28,6 +28,8 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
   private val config = ConfigFactory.load().getConfig("jochre.ocr.yolo")
   private val cropToPrintArea = config.getBoolean("crop-to-print-area")
   private val cropMargin = config.getDouble("crop-margin")
+  private val glyphImageTileCount = config.getInt("glyph-image-tile-count")
+  private val tileMargin = config.getDouble("tile-margin")
 
   private val language = ConfigFactory.load().getConfig("jochre.ocr").getString("language")
   private val leftToRight = StringUtils.isLeftToRight(language)
@@ -83,12 +85,29 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
           mat
         }
       }
+      croppedRectangle = Rectangle(0, 0, printAreaMat.cols(), printAreaMat.rows())
       linePredictor <- yoloPredictorService.getYoloPredictor(YoloPredictionType.Lines, printAreaMat, fileName, debugLocation, Some(0.05))
       linePredictions <- linePredictor.predict()
       wordPredictor <- yoloPredictorService.getYoloPredictor(YoloPredictionType.Words, printAreaMat, fileName, debugLocation, Some(0.05))
       wordPredictions <- wordPredictor.predict()
-      glyphPredictor <- yoloPredictorService.getYoloPredictor(YoloPredictionType.Glyphs, printAreaMat, fileName, debugLocation, Some(0.10))
-      glyphPredictions <- glyphPredictor.predict()
+      glyphPredictions <- {
+        // Get glyph predictions for overlapping tiles
+        // The assumption is that if the same glyph is predicted by two tiles, one of the two will be eliminated downstream
+        val tiles = croppedRectangle.tile(glyphImageTileCount, glyphImageTileCount, tileMargin)
+        ZIO.foreach(tiles) { tile =>
+          log.info(f"About to predict glyphs for tile ${tile.coordinates}")
+          val tileMat = crop(printAreaMat, tile)
+          for {
+            glyphPredictor <- yoloPredictorService.getYoloPredictor(YoloPredictionType.Glyphs, tileMat, fileName, debugLocation, Some(0.10))
+            glyphPredictions <- glyphPredictor.predict()
+          } yield {
+            log.info(f"Predicted ${glyphPredictions.size} glyphs for tile ${tile.coordinates}")
+            glyphPredictions.map { prediction =>
+              prediction.copy(rectangle = prediction.rectangle.translate(0 - tile.left, 0 - tile.top))
+            }
+          }
+        }.map(_.flatten)
+      }
       page <- ZIO.attempt {
         val textBlocks = pageWithBlocks.textBlocks
         val textBlocksToConsider = testRectangle.map(testRect => textBlocks.filter{ block =>
