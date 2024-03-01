@@ -1,6 +1,6 @@
 package com.joliciel.jochre.ocr.core.corpus
 
-import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
+import com.joliciel.jochre.ocr.core.graphics.Rectangle
 import com.joliciel.jochre.ocr.core.model.{Alto, Page}
 import com.joliciel.jochre.ocr.core.utils.{FileUtils, ImageUtils, StringUtils}
 import org.bytedeco.opencv.opencv_core.Mat

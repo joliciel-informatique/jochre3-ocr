@@ -1,4 +1,6 @@
-package com.joliciel.jochre.ocr.core.model
+package com.joliciel.jochre.ocr.core.graphics
+
+import org.slf4j.LoggerFactory
 
 /**
  * Block sorting algorithm.
@@ -27,6 +29,7 @@ package com.joliciel.jochre.ocr.core.model
  * e.g. 3 comes before 6, 4 comes before 7, 4 comes before 5, 4 comes before 6, 5 comes before 6
  */
 case class BlockSorter(blocks: Seq[WithRectangle], leftToRight: Boolean) extends Ordering[WithRectangle] {
+  private val log = LoggerFactory.getLogger(getClass)
   private val topOrdered = blocks.sortBy(_.top)
 
   def compare(a: WithRectangle, b: WithRectangle): Int = {
@@ -35,14 +38,34 @@ case class BlockSorter(blocks: Seq[WithRectangle], leftToRight: Boolean) extends
     } else {
       (b, a)
     }
-    val betweenBlocks = topOrdered.dropWhile(_.top < topBlock.bottom).takeWhile(_.bottom > bottomBlock.top)
+
+    val betweenBlocks = topOrdered
+      .dropWhile(rect => rect.top < topBlock.bottom && rect.top > bottomBlock.top)
+      .takeWhile(rect => rect.bottom > bottomBlock.top && rect.bottom > topBlock.bottom)
     val verticalBreak = betweenBlocks.find(block => block.horizontalOverlap(topBlock) > 0 && block.horizontalOverlap(bottomBlock) > 0)
+
+    if (log.isTraceEnabled) {
+      log.trace("Comparing")
+      log.trace(f"${a.rectangle.coordinates}. ${if (a.top < b.top) {"top"} else {"bottom"}}")
+      log.trace(f"${b.rectangle.coordinates}. ${if (a.top < b.top) {"bottom"} else {"top"}}")
+      log.trace(f"Between blocks: ${betweenBlocks.size}")
+      log.trace(f"Vertical break: ${verticalBreak.map(_.rectangle.coordinates)}")
+    }
     if (verticalBreak.isDefined) {
+      if (log.isTraceEnabled) {
+        log.trace("With vertical break: vertical compare")
+      }
       a.rectangle.verticalCompare(b.rectangle)
     } else {
       if (a.horizontalOverlap(b) > 0) {
+        if (log.isTraceEnabled) {
+          log.trace("With horizontal overlap: vertical compare")
+        }
         a.rectangle.verticalCompare(b.rectangle)
       } else {
+        if (log.isTraceEnabled) {
+          log.trace("No horizontal overlap: horizontal compare")
+        }
         a.rectangle.horizontalCompare(b.rectangle, leftToRight)
       }
     }
@@ -51,14 +74,6 @@ case class BlockSorter(blocks: Seq[WithRectangle], leftToRight: Boolean) extends
 
 object BlockSorter {
   def sort(blocks: Seq[WithRectangle], leftToRight: Boolean): Seq[WithRectangle] = {
-    try {
-      // The simple sort should work in most simple cases
-      blocks.sorted(WithRectangle.SimplePageLayoutOrdering(leftToRight))
-    } catch {
-      case _: IllegalArgumentException =>
-        // In complex cases as shown in the class definition above, we have to take vertical breaks into account
-        // We use the slower sort algorithm
-        blocks.sorted(BlockSorter(blocks, leftToRight))
-    }
+    blocks.sorted(BlockSorter(blocks, leftToRight))
   }
 }

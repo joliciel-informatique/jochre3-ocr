@@ -1,7 +1,8 @@
 package com.joliciel.jochre.ocr.core.text
 
 import com.joliciel.jochre.ocr.core.alto.ImageToAltoConverter
-import com.joliciel.jochre.ocr.core.model.{Block, BlockSorter, Illustration, Page}
+import com.joliciel.jochre.ocr.core.graphics.BlockSorter
+import com.joliciel.jochre.ocr.core.model.{Block, Illustration, Page}
 import com.joliciel.jochre.ocr.core.utils.{ImageUtils, OutputLocation, StringUtils}
 import com.typesafe.config.ConfigFactory
 import org.bytedeco.opencv.opencv_core.Mat

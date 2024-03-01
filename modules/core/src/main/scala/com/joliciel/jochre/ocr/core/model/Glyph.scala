@@ -1,6 +1,6 @@
 package com.joliciel.jochre.ocr.core.model
 
-import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
+import com.joliciel.jochre.ocr.core.graphics.{ImageInfo, Rectangle, WithRectangle}
 import com.joliciel.jochre.ocr.core.utils.MathUtils.MathImplicits._
 import org.bytedeco.opencv.opencv_core.Mat
 

@@ -1,6 +1,6 @@
 package com.joliciel.jochre.ocr.core.model
 
-import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
+import com.joliciel.jochre.ocr.core.graphics.{BlockSorter, ImageInfo, Rectangle}
 import com.joliciel.jochre.ocr.core.utils.MathUtils.MathImplicits._
 import com.joliciel.jochre.ocr.core.utils.StringUtils
 import com.typesafe.config.ConfigFactory

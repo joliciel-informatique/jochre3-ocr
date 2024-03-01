@@ -1,6 +1,6 @@
 package com.joliciel.jochre.ocr.core.utils
 
-import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
+import com.joliciel.jochre.ocr.core.graphics.Rectangle
 import org.bytedeco.javacv.Java2DFrameUtils
 import org.bytedeco.opencv.global.opencv_imgcodecs._
 import org.bytedeco.opencv.global.opencv_imgproc._

@@ -1,9 +1,10 @@
 package com.joliciel.jochre.ocr.core.text
 
 import com.joliciel.jochre.ocr.core.JochreCLI
+import com.joliciel.jochre.ocr.core.graphics.WithRectangle
 import com.joliciel.jochre.ocr.core.learning.{GlyphGuesser, GlyphGuesserForAnotherAlphabet, GlyphGuessersForOtherAlphabets, Prediction}
 import com.joliciel.jochre.ocr.core.lexicon.Lexicon
-import com.joliciel.jochre.ocr.core.model.{AltoElement, Block, BlockSorter, ComposedBlock, Page, TextBlock, TextLine, WithLanguage, WithRectangle, Word, WordOrSpace}
+import com.joliciel.jochre.ocr.core.model.{AltoElement, Page, TextBlock, TextLine, Word, WordOrSpace}
 import com.joliciel.jochre.ocr.core.utils.{OutputLocation, StringUtils}
 import com.typesafe.config.ConfigFactory
 import org.bytedeco.opencv.opencv_core.Mat

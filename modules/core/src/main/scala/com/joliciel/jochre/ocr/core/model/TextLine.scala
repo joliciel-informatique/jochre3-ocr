@@ -1,6 +1,6 @@
 package com.joliciel.jochre.ocr.core.model
 
-import com.joliciel.jochre.ocr.core.model.ImageLabel.Line
+import com.joliciel.jochre.ocr.core.graphics.{ImageInfo, Line, WithRectangle}
 import org.bytedeco.opencv.global.opencv_imgproc
 import org.bytedeco.opencv.global.opencv_imgproc.LINE_8
 import org.bytedeco.opencv.opencv_core.{AbstractScalar, Mat, Point}

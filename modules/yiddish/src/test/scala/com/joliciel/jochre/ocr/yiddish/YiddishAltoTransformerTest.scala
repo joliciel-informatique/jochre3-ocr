@@ -1,6 +1,7 @@
 package com.joliciel.jochre.ocr.yiddish
 
-import com.joliciel.jochre.ocr.core.model.{ImageInfo, Page, SpellingAlternative, TextLine}
+import com.joliciel.jochre.ocr.core.graphics.ImageInfo
+import com.joliciel.jochre.ocr.core.model.{Page, SpellingAlternative, TextLine}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

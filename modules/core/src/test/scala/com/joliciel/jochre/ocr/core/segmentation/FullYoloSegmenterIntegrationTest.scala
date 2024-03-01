@@ -1,6 +1,6 @@
 package com.joliciel.jochre.ocr.core.segmentation
 
-import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
+import com.joliciel.jochre.ocr.core.graphics.Rectangle
 import com.joliciel.jochre.ocr.core.model.{Illustration, TextBlock}
 import com.joliciel.jochre.ocr.core.utils.{ImageUtils, OutputLocation}
 import com.typesafe.config.ConfigFactory

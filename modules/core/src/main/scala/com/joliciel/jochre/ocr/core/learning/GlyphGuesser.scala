@@ -7,7 +7,7 @@ import ai.djl.modality.cv.transform.{Resize, ToTensor}
 import ai.djl.modality.cv.translator.ImageClassificationTranslator
 import ai.djl.modality.cv.{Image, ImageFactory}
 import com.joliciel.jochre.ocr.core.model.Glyph
-import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
+import com.joliciel.jochre.ocr.core.graphics.Rectangle
 import com.joliciel.jochre.ocr.core.utils.{FileUtils, ImageUtils}
 import org.bytedeco.opencv.opencv_core.Mat
 import org.slf4j.LoggerFactory
