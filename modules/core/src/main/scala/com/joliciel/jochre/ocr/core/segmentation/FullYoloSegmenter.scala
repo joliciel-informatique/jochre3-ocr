@@ -95,12 +95,16 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
         // The assumption is that if the same glyph is predicted by two tiles, one of the two will be eliminated downstream
         val tiles = croppedRectangle.tile(glyphImageTileCount, glyphImageTileCount, tileMargin)
         ZIO.foreach(tiles) { tile =>
+          log.info(f"About to predict glyphs for tile ${tile.coordinates}")
           val tileMat = crop(printAreaMat, tile)
           for {
             glyphPredictor <- yoloPredictorService.getYoloPredictor(YoloPredictionType.Glyphs, tileMat, fileName, debugLocation, Some(0.10))
             glyphPredictions <- glyphPredictor.predict()
-          } yield glyphPredictions.map{ prediction =>
-            prediction.copy(rectangle = prediction.rectangle.translate(0 - tile.left, 0 - tile.top))
+          } yield {
+            log.info(f"Predicted ${glyphPredictions.size} glyphs for tile ${tile.coordinates}")
+            glyphPredictions.map { prediction =>
+              prediction.copy(rectangle = prediction.rectangle.translate(0 - tile.left, 0 - tile.top))
+            }
           }
         }.map(_.flatten)
       }

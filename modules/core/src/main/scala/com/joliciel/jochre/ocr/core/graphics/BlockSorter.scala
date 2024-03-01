@@ -39,10 +39,15 @@ case class BlockSorter(blocks: Seq[WithRectangle], leftToRight: Boolean) extends
       (b, a)
     }
 
-    val betweenBlocks = topOrdered
-      .dropWhile(rect => rect.top < topBlock.bottom && rect.top > bottomBlock.top)
-      .takeWhile(rect => rect.bottom > bottomBlock.top && rect.bottom > topBlock.bottom)
-    val verticalBreak = betweenBlocks.find(block => block.horizontalOverlap(topBlock) > 0 && block.horizontalOverlap(bottomBlock) > 0)
+    val belowTop = topOrdered
+      .dropWhile(rect => rect.top < topBlock.bottom)
+
+    val betweenBlocks = belowTop
+      .takeWhile(rect => rect.top < bottomBlock.top)
+
+    val verticalBreak = betweenBlocks.find(block => block.horizontalOverlap(topBlock) > 0 && block.horizontalOverlap(bottomBlock) > 0 &&
+      block.verticalOverlap(topBlock) == 0 && block.verticalOverlap(bottomBlock) == 0
+    )
 
     if (log.isTraceEnabled) {
       log.trace("Comparing")
@@ -52,21 +57,27 @@ case class BlockSorter(blocks: Seq[WithRectangle], leftToRight: Boolean) extends
       log.trace(f"Vertical break: ${verticalBreak.map(_.rectangle.coordinates)}")
     }
     if (verticalBreak.isDefined) {
+      val result = a.rectangle.verticalCompare(b.rectangle)
       if (log.isTraceEnabled) {
-        log.trace("With vertical break: vertical compare")
+        val comparator = if (result < 0) { "<" } else if (result > 0) { ">" } else { "=" }
+        log.trace(f"With vertical break: vertical compare. ${a.rectangle.coordinates} $comparator ${b.rectangle.coordinates}")
       }
-      a.rectangle.verticalCompare(b.rectangle)
+      result
     } else {
       if (a.horizontalOverlap(b) > 0) {
+        val result = a.rectangle.verticalCompare(b.rectangle)
         if (log.isTraceEnabled) {
-          log.trace("With horizontal overlap: vertical compare")
+          val comparator = if (result < 0) { "<" } else if (result > 0) { ">" } else { "=" }
+          log.trace(f"With horizontal overlap: vertical compare. ${a.rectangle.coordinates} $comparator ${b.rectangle.coordinates}")
         }
-        a.rectangle.verticalCompare(b.rectangle)
+        result
       } else {
+        val result = a.rectangle.horizontalCompare(b.rectangle, leftToRight)
         if (log.isTraceEnabled) {
-          log.trace("No horizontal overlap: horizontal compare")
+          val comparator = if (result < 0) { "<" } else if (result > 0) { ">" } else { "=" }
+          log.trace(f"No horizontal overlap: horizontal compare. ${a.rectangle.coordinates} $comparator ${b.rectangle.coordinates}")
         }
-        a.rectangle.horizontalCompare(b.rectangle, leftToRight)
+        result
       }
     }
   }
