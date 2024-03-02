@@ -103,7 +103,7 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
           } yield {
             log.info(f"Predicted ${glyphPredictions.size} glyphs for tile ${tile.coordinates}")
             glyphPredictions.map { prediction =>
-              prediction.copy(rectangle = prediction.rectangle.translate(0 - tile.left, 0 - tile.top))
+              prediction.copy(rectangle = prediction.rectangle.translate(tile.left, tile.top))
             }
           }
         }.map(_.flatten)
