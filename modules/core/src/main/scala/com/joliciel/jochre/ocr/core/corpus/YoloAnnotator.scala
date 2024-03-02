@@ -2,7 +2,7 @@ package com.joliciel.jochre.ocr.core.corpus
 
 import com.joliciel.jochre.ocr.core.corpus.YoloAnnotator.YoloTask
 import com.joliciel.jochre.ocr.core.graphics.{Rectangle, WithRectangle}
-import com.joliciel.jochre.ocr.core.model.Alto
+import com.joliciel.jochre.ocr.core.model.{Alto, ComposedBlock, Illustration, TextBlock}
 import com.joliciel.jochre.ocr.core.utils.{FileUtils, ImageUtils}
 import com.typesafe.config.ConfigFactory
 import enumeratum._
@@ -42,6 +42,7 @@ case class YoloAnnotator(
   private val cropToPrintArea = config.getBoolean("crop-to-print-area")
   private val cropMargin = config.getDouble("crop-margin")
   private val tileMargin = config.getDouble("tile-margin")
+  private val blockMargin = config.getDouble("block-margin")
 
   private def df(d: Double): String = String.format("%.6f", d)
   private def pad(i: Int): String = String.format("%-2s", i)
@@ -72,7 +73,10 @@ case class YoloAnnotator(
     // Class numbers should be zero-indexed (start with 0).
 
     val page = alto.pages.head
-    val (croppedAlto, croppedMat) = if (cropToPrintArea) {
+
+    val objectTypeSet = objectsToInclude.toSet
+
+    val (baseAlto, baseMat) = if (cropToPrintArea && !(objectTypeSet.contains(YoloObjectType.TopLevelTextBlock) || objectTypeSet.contains(YoloObjectType.Illustration))) {
       val cropRectangle = page.croppedPrintArea(cropMargin)
       val croppedAlto = page.crop(cropRectangle)
       val croppedMat = crop(mat, cropRectangle)
@@ -81,11 +85,11 @@ case class YoloAnnotator(
       page -> mat
     }
 
-    val width = croppedAlto.width.toDouble
-    val height = croppedAlto.height.toDouble
+    val width = baseAlto.width.toDouble
+    val height = baseAlto.height.toDouble
 
-    val objectTypeSet = objectsToInclude.toSet
-    val yoloBoxes = croppedAlto.allTextBoxes.flatMap{ textBlock =>
+    // Non-blocks are based on the page cropped down to the print area
+    val yoloNonBlocks = baseAlto.allTextBoxes.flatMap{ textBlock =>
       textBlock.textLinesWithRectangles.zipWithIndex.flatMap{ case ((textLine, textLineRectangle), i) =>
 
         val baseLineType = if (i == textBlock.textLines.length - 1) {
@@ -147,6 +151,30 @@ case class YoloAnnotator(
       }
     }
 
+    // Blocks are based on the uncropped page, since we don't yet know the print area
+    val yoloBlocks = page.blocks.map {
+      case composedBlock: ComposedBlock =>
+        YoloBox(YoloObjectType.TopLevelTextBlock,
+          xCenter = composedBlock.rectangle.xCenter.toDouble / width,
+          yCenter = composedBlock.rectangle.yCenter.toDouble / height,
+          width = composedBlock.rectangle.width.toDouble / width + blockMargin * 2.0,
+          height = composedBlock.rectangle.height.toDouble / height + blockMargin * 2.0)
+      case textBlock: TextBlock =>
+        YoloBox(YoloObjectType.TopLevelTextBlock,
+          xCenter = textBlock.rectangle.xCenter.toDouble / width,
+          yCenter = textBlock.rectangle.yCenter.toDouble / height,
+          width = textBlock.rectangle.width.toDouble / width + blockMargin * 2.0,
+          height = textBlock.rectangle.height.toDouble / height + blockMargin * 2.0)
+      case illustration: Illustration =>
+        YoloBox(YoloObjectType.Illustration,
+          xCenter = illustration.rectangle.xCenter.toDouble / width,
+          yCenter = illustration.rectangle.yCenter.toDouble / height,
+          width = illustration.rectangle.width.toDouble / width + blockMargin * 2.0,
+          height = illustration.rectangle.height.toDouble / height + blockMargin * 2.0)
+    }.filter(box => objectTypeSet.contains(box.yoloClass))
+
+    val yoloBoxes = yoloNonBlocks ++ yoloBlocks
+
     val trainOrVal = validationOneEvery.map { validationOneEvery =>
         if ((index + 1) % validationOneEvery == 0) {
           "val"
@@ -156,8 +184,8 @@ case class YoloAnnotator(
       }.getOrElse("train")
 
     val tiles: Seq[Rectangle] = tileCount.map{ tileCount =>
-      croppedAlto.rectangle.tile(tileCount, tileCount, tileMargin)
-    }.getOrElse(Seq(croppedAlto.rectangle))
+      baseAlto.rectangle.tile(tileCount, tileCount, tileMargin)
+    }.getOrElse(Seq(baseAlto.rectangle))
 
     tiles.zipWithIndex.foreach { case (tile, i) =>
       val tileLeft = tile.left.toDouble / width
@@ -166,8 +194,12 @@ case class YoloAnnotator(
       val tileBottom = tile.bottom.toDouble / height
 
       val tileBoxes = yoloBoxes.filter {
-        case YoloBox(_, xCenter, yCenter, _, _) =>
-          xCenter >= tileLeft && xCenter <= tileRight && yCenter >= tileTop && yCenter <= tileBottom
+        case YoloBox(_, xCenter, yCenter, boxWidth, boxHeight) =>
+          val boxLeft = xCenter - boxWidth / 2
+          val boxRight = xCenter + boxWidth / 2
+          val boxTop = yCenter - boxHeight / 2
+          val boxBottom =yCenter + boxHeight / 2
+          boxLeft >= tileLeft && boxRight <= tileRight && boxTop >= tileTop && boxBottom <= tileBottom
       }.map {
         case yoloBox@YoloBox(_, xCenter, yCenter, boxWidth, boxHeight) =>
           val newXCenter = ((xCenter - tileLeft) * width) / tile.width.toDouble
@@ -177,7 +209,7 @@ case class YoloAnnotator(
           yoloBox.copy(xCenter = newXCenter, yCenter = newYCenter, width = newBoxWidth, height = newBoxHeight)
       }
 
-      val tileMat = crop(croppedMat, tile)
+      val tileMat = crop(baseMat, tile)
 
       debugDir.foreach { debugDir =>
         val imageFileName = f"$baseName-$i-annotation.$extension"
@@ -194,6 +226,8 @@ case class YoloAnnotator(
         tileBoxes.zipWithIndex.foreach {
           case (YoloBox(yoloClass, xCenter, yCenter, boxWidth, boxHeight), i) =>
             val colors = yoloClass match {
+              case YoloObjectType.TopLevelTextBlock => (Color.YELLOW, Color.YELLOW)
+              case YoloObjectType.Illustration => (Color.BLUE, Color.BLUE)
               case YoloObjectType.BaseLine => (Color.BLUE, Color.GREEN)
               case YoloObjectType.NonFinalBaseLine => (Color.BLUE, Color.GREEN)
               case YoloObjectType.FinalBaseLine => (Color.RED, Color.ORANGE)
@@ -297,7 +331,7 @@ object YoloAnnotator {
     val validationOneEvery: ScallopOption[Int] = opt[Int](required = false, descr = "If present, add train/val sub-directories and mark one out of every n files for validation")
     val objectsToInclude: ScallopOption[List[String]] = opt[List[String]](required = true, descr = f"A comma-separated list from ${YoloObjectType.values.map(_.entryName).mkString(", ")}")
     val imageSize: ScallopOption[Int] = opt[Int](default = Some(1280), descr="The image size, must be a multiple of 32. Default is 40*32=1280.")
-    val segmentCount: ScallopOption[Int] = opt[Int](required=false, descr="If provided, how many vertical and horizontal segments will we break the image into.")
+    val tileCount: ScallopOption[Int] = opt[Int](required=false, descr="If provided, how many vertical and horizontal tiles will we break the image into.")
     verify()
   }
 
@@ -316,7 +350,7 @@ object YoloAnnotator {
     val yamlFile = options.yamlFile.toOption
 
     val validationOneEvery = options.validationOneEvery.toOption
-    val segmentCount = options.segmentCount.toOption
+    val segmentCount = options.tileCount.toOption
     val imageSize = options.imageSize()
 
     val objectsToInclude = options.objectsToInclude.toOption.map(_.map(obj => YoloObjectType.withName(obj))).get

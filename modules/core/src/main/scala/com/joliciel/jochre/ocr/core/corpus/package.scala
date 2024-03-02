@@ -8,6 +8,16 @@ package object corpus {
   object YoloObjectType extends Enum[YoloObjectType] {
     val values = findValues
 
+    /**
+     * A top-level block: either a composed block, or a text block not contained by a composed block.
+     */
+    case object TopLevelTextBlock extends YoloObjectType
+
+    /**
+     * An illustration.
+     */
+    case object Illustration extends YoloObjectType
+
     /** A baseline */
     case object BaseLine extends YoloObjectType
 
