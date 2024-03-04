@@ -11,7 +11,7 @@ import com.joliciel.jochre.ocr.yiddish.lexicon.YivoLexicon
 import com.joliciel.yivoTranscriber.YivoTranscriber
 import enumeratum._
 
-case class YiddishAltoTransformer(yiddishConfig: YiddishConfig, lexicon: YivoLexicon, override val textSimplifier: Option[TextSimplifier] = Some(YiddishTextSimpifier(replaceNotYiddishAlphabets = false))) extends AltoTransformer with XmlImplicits {
+case class YiddishAltoTransformer(yiddishConfig: YiddishConfig, lexicon: YivoLexicon, override val textSimplifier: Option[TextSimplifier] = Some(YiddishTextSimpifier(replaceNonHebrewAlphabets = false))) extends AltoTransformer with XmlImplicits {
   // match an alef if:
   // - it's at the start of word and not immediately followed by a yud, vov, vov yud or tsvey yudn
   // - it's in the middle of word and not immediately followed by a komets or pasekh

@@ -54,6 +54,8 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
           case PredictedRectangle(label, rect, _) =>
             val blockType = BlockType.withName(label)
             blockType match {
+              case BlockType.TopLevelTextBlock => Some(TextBlock(rect, Seq.empty))
+              case BlockType.Illustration => Some(Illustration(rect))
               case BlockType.TextBox => Some(TextBlock(rect, Seq.empty))
               case BlockType.Paragraph => Some(TextBlock(rect, Seq.empty))
               case BlockType.Image => Some(Illustration(rect))

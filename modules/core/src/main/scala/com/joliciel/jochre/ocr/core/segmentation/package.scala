@@ -29,6 +29,14 @@ package object segmentation {
       val isText: Boolean = false
       val yoloName = "table"
     }
+    case object TopLevelTextBlock extends BlockType {
+      val isText: Boolean = true
+      val yoloName = "TopLevelTextBlock"
+    }
+    case object Illustration extends BlockType {
+      val isText: Boolean = false
+      val yoloName = "Illustration"
+    }
 
     def withYoloName(yoloName: String): Option[BlockType] =
       values.find(_.yoloName==yoloName)

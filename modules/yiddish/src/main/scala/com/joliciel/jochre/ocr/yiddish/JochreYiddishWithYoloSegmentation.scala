@@ -8,7 +8,7 @@ import sttp.client3.httpclient.zio.{HttpClientZioBackend, SttpClient}
 import zio._
 
 object JochreYiddishWithYoloSegmentation extends ZIOAppDefault with JochreAppBase {
-  override val textSimplifier = Some(YiddishTextSimpifier(replaceNotYiddishAlphabets = false))
+  override val textSimplifier = Some(YiddishTextSimpifier(replaceNonHebrewAlphabets = false))
   val yiddishConfig = YiddishConfig.fromConfig
 
   private case class JochreYiddishImpl(segmenterService: SegmenterService, textGuesserService: TextGuesserService) extends AbstractJochre {

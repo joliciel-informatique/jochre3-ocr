@@ -13,7 +13,7 @@ import sttp.client3.httpclient.zio.{HttpClientZioBackend, SttpClient}
 import zio._
 
 object JochreYiddishFull extends ZIOAppDefault with JochreAppBase {
-  override val textSimplifier = Some(YiddishTextSimpifier(replaceNotYiddishAlphabets = false))
+  override val textSimplifier = Some(YiddishTextSimpifier(replaceNonHebrewAlphabets = false))
 
   private case class JochreYiddishImpl(segmenterService: SegmenterService, textGuesserService: TextGuesserService, yiddishConfig: YiddishConfig, yivoLexicon: YivoLexicon) extends AbstractJochre {
     override val altoTransformer: AltoTransformer = YiddishAltoTransformer(yiddishConfig, yivoLexicon)

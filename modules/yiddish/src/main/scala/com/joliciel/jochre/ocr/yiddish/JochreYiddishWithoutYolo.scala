@@ -7,7 +7,7 @@ import com.joliciel.jochre.ocr.core.{AbstractJochre, Jochre, JochreAppBase, Joch
 import zio._
 
 object JochreYiddishWithoutYolo extends ZIOAppDefault with JochreAppBase {
-  override val textSimplifier = Some(YiddishTextSimpifier(replaceNotYiddishAlphabets = false))
+  override val textSimplifier = Some(YiddishTextSimpifier(replaceNonHebrewAlphabets = false))
   val yiddishConfig = YiddishConfig.fromConfig
 
   private case class JochreYiddishImpl(segmenterService: SegmenterService, textGuesserService: TextGuesserService) extends AbstractJochre {

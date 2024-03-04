@@ -41,7 +41,7 @@ object YiddishGlyphTrainer {
       modelName = modelName,
       numEpochs = numEpochs,
       batchSize = batchSize,
-      textSimplifier = alphabet.textSimpifier,
+      textSimplifier = alphabet.textSimplifier,
       wordSelectionRegex = alphabet.regex,
     )
     trainer.train()
@@ -69,7 +69,7 @@ object YiddishGlyphTrainer {
 
   private sealed trait Alphabet extends EnumEntry {
     def regex: Option[Regex]
-    def textSimpifier: TextSimplifier = TextSimplifier.default
+    def textSimplifier: TextSimplifier = TextSimplifier.default
   }
 
   private object Alphabet extends Enum[Alphabet] {
@@ -77,7 +77,7 @@ object YiddishGlyphTrainer {
 
     case object Hebrew extends Alphabet {
       val regex: Option[Regex] = None
-      val textSimplifier = YiddishTextSimpifier(replaceNotYiddishAlphabets = true)
+      override val textSimplifier = YiddishTextSimpifier(replaceNonHebrewAlphabets = true)
     }
 
     case object Latin extends Alphabet {
