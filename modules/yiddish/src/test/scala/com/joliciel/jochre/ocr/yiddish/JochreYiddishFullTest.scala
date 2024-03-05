@@ -12,10 +12,10 @@ import zio.test.{Spec, TestAspect, TestEnvironment, assertTrue}
 import javax.imageio.ImageIO
 import scala.xml.{Atom, PrettyPrinter, Text}
 
-object JochreYiddishWithYoloSegmentationTest extends JUnitRunnableSpec with XmlImplicits {
+object JochreYiddishFullTest extends JUnitRunnableSpec with XmlImplicits {
   private val log = LoggerFactory.getLogger(getClass)
 
-  override def spec: Spec[TestEnvironment with Scope, Any] = suite("JochreYiddishWithYoloSegmentationTest")(
+  override def spec: Spec[TestEnvironment with Scope, Any] = suite("JochreYiddishFull")(
     test("analyze an image") {
       val inputStream = getClass.getClassLoader.getResourceAsStream("nybc200089_0011.png")
       val image = ImageIO.read(inputStream)
@@ -38,5 +38,5 @@ object JochreYiddishWithYoloSegmentationTest extends JUnitRunnableSpec with XmlI
       }
     }
   ).provide(
-      JochreYiddishWithYoloSegmentation.jochreYiddishLayer) @@ TestAspect.sequential
+      JochreYiddishFull.jochreYiddishLayer) @@ TestAspect.sequential
 }
