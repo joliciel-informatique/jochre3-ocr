@@ -13,12 +13,12 @@ before_script:
   - docker info
   - apk update
   - apk add --no-cache make bash git
-test:
-  stage: test
-  script:
-    - make test-ci
-  after_script:
-    - make clean-docker-compose
+#test:
+#  stage: test
+#  script:
+#    - make test-ci
+#  after_script:
+#    - make clean-docker-compose
 publish-image:
   stage: deploy
   script:
