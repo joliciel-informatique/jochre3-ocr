@@ -1,6 +1,6 @@
 package com.joliciel.jochre.ocr.core.segmentation
 
-import com.joliciel.jochre.ocr.core.model.ImageLabel.{PredictedRectangle, Rectangle}
+import com.joliciel.jochre.ocr.core.graphics.{PredictedRectangle, Rectangle}
 import com.joliciel.jochre.ocr.core.model.{Illustration, TextBlock}
 import com.joliciel.jochre.ocr.core.utils.{ImageUtils, OutputLocation}
 import com.typesafe.config.ConfigFactory
@@ -14,12 +14,12 @@ import javax.imageio.ImageIO
 
 object BlockOnlySegmenterTest extends JUnitRunnableSpec with ImageUtils {
   object MockYoloPredictorService extends YoloPredictorService {
-    override def getYoloPredictor(predictionType: YoloPredictionType, mat: Mat, fileName: String, outputLocation: Option[OutputLocation], minConfidence: Option[Double]): Task[SegmentationPredictor[PredictedRectangle]] = ZIO.attempt {
-      new SegmentationPredictor[PredictedRectangle] {
+    override def getYoloPredictor(predictionType: YoloPredictionType, mat: Mat, fileName: String, outputLocation: Option[OutputLocation], minConfidence: Option[Double]): Task[SegmentationPredictor] = ZIO.attempt {
+      new SegmentationPredictor {
         override def predict(): Task[Seq[PredictedRectangle]] = ZIO.attempt(Seq(
-          PredictedRectangle(Rectangle(BlockType.TextBox.entryName, 10, 10, 50, 50), 0.9),
-          PredictedRectangle(Rectangle(BlockType.Paragraph.entryName, 60, 10, 100, 100), 0.8),
-          PredictedRectangle(Rectangle(BlockType.Image.entryName, 20, 120, 50, 50), 0.9),
+          PredictedRectangle(BlockType.TopLevelTextBlock.entryName, Rectangle(10, 10, 50, 50), 0.9),
+          PredictedRectangle(BlockType.TopLevelTextBlock.entryName, Rectangle(60, 10, 100, 100), 0.8),
+          PredictedRectangle(BlockType.Illustration.entryName, Rectangle(20, 120, 50, 50), 0.9),
         ))
       }
     }
@@ -40,12 +40,16 @@ object BlockOnlySegmenterTest extends JUnitRunnableSpec with ImageUtils {
         blockOnlySegmenter = new BlockOnlySegmenter(yoloPredictorService)
         result <- blockOnlySegmenter.segment(mat, fileName, outputLocation)
       } yield {
+        val blocks = result.blocks.map {
+          case textBlock: TextBlock => textBlock.copy(id = "")
+          case illustration: Illustration => illustration.copy(id = "")
+        }
         val expected = Seq(
-          TextBlock(Rectangle(BlockType.Paragraph.entryName, 60, 10, 100, 100), Seq.empty),
-          TextBlock(Rectangle(BlockType.TextBox.entryName, 10, 10, 50, 50), Seq.empty),
-          Illustration(Rectangle(BlockType.Image.entryName, 20, 120, 50, 50)),
+          TextBlock(Rectangle(60, 10, 100, 100), Seq.empty, id = "", defaultLanguage = Some("yi")),
+          TextBlock(Rectangle(10, 10, 50, 50), Seq.empty, id = "", defaultLanguage = Some("yi")),
+          Illustration(Rectangle(20, 120, 50, 50), id = ""),
         )
-        assertTrue(result.blocks==expected)
+        assertTrue(blocks==expected)
       }
     }
   )

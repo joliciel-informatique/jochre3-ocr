@@ -1,6 +1,6 @@
 package com.joliciel.jochre.ocr.core.utils
 
-import scala.xml.{Attribute, MetaData, Null, Text}
+import scala.xml.{Atom, Attribute, MetaData, Node, Null, Text}
 
 trait XmlImplicits {
   implicit class AddGoodCopyToAttribute(attr: Attribute) {
@@ -13,6 +13,12 @@ trait XmlImplicits {
       case Nil => Null
       case head :: tail => head.copy(next = iterableToMetaData(tail))
     }
+  }
+
+  implicit class EnrichedNode(node: Node) {
+    def textContent: String = node.child.collect {
+      case textNode: Atom[_] => textNode.text
+    }.mkString("")
   }
 }
 

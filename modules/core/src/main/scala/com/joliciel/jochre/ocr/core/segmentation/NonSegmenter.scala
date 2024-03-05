@@ -1,7 +1,7 @@
 package com.joliciel.jochre.ocr.core.segmentation
 
-import com.joliciel.jochre.ocr.core.model.ImageLabel.{PredictedRectangle, Rectangle}
-import com.joliciel.jochre.ocr.core.model.{Illustration, Page, TextBlock}
+import com.joliciel.jochre.ocr.core.graphics.Rectangle
+import com.joliciel.jochre.ocr.core.model.Page
 import com.joliciel.jochre.ocr.core.utils.OutputLocation
 import org.bytedeco.opencv.opencv_core.Mat
 import zio.{Task, ZIO, ZLayer}

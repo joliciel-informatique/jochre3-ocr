@@ -1,9 +1,9 @@
 package com.joliciel.jochre.ocr.core.corpus
 
-import com.joliciel.jochre.ocr.core.model.Page
+import com.joliciel.jochre.ocr.core.model.{Alto, Page}
 import com.joliciel.jochre.ocr.core.utils.{FileUtils, ImageUtils}
 import org.bytedeco.opencv.opencv_core.Mat
-import org.rogach.scallop.{ScallopConf, ScallopOption}
+import org.rogach.scallop._
 import org.slf4j.LoggerFactory
 
 import java.io.{File, FileOutputStream, OutputStreamWriter}
@@ -25,10 +25,10 @@ case class TextLineExtractor(
 
   debugDir.foreach(_.toFile.mkdirs())
 
-  def annotateOneFile(mat: Mat, alto: Page, parentDir: File, baseName: String, index: Int): Unit = {
-    debugDir.foreach(debugDir => saveImage(mat, new File(debugDir.toFile, f"${baseName}_rotated.png").getPath))
+  def annotateOneFile(mat: Mat, alto: Alto, parentDir: File, baseName: String, index: Int): Unit = {
+    debugDir.foreach(debugDir => saveImage(mat, debugDir.resolve(f"${baseName}_rotated.png")))
 
-    alto.textLinesWithRectangles.zipWithIndex.map { case ((textLine, rectangle), i) =>
+    alto.pages.head.textLinesWithRectangles.zipWithIndex.map { case ((textLine, rectangle), i) =>
       log.debug(f"Next textLine: $rectangle")
 
       val trainOrVal = validationOneEvery.map { validationOneEvery =>
@@ -59,11 +59,8 @@ case class TextLineExtractor(
       val imageDir = new File(parentDir, f"images/${trainOrVal}")
       imageDir.mkdirs()
       val imageFile = new File(imageDir, imageFileName)
-      saveImage(cropped, imageFile.getPath)
+      saveImage(cropped, imageFile.toPath)
     }
-  }
-
-  def cleanUp(): Unit = {
   }
 }
 

@@ -12,7 +12,7 @@ trait EvaluatorBase {
     writer.flush()
 
     results.foreach { result =>
-      val resultsPerMetric = metricNames.map(metric => result.results(metric)).map(result => f"$result%.2f").mkString("\t")
+      val resultsPerMetric = metricNames.map(metric => result.results(metric)).map(result => f"$result%.3f").mkString("\t")
       writer.write(f"${result.file.getName}\t$resultsPerMetric\n")
       writer.flush()
     }
@@ -22,7 +22,7 @@ trait EvaluatorBase {
       metric -> mean
     }.toMap
 
-    val meanLine = metricNames.map(metric => meanPerMetric(metric)).map(result => f"$result%.2f").mkString("\t")
+    val meanLine = metricNames.map(metric => meanPerMetric(metric)).map(result => f"$result%.3f").mkString("\t")
     writer.write(f"Mean\t$meanLine\n")
     writer.flush()
   }

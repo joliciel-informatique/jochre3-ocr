@@ -1,14 +1,14 @@
 package com.joliciel.jochre.ocr.core.transform
 
 import com.joliciel.jochre.ocr.core.corpus.AltoFinder
-import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
+import com.joliciel.jochre.ocr.core.graphics.Rectangle
 import com.joliciel.jochre.ocr.core.utils.{FileUtils, ImageUtils}
 import com.typesafe.config.ConfigFactory
 import org.bytedeco.opencv.global.opencv_core._
 import org.bytedeco.opencv.global.opencv_imgproc
 import org.bytedeco.opencv.global.opencv_imgproc._
 import org.bytedeco.opencv.opencv_core._
-import org.rogach.scallop.{ScallopConf, ScallopOption}
+import org.rogach.scallop._
 import org.slf4j.LoggerFactory
 
 import java.awt.Color
@@ -31,12 +31,12 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) 
       this.unrotate(_, mat)).getOrElse(mat)
 
     val baseName = FileUtils.removeFileExtension(new File(path).getName)
-    outDir.foreach(outDir => saveImage(rotated, Paths.get(outDir.toString, baseName + "_deskewered.jpg").toString))
+    outDir.foreach(outDir => saveImage(rotated, outDir.resolve(f"${baseName}_deskewered.jpg")))
     rotated
   }
 
   def getSkewAngle(mat: Mat, path: Option[String] = None): Option[Double] = {
-    log.info(f"Deskewing $path")
+    log.debug(f"Deskewing $path")
 
     val baseName = path.map(path => FileUtils.removeFileExtension(new File(path).getName)).getOrElse("test")
 
@@ -49,12 +49,12 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) 
     val blur = new Mat()
     GaussianBlur(resized, blur, new Size(9, 9), 0)
 
-    debugDir.foreach(debugDir => saveImage(blur, Paths.get(debugDir.toString, baseName + "_deskewer1_blur.jpg").toString))
+    debugDir.foreach(debugDir => saveImage(blur, debugDir.resolve(f"${baseName}_deskewer1_blur.jpg")))
 
     val thresh = new Mat()
     threshold(blur, thresh, 0, 255, THRESH_BINARY_INV + THRESH_OTSU)
 
-    debugDir.foreach(debugDir => saveImage(thresh, Paths.get(debugDir.toString, baseName + "_deskewer2_threshold.jpg").toString))
+    debugDir.foreach(debugDir => saveImage(thresh, debugDir.resolve(f"${baseName}__deskewer2_threshold.jpg")))
 
     // thresh = cv2.threshold (blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
 
@@ -65,7 +65,7 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) 
     val dilated = new Mat()
     dilate(thresh, dilated, kernel, new Point(-1, -1), 3, BORDER_CONSTANT, new Scalar(morphologyDefaultBorderValue))
 
-    debugDir.foreach(debugDir => saveImage(dilated, Paths.get(debugDir.toString, baseName + "_deskewer3_dilated.jpg").toString))
+    debugDir.foreach(debugDir => saveImage(dilated, Paths.get(debugDir.toString, baseName + "_deskewer3_dilated.jpg")))
 
     // Find all contours
     val mode = opencv_imgproc.RETR_LIST
@@ -92,7 +92,7 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) 
 
         drawRotatedRect(colored, rotatedRect, Color.green, thickness = 5)
 
-        (contour, area, rotatedRect, Rectangle("candidate", rotatedRect))
+        (contour, area, rotatedRect, Rectangle(rotatedRect))
     }
 
     val noContains = contoursWithRectangles
@@ -131,14 +131,14 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) 
           angle
         }
 
-        log.debug(f"angle: ${correctedAngle}")
+        log.debug(f"angle: $correctedAngle")
         ContourWithAngle(contour, area, rotatedRect, container, correctedAngle)
     }.sortBy(_.correctedAngle)
 
-    Option.when(contoursWithAngles.size > 0) {
+    Option.when(contoursWithAngles.nonEmpty) {
       // remove outliers
       val medianAngle = contoursWithAngles(contoursWithAngles.size / 2).correctedAngle
-      log.debug(f"medianAngle: ${medianAngle}")
+      log.debug(f"medianAngle: $medianAngle")
 
       val inliers = contoursWithAngles.filter {
         case ContourWithAngle(_, _, rotatedRect, container, angle) =>
@@ -153,10 +153,10 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) 
           isInlier
       }
 
-      debugDir.foreach(debugDir => saveImage(colored, Paths.get(debugDir.toString, baseName + "_deskewer4_rectangle.jpg").toString))
+      debugDir.foreach(debugDir => saveImage(colored, debugDir.resolve(f"${baseName}__deskewer4_rectangle.jpg")))
 
       val meanAngle = inliers.map(_.correctedAngle).sum / inliers.size
-      log.debug(f"meanAngle: ${meanAngle}")
+      log.info(f"Deskewed $path, meanAngle: $meanAngle")
       meanAngle
     }
   }
@@ -165,7 +165,7 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) 
 object Deskewer extends ImageUtils {
   private val log = LoggerFactory.getLogger(getClass)
 
-  class DeskewerCLI(arguments: Seq[String]) extends ScallopConf(arguments) {
+  private class DeskewerCLI(arguments: Seq[String]) extends ScallopConf(arguments) {
     val inputDir: ScallopOption[String] = opt[String](required = true)
     val outDir: ScallopOption[String] = opt[String](required = true)
     val debugDir: ScallopOption[String] = opt[String](required = false)
@@ -191,7 +191,7 @@ object Deskewer extends ImageUtils {
 
     files.map { file =>
       log.debug(f"Processing ${file.getPath}")
-      val mat = loadImage(file.getPath)
+      val mat = loadImage(file.toPath)
 
       val transformed: Mat = transforms.foldLeft(mat) {
         case (mat, transformer) =>
@@ -200,8 +200,8 @@ object Deskewer extends ImageUtils {
 
       val calculated = deskewer.getSkewAngle(transformed, Some(file.getPath))
       val altoFinder = AltoFinder.default
-      val alto = altoFinder.getAltoPage(Path.of(file))
-      val expected = alto.rotation
+      val alto = altoFinder.getAlto(file.toPath)
+      val expected = alto.pages.head.rotation
       val calculatedOrZero = calculated.getOrElse(0.0)
 
       log.info(f"Calculated: $calculatedOrZero")

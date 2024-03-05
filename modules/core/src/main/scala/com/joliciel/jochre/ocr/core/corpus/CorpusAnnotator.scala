@@ -1,6 +1,6 @@
 package com.joliciel.jochre.ocr.core.corpus
 
-import com.joliciel.jochre.ocr.core.model.Page
+import com.joliciel.jochre.ocr.core.model.{Alto, Page}
 import com.joliciel.jochre.ocr.core.utils.{FileUtils, ImageUtils}
 import org.bytedeco.opencv.opencv_core.Mat
 import org.slf4j.LoggerFactory
@@ -24,30 +24,31 @@ trait CorpusAnnotator extends FileUtils with ImageUtils {
 
   private val log = LoggerFactory.getLogger(getClass)
 
-  def annotate() = {
+  val initialTransforms = Seq[AnnotatedImageTransformer[_]](
+    RotationTransformer
+  )
+
+  def annotate(): Unit = {
     try {
       val corpusFiles = recursiveListImages(corpusDir.toFile)
 
       val locations = corpusFiles
-        .filter(location => fileList.map(_.contains(Path.of(location).getFileName.toString)).getOrElse(true))
+        .filter(location => fileList.map(_.contains(location.getName)).getOrElse(true))
         .take(maxFiles.getOrElse(corpusFiles.size))
-
-      val initialTransforms = List[AnnotatedImageTransformer[_]](
-        RotationTransformer
-      )
 
       locations.zipWithIndex.map { case (location, i) =>
         log.info(f"About to annotate ${location.getPath}")
-        val mat = loadImage(location.getPath)
-        val alto = altoFinder.getAltoPage(Path.of(location))
+        val mat = loadImage(location.toPath)
+        val alto = altoFinder.getAlto(location.toPath)
+        val page = alto.pages.head
 
-        val (transformedMat, transformedAlto) = initialTransforms.foldLeft(mat -> alto) {
-          case ((mat, alto), transformer) =>
-            val (newMat, newAlto, _) = transformer.transform(location.getPath, mat, alto)
-            newMat -> newAlto
+        val (transformedMat, transformedPage) = initialTransforms.foldLeft(mat -> page) {
+          case ((mat, page), transformer) =>
+            val (newMat, newPage, _) = transformer.transform(location.getPath, mat, page)
+            newMat -> newPage
         }
 
-        val filePath = Path.of(location)
+        val filePath = location.toPath
         val fileName = if (keepStructure) {
           corpusDir.relativize(filePath).toString
         } else {
@@ -59,6 +60,7 @@ trait CorpusAnnotator extends FileUtils with ImageUtils {
 
         val baseName = FileUtils.removeFileExtension(fileName)
 
+        val transformedAlto = alto.copy(pages = Seq(transformedPage))
         this.annotateOneFile(transformedMat, transformedAlto, parentDir, baseName, i)
       }
     } finally {
@@ -66,7 +68,7 @@ trait CorpusAnnotator extends FileUtils with ImageUtils {
     }
   }
 
-  def annotateOneFile(mat: Mat, alto: Page, parentDir: File, baseName: String, index: Int): Unit
+  def annotateOneFile(mat: Mat, alto: Alto, parentDir: File, baseName: String, index: Int): Unit
 
-  def cleanUp(): Unit
+  def cleanUp(): Unit = {}
 }

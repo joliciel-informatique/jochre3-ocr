@@ -1,6 +1,6 @@
 package com.joliciel.jochre.ocr.core.model
 
-import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
+import com.joliciel.jochre.ocr.core.graphics.{ImageInfo, Rectangle}
 import org.bytedeco.opencv.global.opencv_imgproc
 import org.bytedeco.opencv.global.opencv_imgproc.LINE_8
 import org.bytedeco.opencv.opencv_core.{AbstractScalar, Mat, Point}
@@ -16,11 +16,8 @@ case class Space(rectangle: Rectangle) extends WordOrSpace {
     rectangle = this.rectangle.rescale(scale)
   )
 
-  override def toXml(id: String): Elem =
-    <SP HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString}>
-    </SP>
-
-  override def compare(that: WordOrSpace): Int = this.rectangle.horizontalCompare(that.rectangle)
+  override def toXml: Elem =
+    <SP HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString}></SP>
 
   override def draw(mat: Mat): Unit = {
     opencv_imgproc.rectangle(mat, new Point(rectangle.left, rectangle.top), new Point(rectangle.left + rectangle.width, rectangle.top + rectangle.height), AbstractScalar.YELLOW,
@@ -28,10 +25,15 @@ case class Space(rectangle: Rectangle) extends WordOrSpace {
   }
 
   override val content: String = " "
+
+  override def transform(partialFunction: PartialFunction[AltoElement, AltoElement]): Space = {
+    val transformed = if (partialFunction.isDefinedAt(this)) { partialFunction(this).asInstanceOf[Space] } else { this }
+    transformed
+  }
 }
 
 object Space {
   def fromXML(node: Node): Space = {
-    Space(Rectangle.fromXML("", node))
+    Space(Rectangle.fromXML(node))
   }
 }

@@ -1,5 +1,6 @@
 package com.joliciel.jochre.ocr.core.alto
 
+import com.joliciel.jochre.ocr.core.model.{Page, SpellingAlternative}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -9,30 +10,15 @@ class AltoTransformerTest extends AnyFlatSpec
   with Matchers
 {
   "addAlternativesToFile" should "add alternatives to an alto file" in {
-    val fileName = "JimiHendrix.png"
     val sillyAltoProcessor = new AltoTransformer {
       override val removeGlyphs: Boolean = true
-      override def getAlternatives(content: String): Set[AltoAlternative] = Set(
-        AltoAlternative("X", f"X_${content}"),
-        AltoAlternative("Y", f"Y_${content}")
+      override def getAlternatives(content: String): Set[SpellingAlternative] = Set(
+        SpellingAlternative("X", f"X_${content}"),
+        SpellingAlternative("Y", f"Y_${content}")
       )
     }
 
     val altoFile = {
-      <alto>
-        <Description>
-          <sourceImageInformation>
-            <fileName>jochre15708220328454552598.jpg</fileName>
-          </sourceImageInformation>
-          <Processing ID="OCR_1">
-            <processingSoftware>
-              <softwareCreator>Joliciel Informatique</softwareCreator>
-              <softwareName>Jochre</softwareName>
-              <softwareVersion>unknown</softwareVersion>
-              <applicationDescription>Java Optical CHaracter REcognition: https://github.com/urieli/jochre</applicationDescription>
-            </processingSoftware>
-          </Processing>
-        </Description>
         <Page>
           <Paragraph>
             <String CONTENT="Jimi"><Glyph CONTENT="J" /></String><String CONTENT="Hendrix"/>
@@ -41,24 +27,11 @@ class AltoTransformerTest extends AnyFlatSpec
             <String CONTENT="Janis"><ALTERNATIVE PURPOSE="X">X_Whatever</ALTERNATIVE><ALTERNATIVE PURPOSE="Y">Y_Janis</ALTERNATIVE><ALTERNATIVE PURPOSE="Z">Z_Janis</ALTERNATIVE></String>
           </Paragraph>
         </Page>
-      </alto>
     }
 
+    val page = Page.fromXML(altoFile)
+
     val expected =
-      <alto>
-        <Description>
-          <sourceImageInformation>
-            <fileName>{fileName}</fileName>
-          </sourceImageInformation>
-          <Processing ID="OCR_1">
-            <processingSoftware>
-              <softwareCreator>Joliciel Informatique</softwareCreator>
-              <softwareName>Jochre</softwareName>
-              <softwareVersion>{sillyAltoProcessor.ocrVersion}</softwareVersion>
-              <applicationDescription>Java Optical CHaracter REcognition: https://github.com/urieli/jochre</applicationDescription>
-            </processingSoftware>
-          </Processing>
-        </Description>
         <Page>
           <Paragraph>
             <String CONTENT="Jimi">
@@ -73,11 +46,10 @@ class AltoTransformerTest extends AnyFlatSpec
             </String>
           </Paragraph>
         </Page>
-      </alto>
 
-    val prettyPrinter = new PrettyPrinter(80, 2)
+    val expectedPage = Page.fromXML(expected)
 
-    prettyPrinter.format(sillyAltoProcessor.process(altoFile, fileName)) shouldEqual prettyPrinter.format(expected)
+    sillyAltoProcessor.process(page) shouldEqual expectedPage
   }
 
 }

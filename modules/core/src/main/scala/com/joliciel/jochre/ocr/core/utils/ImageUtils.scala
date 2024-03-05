@@ -1,7 +1,6 @@
 package com.joliciel.jochre.ocr.core.utils
 
-import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
-import com.sun.javafx.collections.NonIterableChange.SimpleRemovedChange
+import com.joliciel.jochre.ocr.core.graphics.Rectangle
 import org.bytedeco.javacv.Java2DFrameUtils
 import org.bytedeco.opencv.global.opencv_imgcodecs._
 import org.bytedeco.opencv.global.opencv_imgproc._
@@ -13,17 +12,18 @@ import org.slf4j.LoggerFactory
 import java.awt.Color
 import java.awt.image.BufferedImage
 import java.net.URL
+import java.nio.file.Path
 import javax.imageio.ImageIO
 import scala.util.{Try, Using}
 
 trait ImageUtils {
   private val log = LoggerFactory.getLogger(getClass)
 
-  def loadImage(path: String): Mat =
-    imread(path, IMREAD_GRAYSCALE)
+  def loadImage(path: Path): Mat =
+    imread(path.toFile.getPath, IMREAD_GRAYSCALE)
 
-  def saveImage(mat: Mat, path: String): Unit =
-    imwrite(path, mat)
+  def saveImage(mat: Mat, path: Path): Unit =
+    imwrite(path.toFile.getPath, mat)
 
   def rotate(angle: Double, mat: Mat): Mat = {
     val cy = mat.rows.toFloat / 2f
@@ -66,8 +66,12 @@ trait ImageUtils {
 
   def toGrayscale(src: Mat): Mat = {
     val dest = new Mat()
-    if (src.`type`() == opencv_core.CV_8UC3) {
+    val imageType = src.`type`()
+    if (imageType == opencv_core.CV_8UC3) {
       cvtColor(src, dest, opencv_imgproc.CV_RGB2GRAY)
+      dest
+    } else if (imageType == opencv_core.CV_8UC4) {
+      cvtColor(src, dest, opencv_imgproc.CV_RGBA2GRAY)
       dest
     } else {
       src
@@ -108,4 +112,19 @@ trait ImageUtils {
       ImageIO.read(stream)
     }
   }
+
+  /**
+   *
+   * @param src The source image
+   * @param contrast Alpha value, > 1 to increase contrast, < 1 to decrease contrast
+   * @param brightness Beta value between -255 (to darken) to +255 (to lighten)
+   * @return The converted image
+   */
+  def changeContrastAndBrightness(src: Mat, contrast: Double, brightness: Int): Mat = {
+    val dest = new Mat()
+    src.convertTo(dest, -1, contrast, brightness.toDouble)
+    dest
+  }
 }
+
+object ImageUtils extends ImageUtils

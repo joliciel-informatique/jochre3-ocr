@@ -1,7 +1,9 @@
 package com.joliciel.jochre.ocr.core.model
 
-import com.joliciel.jochre.ocr.core.model.ImageLabel.Rectangle
+import com.joliciel.jochre.ocr.core.graphics.{BlockSorter, ImageInfo, Rectangle}
 import com.joliciel.jochre.ocr.core.utils.MathUtils.MathImplicits._
+import com.joliciel.jochre.ocr.core.utils.StringUtils
+import com.typesafe.config.ConfigFactory
 import org.bytedeco.opencv.opencv_core.Mat
 
 import scala.xml.{Elem, Node}
@@ -15,6 +17,8 @@ case class Page(
   language: String,
   confidence: Double,
   blocks: Seq[Block]) extends PageElement {
+  val leftToRight = StringUtils.isLeftToRight(language)
+
   override def translate(xDiff: Int, yDiff: Int): Page = {
     this.copy(blocks = blocks.map(_.translate(xDiff, yDiff)).collect{
       case block: Block => block
@@ -33,12 +37,16 @@ case class Page(
     case illustration: Illustration => illustration
   }
 
-  lazy val allTextBoxes: Seq[TextBlock] = BlockSorter.sort(composedBlocks.flatMap(_.textBlocks) ++ textBlocks)
+  lazy val allTextBoxes: Seq[TextBlock] = BlockSorter.sort(composedBlocks.flatMap(_.textBlocks) ++ textBlocks, leftToRight)
     .collect{
       case t:TextBlock => t
     }
 
   lazy val allTextLines: Seq[TextLine] = (textBlocks.flatMap(_.textLines) ++ composedBlocks.flatMap(_.textBlocks.flatMap(_.textLines))).sorted
+
+  lazy val allWords: Seq[Word] = allTextLines.flatMap(_.words)
+
+  lazy val allGlyphs: Seq[Glyph] = allWords.flatMap(_.glyphs)
 
   lazy val combinedWords: Seq[Word] = blocks.flatMap{
     case textBlock: TextBlock => textBlock.combinedWords
@@ -52,14 +60,14 @@ case class Page(
     case _: Illustration => Seq.empty
   }
 
-  val rectangle: Rectangle = Rectangle("", 0, 0, width, height)
+  val rectangle: Rectangle = Rectangle(0, 0, width, height)
 
   lazy val printArea: Rectangle = {
     val minLeft = this.blocks.map(_.rectangle.left).minOption.getOrElse(0)
     val minTop = this.blocks.map(_.rectangle.top).minOption.getOrElse(0)
     val maxRight = this.blocks.map(_.rectangle.right).maxOption.getOrElse(width)
     val maxBottom = this.blocks.map(_.rectangle.bottom).maxOption.getOrElse(height)
-    Rectangle("",
+    Rectangle(
       left = minLeft,
       top = minTop,
       width = maxRight - minLeft,
@@ -76,7 +84,7 @@ case class Page(
     val newWidth = printArea.width + (2 * xMargin)
     val newHeight = printArea.height + (2 * yMargin)
 
-    Rectangle("",
+    Rectangle(
       left = newLeft,
       top = newTop,
       width = if (newLeft + newWidth > width) {
@@ -122,48 +130,110 @@ case class Page(
     )
   }
 
-  override def toXml(idToIgnore: String): Elem =
+  override def toXml: Elem =
     <Page ID={id} HEIGHT={height.toString} WIDTH={width.toString} PHYSICAL_IMG_NR={physicalPageNumber.toString} ROTATION={rotation.roundTo(2).toString}
           LANG={language} PC={confidence.roundTo(2).toString}>
-      <PrintSpace HEIGHT={height.toString} WIDTH={width.toString} HPOS="0" VPOS="0">
-        {blocks.zipWithIndex.map{ case (block, i) => block.toXml(f"${id}_B${i}")}}
-      </PrintSpace>
-    </Page>
+      <PrintSpace HEIGHT={height.toString} WIDTH={width.toString} HPOS="0" VPOS="0">{blocks.map(_.toXml)}</PrintSpace></Page>
 
   override def draw(mat: Mat): Unit = {
-    this.blocks.map(_.draw(mat))
+    this.blocks.foreach(_.draw(mat))
   }
 
-  override def content: String = this.blocks.map{
-    case composedBlock:ComposedBlock => composedBlock.content
-    case textBlock:TextBlock => f"${textBlock.content}\n"
-    case illustration:Illustration => illustration.content
-  }.mkString
+  override def content: String = this.blocks.collect{
+    case textContainer: TextContainer => textContainer.content
+  }.mkString("\n")
+
+  override def transform(partialFunction: PartialFunction[AltoElement, AltoElement]): Page = {
+    val transformed = if (partialFunction.isDefinedAt(this)) { partialFunction(this).asInstanceOf[Page] } else { this }
+    val newBlocks = transformed.blocks.map(_.transform(partialFunction)).collect{ case block: Block => block }
+    transformed.copy(blocks = newBlocks)
+  }
+
+  def withCleanIds: Page = {
+    val baseId = f"$physicalPageNumber%05d"
+    val newBlocks = blocks.zipWithIndex.map{
+      case (composedBlock: ComposedBlock, i) =>
+        val newTextBlocks = composedBlock.textBlocks.zipWithIndex.map{
+          case (textBlock: TextBlock, j) => textBlock.copy(id = f"TB_${baseId}_${i+1}%03d_${j+1}%03d")
+        }
+        composedBlock.copy(id = f"CB_${baseId}_${i+1}%03d", textBlocks = newTextBlocks)
+      case (textBlock: TextBlock, i) =>
+        textBlock.copy(id = f"TB_${baseId}_${i+1}%03d_${0}%03d")
+      case (illustration: Illustration, i) =>
+        illustration.copy(id = f"IL_${baseId}_${i+1}%03d")
+    }
+    this.copy(blocks = newBlocks)
+  }
+
+  /**
+   * For simpler comparison when testing.
+   */
+  def withoutIds: Page = this.transform{
+    case textBlock: TextBlock => textBlock.copy(id = "")
+    case composedBlock: ComposedBlock => composedBlock.copy(id = "")
+    case illustration: Illustration => illustration.copy(id = "")
+  }
+
+  def withLanguage(newLanguage: String): Page = {
+    if (this.language==newLanguage) {
+      this
+    } else {
+      val newBlocks = this.blocks.map {
+        case textBlock: TextBlock => textBlock.withDefaultLanguage(newLanguage)
+        case composedBlock: ComposedBlock => composedBlock.copy(textBlocks = composedBlock.textBlocks.map(_.withDefaultLanguage(newLanguage)))
+        case other => other
+      }
+
+      val oldLeftToRight = StringUtils.isLeftToRight(this.language)
+      val newLeftToRight = StringUtils.isLeftToRight(newLanguage)
+      val sortedBlocks = if (oldLeftToRight!=newLeftToRight) {
+        BlockSorter.sort(newBlocks, newLeftToRight)
+      } else {
+        newBlocks
+      }
+      this.copy(language = newLanguage, blocks = newBlocks)
+    }
+  }
+
+  def withDefaultLanguage: Page = {
+    this.copy(blocks = this.blocks.map{
+      case composedBlock: ComposedBlock => composedBlock.withDefaultLanguage(this.language)
+      case textBlock: TextBlock => textBlock.withDefaultLanguage(this.language)
+      case other => other
+    })
+  }
 }
 
 object Page {
+  private val defaultLanguage = ConfigFactory.load().getConfig("jochre.ocr").getString("language")
+
   def fromXML(node: Node): Page = {
-    val page = (node \\ "Page").head
-    val id = page \@ "ID"
-    val height = (page \@ "HEIGHT").toInt
-    val width = (page \@ "WIDTH").toInt
-    val physicalPageNumber = (page \@ "PHYSICAL_IMG_NR").toIntOption.getOrElse(0)
-    val rotationStr = (page \@ "ROTATION")
-    val rotation = if (!rotationStr.isEmpty) {
+    val id = node \@ "ID"
+    val height = (node \@ "HEIGHT").toIntOption.getOrElse(0)
+    val width = (node \@ "WIDTH").toIntOption.getOrElse(0)
+    val physicalPageNumber = (node \@ "PHYSICAL_IMG_NR").toIntOption.getOrElse(0)
+    val rotationStr = node \@ "ROTATION"
+    val rotation = if (rotationStr.nonEmpty) {
       rotationStr.toDouble
     } else {
-      (page \\ "TextBlock").headOption.map(_ \@ "ROTATION").getOrElse("0").toDouble
+      val blockRotationStr = (node \\ "TextBlock").headOption.map(_ \@ "ROTATION").getOrElse("0")
+      if (blockRotationStr.isEmpty) { 0 } else { blockRotationStr.toDouble }
     }
     val imageInfo = ImageInfo(width, height, rotation)
-    val printSpace = (page \ "PrintSpace").head
-    val language = (page \@"LANG")
-    val confidence = (page \@ "PC").toDoubleOption.getOrElse(0.0)
+    val printSpace = (node \ "PrintSpace").headOption
+    val languageStr = node \@"LANG"
+    val language = if (languageStr.isEmpty) {
+      defaultLanguage
+    } else {
+      languageStr
+    }
+    val confidence = (node \@ "PC").toDoubleOption.getOrElse(0.0)
 
-    val blocks = printSpace.child.collect{
+    val blocks = printSpace.map(_.child.collect{
       case elem: Elem if elem.label == "TextBlock" => TextBlock.fromXML(imageInfo, elem)
       case elem: Elem if elem.label == "ComposedBlock" => ComposedBlock.fromXML(imageInfo, elem)
       case elem: Elem if elem.label == "Illustration" => Illustration.fromXML(elem)
-    }.toSeq
+    }.toSeq).getOrElse(Seq.empty)
 
     Page(id, height, width, physicalPageNumber, rotation, language, confidence, blocks)
   }

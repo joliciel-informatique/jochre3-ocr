@@ -1,12 +1,12 @@
 package com.joliciel.jochre.ocr.core.corpus
 
-import com.joliciel.jochre.ocr.core.model.Page
+import com.joliciel.jochre.ocr.core.model.Alto
 
 import java.nio.file.Path
 import scala.xml.XML
 
 trait AltoFinder {
-  def getAltoPage(imagePath: Path): Page
+  def getAlto(imagePath: Path): Alto
 }
 
 object AltoFinder {
@@ -18,7 +18,7 @@ object AltoFinder {
     val imagePathString = imagePath.toString
     val altoPath = imagePathString.substring(0, imagePathString.lastIndexOf('.')) + "_alto4.xml"
     val file = Path.of(altoPath).toFile
-    val altoXml = XML.loadFile(file)
-    Page.fromXML(altoXml)
+    val xml = XML.loadFile(file)
+    Alto.fromXML(xml)
   }
 }

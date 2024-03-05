@@ -1,24 +1,29 @@
 import BuildHelper._
 import Libraries._
+import com.typesafe.sbt.packager.MappingsHelper.directory
+
 import scala.sys.process._
 import xerial.sbt.Sonatype._
 import com.typesafe.sbt.packager.docker.Cmd
 
-ThisBuild / scalaVersion := "2.13.11"
+ThisBuild / scalaVersion := "3.3.3"
 ThisBuild / organization := "com.joli-ciel"
 ThisBuild / homepage     := Some(url("https://www.joli-ciel.com/"))
-ThisBuild / licenses     := List("Apache-2.0" -> url("https://www.apache.org/licenses/LICENSE-2.0"))
+ThisBuild / licenses     := List("AGPL-v3" -> url("https://www.gnu.org/licenses/agpl-3.0.en.html"))
 ThisBuild / versionScheme := Some("semver-spec")
 
 val cloakroomVersion = "0.5.13"
 val amazonSdkVersion = "2.20.98"
 val scalaXmlVersion = "2.1.0"
-val jochre2Version = "2.6.4"
 val yivoTranscriberVersion = "0.1.2"
 val javaCVVersion = "1.5.9"
 val scallopVersion = "5.0.0"
 val apacheCommonsTextVersion = "1.11.0"
 val apacheCommonsMathVersion = "3.6.1"
+val apachePdfBoxVersion = "3.0.1"
+val twelveMonkeysVersion = "3.10.1"
+val djlVersion = "0.26.0"
+val pytorchVersion = "2.1.1"
 
 lazy val jochre3OCRVersion = sys.env.get("JOCHRE3_OCR_VERSION")
   .getOrElse{
@@ -71,29 +76,6 @@ val projectSettings = commonSettings ++ Seq(
   version := jochre3OCRVersion,
 )
 
-lazy val downloadZip = taskKey[Unit]("Download the zip files to resource directory")
-
-downloadZip := {
-  val lexiconPath = "modules/yiddish/resources/jochre-yiddish-lexicon-1.0.1.zip"
-  if(java.nio.file.Files.notExists(new File(lexiconPath).toPath())) {
-    println(f"Path ${lexiconPath} does not exist, downloading...")
-    url("https://github.com/urieli/jochre/releases/download/v2.3.5/jochre-yiddish-lexicon-1.0.1.zip") #> file(lexiconPath) !
-  } else {
-    println(f"Path ${lexiconPath} exists, no need to download.")
-  }
-  val modelPath = "modules/yiddish/resources/yiddish_letter_model.zip"
-  if (java.nio.file.Files.notExists(new File(modelPath).toPath())) {
-    println(f"Path ${modelPath} does not exist, downloading...")
-    url("https://github.com/urieli/jochre/releases/download/v2.3.5/yiddish_letter_model.zip") #> file(modelPath) !
-  } else {
-    println(f"Path ${modelPath} exists, no need to download.")
-  }
-}
-
-(Compile / compile) := ((Compile / compile).dependsOn(downloadZip)).value
-(Docker / publishLocal) := ((Docker / publishLocal).dependsOn(downloadZip)).value
-(Docker / publish) := ((Docker / publishLocal).dependsOn(downloadZip)).value
-
 testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
 
 lazy val root =
@@ -107,18 +89,36 @@ lazy val root =
     .aggregate(core, yiddish, api)
     .enablePlugins(DockerForwardPlugin)
 
+val learningDeps = Seq(
+  "ai.djl" % "api" % djlVersion,
+  "ai.djl" % "bom" % djlVersion,
+  "ai.djl" % "basicdataset" % djlVersion,
+  "ai.djl" % "model-zoo" % djlVersion,
+  "ai.djl.pytorch" % "pytorch-engine" % djlVersion,
+  "ai.djl.pytorch" % "pytorch-model-zoo" % djlVersion,
+  "ai.djl.pytorch" % "pytorch-native-cpu" % pytorchVersion,
+  "ai.djl.pytorch" % "pytorch-jni" % f"$pytorchVersion-$djlVersion"
+)
+
+val jpegDeps = Seq(
+  "com.twelvemonkeys.imageio" % "imageio-jpeg" % twelveMonkeysVersion,
+  "com.twelvemonkeys.imageio" % "imageio-tiff" % twelveMonkeysVersion,
+)
+
 lazy val core = project
   .in(file("modules/core"))
   .settings(projectSettings: _*)
   .settings(
     name := "jochre3-ocr-core",
-    libraryDependencies ++= commonDeps ++ httpClientDeps ++ Seq(
+    libraryDependencies ++= jpegDeps ++ commonDeps ++ httpClientDeps ++ Seq(
       "org.rogach" %% "scallop" % scallopVersion,
       "org.bytedeco" % "javacv-platform" % javaCVVersion,
       "org.scala-lang.modules" %% "scala-xml" % scalaXmlVersion,
       "org.apache.commons" % "commons-text" % apacheCommonsTextVersion,
       "org.apache.commons" % "commons-math3" % apacheCommonsMathVersion,
-    ),
+      "org.apache.pdfbox" % "pdfbox" % apachePdfBoxVersion,
+      "org.apache.pdfbox" % "pdfbox-io" % apachePdfBoxVersion,
+    ) ++ learningDeps,
     //Compile / packageDoc / mappings := Seq(),
     Compile / packageDoc / publishArtifact := true,
     fork := true,
@@ -132,7 +132,6 @@ lazy val yiddish = project
     name := "jochre3-ocr-yiddish",
     libraryDependencies ++= commonDeps ++ Seq(
       "com.joliciel.ljtrad" % "yivo-transcriber" % yivoTranscriberVersion,
-      "com.joliciel.jochre" % "jochre-yiddish" % jochre2Version
     ),
     //Compile / packageDoc / mappings := Seq(),
     Compile / packageDoc / publishArtifact := true,
@@ -161,8 +160,9 @@ lazy val api = project
     Docker / version     := version.value,
     dockerExposedPorts := Seq(3434),
     dockerExposedVolumes := Seq("/opt/docker/index"),
-    Universal / mappings += file("modules/yiddish/resources/jochre-yiddish-lexicon-1.0.1.zip") -> "modules/yiddish/resources/jochre-yiddish-lexicon-1.0.1.zip",
-    Universal / mappings += file("modules/yiddish/resources/yiddish_letter_model.zip") -> "modules/yiddish/resources/yiddish_letter_model.zip",
+    // These next lines result in directories /opt/docker/lexicons and /opt/docker/models
+    Universal / mappings ++= directory("modules/yiddish/resources/lexicons"),
+    Universal / mappings ++= directory("modules/yiddish/resources/models"),
     // Add docker commands before changing user
     Docker / dockerCommands := dockerCommands.value.flatMap {
       case Cmd("USER", args@_*) if args.contains("1001:0") => Seq(

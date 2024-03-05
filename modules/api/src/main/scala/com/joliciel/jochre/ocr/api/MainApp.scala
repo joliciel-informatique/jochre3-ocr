@@ -4,7 +4,7 @@ import cats.syntax.all._
 import com.comcast.ip4s.{Host, Port}
 import com.joliciel.jochre.ocr.api.Types.AppTask
 import com.joliciel.jochre.ocr.api.analysis.AnalysisApp
-import com.joliciel.jochre.ocr.yiddish.JochreYiddishWithYoloSegmentation
+import com.joliciel.jochre.ocr.yiddish.JochreYiddishFull
 import com.typesafe.config.ConfigFactory
 import org.http4s.HttpRoutes
 import org.http4s.ember.server.EmberServerBuilder
@@ -70,7 +70,7 @@ object MainApp extends ZIOAppDefault
 
     val corsService = corsPolicyWithHosts.apply(httpApp)
 
-    val jochreLayer = JochreYiddishWithYoloSegmentation.jochreYiddishLayer
+    val jochreLayer = JochreYiddishFull.jochreYiddishLayer
 
     // Starting the server
     val server = EmberServerBuilder
