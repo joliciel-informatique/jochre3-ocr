@@ -4,14 +4,15 @@ import com.joliciel.jochre.ocr.core.alto.AltoTransformer
 import com.joliciel.jochre.ocr.core.corpus.TextSimplifier
 import com.joliciel.jochre.ocr.core.lexicon.Lexicon
 import com.joliciel.jochre.ocr.core.graphics.Rectangle
+import com.joliciel.jochre.ocr.core.model
 import com.joliciel.jochre.ocr.core.model.{AltoElement, Glyph, Hyphen, SpellingAlternative, TextLine, Word}
 import com.joliciel.jochre.ocr.core.utils.{StringUtils, XmlImplicits}
 import com.joliciel.jochre.ocr.yiddish.YiddishAltoTransformer.{Purpose, punctuationAndNotRegex}
 import com.joliciel.jochre.ocr.yiddish.lexicon.YivoLexicon
 import com.joliciel.yivoTranscriber.YivoTranscriber
-import enumeratum._
+import enumeratum.*
 
-case class YiddishAltoTransformer(yiddishConfig: YiddishConfig, lexicon: YivoLexicon, override val textSimplifier: Option[TextSimplifier] = Some(YiddishTextSimpifier(replaceNotYiddishAlphabets = false))) extends AltoTransformer with XmlImplicits {
+case class YiddishAltoTransformer(yiddishConfig: YiddishConfig, lexicon: YivoLexicon, override val textSimplifier: Option[TextSimplifier] = Some(YiddishTextSimpifier(replaceNonHebrewAlphabets = false))) extends AltoTransformer with XmlImplicits {
   // match an alef if:
   // - it's at the start of word and not immediately followed by a yud, vov, vov yud or tsvey yudn
   // - it's in the middle of word and not immediately followed by a komets or pasekh
@@ -88,8 +89,8 @@ object YiddishAltoTransformer extends XmlImplicits with StringUtils {
   private val decimalNumberRegex = raw"""(?U)\d+\.\d+""".r
 
   def punctuationSplitRule(textSimplifier: Option[TextSimplifier] = None): PartialFunction[AltoElement, AltoElement] = {
-    case textLine: TextLine =>
-      val splitWords = textLine.wordsAndSpaces.flatMap {
+    case textLine: TextLine => {
+      val splitWords: Seq[model.WordOrSpace] = textLine.wordsAndSpaces.flatMap {
         case word: Word =>
           val content = word.content
           val confidence = word.confidence
@@ -143,7 +144,8 @@ object YiddishAltoTransformer extends XmlImplicits with StringUtils {
           }
         case other => Seq(other)
       }
-    textLine.copy(wordsAndSpaces = splitWords)
+      textLine.copy(wordsAndSpaces = splitWords)
+    }
   }
 
 

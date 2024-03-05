@@ -60,8 +60,8 @@ private[segmentation] class YoloPredictor(
         ImageIO.write(image, "png", out)
         val in = new ByteArrayInputStream(out.toByteArray)
 
-        val uri = uri"${documentLayoutAnalysisUrl}/${predictionType.endpoint}?${minConfidence.map(conf => f"min-confidence=${conf}").getOrElse("")}"
-        if (log.isDebugEnabled) log.debug(f"Uri: ${uri}")
+        val uri = uri"$documentLayoutAnalysisUrl/${predictionType.endpoint}?${minConfidence.map(conf => f"min-confidence=$conf").getOrElse("")}"
+        if (log.isDebugEnabled) log.debug(f"Uri: $uri")
         val request = basicRequest
           .readTimeout(requestTimeout)
           .post(uri)

@@ -1,7 +1,7 @@
 package com.joliciel.jochre.ocr.core.lexicon
 
 import com.joliciel.jochre.ocr.core.corpus.TextSimplifier
-import org.rogach.scallop.{ScallopConf, ScallopOption}
+import org.rogach.scallop._
 import org.slf4j.LoggerFactory
 
 import java.io.{File, FileInputStream, FileOutputStream, ObjectInputStream, ObjectOutputStream}
@@ -66,7 +66,7 @@ object TextFileLexicon {
 
   def load[T <: TextFileLexicon](input: File, textSimplifier: Option[TextSimplifier] = None, constructor: (Set[String], Option[TextSimplifier]) => T): T = {
     if (input.isDirectory) {
-      val files = Option(input.listFiles).getOrElse(Array.empty)
+      val files = Option(input.listFiles).getOrElse(Array.empty[File])
       val entries = files.filter(_.getName.endsWith(".txt"))
         .foldLeft(Set.empty[String]){ case (entries, file) =>
           log.info(f"Loaded ${entries.size} entries before file ${file.getPath}")

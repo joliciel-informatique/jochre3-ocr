@@ -5,7 +5,7 @@ import com.joliciel.jochre.ocr.core.corpus.GlyphExtractor
 object YiddishGlyphExtractor {
   def main(args: Array[String]): Unit = {
     GlyphExtractor.execute(args,
-      textSimplifier = YiddishTextSimpifier(replaceNotYiddishAlphabets = true)
+      textSimplifier = YiddishTextSimpifier(replaceNonHebrewAlphabets = true)
     )
   }
 }

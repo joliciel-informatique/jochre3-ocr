@@ -1,7 +1,7 @@
 package com.joliciel.jochre.ocr.yiddish
 
 import com.joliciel.jochre.ocr.core.evaluation.{CharacterCount, CharacterErrorRate, TextEvaluator}
-import org.rogach.scallop.{ScallopConf, ScallopOption}
+import org.rogach.scallop._
 
 import java.io.{File, FileWriter}
 import java.nio.charset.StandardCharsets
@@ -23,7 +23,7 @@ object YiddishTextEvaluator {
     val evalDir = Path.of(cli.evalDir())
     evalDir.toFile.mkdirs()
 
-    val evaluator = TextEvaluator(Seq(CharacterErrorRate, CharacterCount), evalDir, Some(YiddishTextSimpifier(replaceNotYiddishAlphabets = false)))
+    val evaluator = TextEvaluator(Seq(CharacterErrorRate, CharacterCount), evalDir, Some(YiddishTextSimpifier(replaceNonHebrewAlphabets = false)))
     val evalWriter = new FileWriter(new File(evalDir.toFile, "eval.tsv"), StandardCharsets.UTF_8)
     try {
       val results = evaluator.evaluate(inputDir, goldDir)

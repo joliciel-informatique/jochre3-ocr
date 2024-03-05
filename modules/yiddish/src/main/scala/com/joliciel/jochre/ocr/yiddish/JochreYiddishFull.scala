@@ -13,7 +13,7 @@ import sttp.client3.httpclient.zio.{HttpClientZioBackend, SttpClient}
 import zio._
 
 object JochreYiddishFull extends ZIOAppDefault with JochreAppBase {
-  override val textSimplifier = Some(YiddishTextSimpifier(replaceNotYiddishAlphabets = false))
+  override val textSimplifier = Some(YiddishTextSimpifier(replaceNonHebrewAlphabets = false))
 
   private case class JochreYiddishImpl(segmenterService: SegmenterService, textGuesserService: TextGuesserService, yiddishConfig: YiddishConfig, yivoLexicon: YivoLexicon) extends AbstractJochre {
     override val altoTransformer: AltoTransformer = YiddishAltoTransformer(yiddishConfig, yivoLexicon)
@@ -35,7 +35,7 @@ object JochreYiddishFull extends ZIOAppDefault with JochreAppBase {
 
   private val fullSegmentationConfigLayer = ZLayer.fromZIO(ZIO.attempt(FullSegmentationGuesserConfig.fromConfig))
 
-  private val textSimplifierLayer: ZLayer[Any, Nothing, TextSimplifier] = ZLayer.succeed(textSimplifier.value)
+  private val textSimplifierLayer: ZLayer[Any, Nothing, TextSimplifier] = ZLayer.succeed(textSimplifier.get)
   private val textGuesserService: ZLayer[GlyphGuesser with GlyphGuessersForOtherAlphabets with Lexicon with TextSimplifier with FullSegmentationGuesserConfig, Throwable, TextGuesserService] =
     FullSegmentationGuesserService.live
 

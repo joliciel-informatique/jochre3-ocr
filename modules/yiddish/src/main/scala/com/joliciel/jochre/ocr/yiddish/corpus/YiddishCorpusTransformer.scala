@@ -6,7 +6,7 @@ import com.joliciel.jochre.ocr.core.output.OutputFormat
 import com.joliciel.jochre.ocr.core.utils.{ImageUtils, OutputLocation}
 import com.typesafe.config.{Config, ConfigFactory}
 import org.bytedeco.opencv.opencv_core.Mat
-import org.rogach.scallop.{ScallopConf, ScallopOption}
+import org.rogach.scallop._
 
 import java.io.File
 import java.nio.file.Path

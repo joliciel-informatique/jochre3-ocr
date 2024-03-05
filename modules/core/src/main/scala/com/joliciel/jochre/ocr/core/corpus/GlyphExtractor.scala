@@ -4,7 +4,7 @@ import com.joliciel.jochre.ocr.core.graphics.Rectangle
 import com.joliciel.jochre.ocr.core.model.{Alto, Page}
 import com.joliciel.jochre.ocr.core.utils.{FileUtils, ImageUtils, StringUtils}
 import org.bytedeco.opencv.opencv_core.Mat
-import org.rogach.scallop.{ScallopConf, ScallopOption}
+import org.rogach.scallop._
 import org.slf4j.LoggerFactory
 
 import java.io.{File, FileOutputStream, OutputStreamWriter}

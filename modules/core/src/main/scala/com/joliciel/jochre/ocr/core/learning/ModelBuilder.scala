@@ -31,11 +31,11 @@ case class ModelBuilder(numClasses: Int, dropOut: Float = 0.4f, denseLayer: Int 
 
     block
       .add(convLayer(32, 5))
-      .add { list: NDList => Activation.relu(list) }
+      .add { (list: NDList) => Activation.relu(list) }
       .add(maxPoolLayer(5))
       .add(dropOutLayer)
       .add(convLayer(64, 5))
-      .add{ list: NDList => Activation.relu(list) }
+      .add{ (list: NDList) => Activation.relu(list) }
       .add(maxPoolLayer(5))
       .add(dropOutLayer)
       // Blocks.batchFlattenBlock() will transform the input of the shape (batch size, channel,
@@ -43,7 +43,7 @@ case class ModelBuilder(numClasses: Int, dropOut: Float = 0.4f, denseLayer: Int 
       // channel * height * width)
       .add(Blocks.batchFlattenBlock())
       .add(Linear.builder().setUnits(denseLayer).build())
-      .add { list: NDList => Activation.relu(list) }
+      .add { (list: NDList) => Activation.relu(list) }
       .add(dropOutLayer)
       .add(Linear.builder().setUnits(numClasses).build());
   }
@@ -53,23 +53,23 @@ case class ModelBuilder(numClasses: Int, dropOut: Float = 0.4f, denseLayer: Int 
 
     block
       .add(convLayer(32, 3))
-      .add { list: NDList => Activation.relu(list) }
+      .add { (list: NDList) => Activation.relu(list) }
       .add(batchNormLayer)
       .add(convLayer(32, 3))
-      .add { list: NDList => Activation.relu(list) }
+      .add { (list: NDList) => Activation.relu(list) }
       .add(batchNormLayer)
       .add(convLayer(32, 5, stride = 2))
-      .add { list: NDList => Activation.relu(list) }
+      .add { (list: NDList) => Activation.relu(list) }
       .add(batchNormLayer)
       .add(dropOutLayer)
       .add(convLayer(64, 3))
-      .add { list: NDList => Activation.relu(list) }
+      .add { (list: NDList) => Activation.relu(list) }
       .add(batchNormLayer)
       .add(convLayer(64, 3))
-      .add { list: NDList => Activation.relu(list) }
+      .add { (list: NDList) => Activation.relu(list) }
       .add(batchNormLayer)
       .add(convLayer(64, 5, stride = 2))
-      .add { list: NDList => Activation.relu(list) }
+      .add { (list: NDList) => Activation.relu(list) }
       .add(batchNormLayer)
       .add(dropOutLayer)
       // Blocks.batchFlattenBlock() will transform the input of the shape (batch size, channel,
@@ -77,7 +77,7 @@ case class ModelBuilder(numClasses: Int, dropOut: Float = 0.4f, denseLayer: Int 
       // channel * height * width)
       .add(Blocks.batchFlattenBlock())
       .add(Linear.builder().setUnits(denseLayer).build())
-      .add { list: NDList => Activation.relu(list) }
+      .add { (list: NDList) => Activation.relu(list) }
       .add(BatchNorm.builder().build())
       .add(dropOutLayer)
       .add(Linear.builder().setUnits(numClasses).build());

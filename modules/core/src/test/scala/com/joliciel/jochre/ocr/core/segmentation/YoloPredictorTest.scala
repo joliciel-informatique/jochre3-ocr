@@ -3,6 +3,7 @@ package com.joliciel.jochre.ocr.core.segmentation
 import com.joliciel.jochre.ocr.core.graphics.Rectangle
 import com.joliciel.jochre.ocr.core.utils.{ImageUtils, OutputLocation}
 import com.typesafe.config.ConfigFactory
+import org.slf4j.LoggerFactory
 import sttp.client3.httpclient.zio.HttpClientZioBackend
 import zio._
 import zio.test.junit.JUnitRunnableSpec
@@ -12,7 +13,9 @@ import java.nio.file.Path
 import javax.imageio.ImageIO
 
 object YoloPredictorTest extends JUnitRunnableSpec with ImageUtils {
-  override def spec: Spec[TestEnvironment with Scope, Any] = suite("BlockPredictor")(
+  private val log = LoggerFactory.getLogger(getClass)
+
+  override def spec: Spec[TestEnvironment with Scope, Any] = suite("YoloPredictor")(
     test("predict blocks") {
       val image = ImageIO.read(getClass.getResourceAsStream("/images/nybc200089_0011_deskewered.jpg"))
       val mat = fromBufferedImage(image)
@@ -24,15 +27,16 @@ object YoloPredictorTest extends JUnitRunnableSpec with ImageUtils {
       val outputLocation = Some(OutputLocation(outputPath, "nybc200089_0011"))
       for {
         yoloPredictorService <- ZIO.service[YoloPredictorService]
-        blockPredictor <- yoloPredictorService.getYoloPredictor(YoloPredictionType.Blocks, mat, fileName, outputLocation)
+        blockPredictor <- yoloPredictorService.getYoloPredictor(YoloPredictionType.Blocks, mat, fileName, outputLocation, minConfidence = Some(0.7))
         result <- blockPredictor.predict()
       } yield {
+        log.info(f"Result: ${result.map(_.rectangle).mkString(", ")}")
         val expected = Seq(
-          Rectangle(600, 2254, 2477, 605),
-          Rectangle(608, 2880, 2468, 1281),
-          Rectangle(671, 1610, 2370, 214),
-          Rectangle(1765, 2040, 154, 117),
-          Rectangle(1784, 4176, 121, 93)
+          Rectangle(1792,1438,105,160),
+          Rectangle(662,1615,2328,189),
+          Rectangle(1776,2033,126,139),
+          Rectangle(624,2248,2434,1911),
+          Rectangle(1809,4159,88,130)
         )
         assertTrue(result.forall(rect => expected.find(other => rect.rectangle.iou(other) > 0.9).isDefined))
       }

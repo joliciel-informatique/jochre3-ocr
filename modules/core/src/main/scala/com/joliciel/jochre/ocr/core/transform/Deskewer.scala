@@ -8,7 +8,7 @@ import org.bytedeco.opencv.global.opencv_core._
 import org.bytedeco.opencv.global.opencv_imgproc
 import org.bytedeco.opencv.global.opencv_imgproc._
 import org.bytedeco.opencv.opencv_core._
-import org.rogach.scallop.{ScallopConf, ScallopOption}
+import org.rogach.scallop._
 import org.slf4j.LoggerFactory
 
 import java.awt.Color

@@ -13,21 +13,13 @@ package object segmentation {
   private[core] object BlockType extends Enum[BlockType] {
     val values: IndexedSeq[BlockType] = findValues
 
-    case object Paragraph extends BlockType {
+    case object TopLevelTextBlock extends BlockType {
       val isText: Boolean = true
-      val yoloName = "paragraph"
+      val yoloName = "TopLevelTextBlock"
     }
-    case object TextBox extends BlockType {
-      val isText: Boolean = true
-      val yoloName = "text_box"
-    }
-    case object Image extends BlockType {
+    case object Illustration extends BlockType {
       val isText: Boolean = false
-      val yoloName = "image"
-    }
-    case object Table extends BlockType {
-      val isText: Boolean = false
-      val yoloName = "table"
+      val yoloName = "Illustration"
     }
 
     def withYoloName(yoloName: String): Option[BlockType] =

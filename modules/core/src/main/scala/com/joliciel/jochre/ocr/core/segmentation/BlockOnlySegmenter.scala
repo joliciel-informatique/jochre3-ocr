@@ -38,10 +38,8 @@ private[segmentation] class BlockOnlySegmenter(yoloPredictorService: YoloPredict
           case PredictedRectangle(label, rect, _) =>
             val blockType = BlockType.withName(label)
             blockType match {
-              case BlockType.TextBox => Some(TextBlock(rect, Seq.empty))
-              case BlockType.Paragraph => Some(TextBlock(rect, Seq.empty))
-              case BlockType.Image => Some(Illustration(rect))
-              case BlockType.Table => None
+              case BlockType.TopLevelTextBlock => Some(TextBlock(rect, Seq.empty))
+              case BlockType.Illustration => Some(Illustration(rect))
             }
         }
 

@@ -49,8 +49,9 @@ case class GlyphGuesser(modelDir: Path,
     val bufferedImage = toBufferedImage(image)
     val classifications = this.predict(bufferedImage)
     if (log.isDebugEnabled) { log.debug(f"expected: ${glyph.content}, $classifications") }
-
-    classifications.topK(k).asScala.toSeq.map{ classification: Classification =>
+    
+    val seq = classifications.topK[Classification](k).asScala.toSeq
+    seq.map{ classification =>
       Prediction(classification.getClassName, classification.getProbability)
     }.sortBy(0 - _.confidence)
   }

@@ -7,7 +7,7 @@ import scala.io.Source
 import scala.language.implicitConversions
 import scala.util.matching.Regex
 
-case class YiddishTextSimpifier(replaceNotYiddishAlphabets: Boolean = false) extends TextSimplifier {
+case class YiddishTextSimpifier(replaceNonHebrewAlphabets: Boolean = false) extends TextSimplifier {
 
   private implicit class StringWithRegex(val s: String) {
     def replaceRegex(regex: Regex, replacement: String): String = regex.replaceAllIn(s, replacement)
@@ -27,7 +27,7 @@ case class YiddishTextSimpifier(replaceNotYiddishAlphabets: Boolean = false) ext
   private val nonStandardMaqaf = """[-⸗]""".r
   private val nonStandardLongDash = """[𝆙←–—]""".r
   private val nonStandardSingleQuote = """['‛’׳]""".r
-  private val nonStandardDoubleQuote = """["“]|(‛‛)|(’’)|('')""".r
+  private val nonStandardDoubleQuote = """["“״]|(‛‛)|(’’)|('')""".r
   private val nonStandardLowerDoubleQuote = """(,,)|(‚‚)""".r
   private val verticalBar = """|""".r
   private val otherSymbol = """[▼◦№⁂]""".r
@@ -59,7 +59,7 @@ case class YiddishTextSimpifier(replaceNotYiddishAlphabets: Boolean = false) ext
       .replaceRegex(verticalBar, "")
       .replaceRegex(otherSymbol, "•")
 
-      if (replaceNotYiddishAlphabets) {
+      if (replaceNonHebrewAlphabets) {
         simplifiedText
           .replaceRegex(latinAlphabet, "L")
           .replaceRegex(cyrillicAlphabet, "C")

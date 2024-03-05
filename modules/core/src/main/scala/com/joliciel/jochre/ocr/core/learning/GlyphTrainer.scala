@@ -50,6 +50,10 @@ case class GlyphTrainer(
 ) {
   def train(): TrainingResult = {
     val model = Model.newInstance(modelName)
+
+    val classesPath = outputDir.resolve(f"${modelName}_classes.txt")
+    Files.write(classesPath, dataset.classes.mkString("\n").getBytes(StandardCharsets.UTF_8))
+
     val trainingResult = try {
       model.setBlock(modelType.getModel(dataset.classes.size, imageSize))
       // get training and validation dataset
@@ -69,8 +73,6 @@ case class GlyphTrainer(
       trainingResult
     } finally model.close()
 
-    val classesPath = outputDir.resolve(f"${modelName}_classes.txt")
-    Files.write(classesPath, dataset.classes.mkString("\n").getBytes(StandardCharsets.UTF_8))
     trainingResult
   }
 

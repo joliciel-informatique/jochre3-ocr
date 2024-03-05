@@ -11,7 +11,8 @@ object Libraries {
   val tapirVersion = "1.9.3"
   val scalaTestVersion = "3.2.17"
   val enumeratumVersion = "1.7.3"
-  val doobieVersion = "1.0.0-RC2"
+  val enumeratumDoobieVersion = "1.7.5"
+  val doobieVersion = "1.0.0-RC5"
   val logbackVersion = "1.4.14"
   val flywayVersion = "10.6.0"
   val catsVersion = "2.10.0"
@@ -49,7 +50,7 @@ object Libraries {
     "org.tpolecat" %% "doobie-postgres" % doobieVersion, // Postgres driver 42.3.1 + type mappings.
     "org.tpolecat" %% "doobie-specs2" % doobieVersion % "test", // Specs2 support for typechecking statements.
     "org.tpolecat" %% "doobie-scalatest" % doobieVersion % "test", // ScalaTest support for typechecking statements.
-    "com.beachape" %% "enumeratum-doobie" % enumeratumVersion,
+    "com.beachape" %% "enumeratum-doobie" % enumeratumDoobieVersion,
     "org.flywaydb" % "flyway-core" % flywayVersion,
     "org.flywaydb" % "flyway-database-postgresql" % flywayVersion,
   )
