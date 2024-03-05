@@ -160,6 +160,7 @@ lazy val api = project
     Docker / version     := version.value,
     dockerExposedPorts := Seq(3434),
     dockerExposedVolumes := Seq("/opt/docker/index"),
+    // These next lines result in directories /opt/docker/lexicons and /opt/docker/models
     Universal / mappings ++= directory("modules/yiddish/resources/lexicons"),
     Universal / mappings ++= directory("modules/yiddish/resources/models"),
     // Add docker commands before changing user
