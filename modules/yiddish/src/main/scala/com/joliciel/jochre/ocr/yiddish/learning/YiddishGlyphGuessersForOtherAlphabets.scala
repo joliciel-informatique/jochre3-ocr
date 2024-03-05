@@ -12,7 +12,8 @@ import scala.jdk.CollectionConverters._
 object YiddishGlyphGuessersForOtherAlphabets {
   private val configs = ConfigFactory.load().getConfigList("jochre.ocr.yiddish.glyph-guesser-for-other-alphabets").asScala
 
-  private val modelDir = Path.of(ClassLoader.getSystemResource("yiddish/models").toURI())
+  private val yiddishConfig = ConfigFactory.load().getConfig("jochre.ocr.yiddish.glyph-guesser")
+  private val modelDir = Path.of(yiddishConfig.getString("model-path"))
 
   private val guessers = configs.map{config =>
     val language = config.getString("language")

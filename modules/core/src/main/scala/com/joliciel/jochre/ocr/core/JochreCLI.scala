@@ -1,7 +1,7 @@
 package com.joliciel.jochre.ocr.core
 
 import com.joliciel.jochre.ocr.core.output.OutputFormat
-import org.rogach.scallop.{ScallopConf, ScallopOption}
+import org.rogach.scallop._
 
 class JochreCLI(arguments: Seq[String]) extends ScallopConf(arguments) {
   val input: ScallopOption[String] = opt[String](required = true)

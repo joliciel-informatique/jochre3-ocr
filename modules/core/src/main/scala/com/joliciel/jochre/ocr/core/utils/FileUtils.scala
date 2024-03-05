@@ -5,7 +5,7 @@ import org.bytedeco.opencv.opencv_core.Mat
 import java.io.File
 import java.net.{URI, URL}
 import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path, StandardCopyOption}
+import java.nio.file.{FileSystemNotFoundException, FileSystems, Files, Path, Paths, StandardCopyOption}
 import scala.io.Source
 import scala.util.{Try, Using}
 import scala.util.matching.Regex
@@ -47,7 +47,7 @@ trait FileUtils {
     recursiveListFilesInternal(dir, regex).sortBy(_.getPath).toSeq
 
   private def recursiveListFilesInternal(dir: File, regex: Regex): Array[File] = {
-    val these = Option(dir.listFiles).getOrElse(Array.empty)
+    val these = Option(dir.listFiles).getOrElse(Array.empty[File])
     val good = these.filter(file => regex.findFirstIn(file.getName).isDefined)
     good ++ these.filter(_.isDirectory).flatMap(recursiveListFilesInternal(_, regex))
   }

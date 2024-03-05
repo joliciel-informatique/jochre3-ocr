@@ -4,7 +4,7 @@ import com.joliciel.jochre.ocr.core.corpus.TextSimplifier
 import com.joliciel.jochre.ocr.core.learning.{GlyphTrainer, ModelBuilder}
 import com.joliciel.jochre.ocr.yiddish.YiddishTextSimpifier
 import enumeratum._
-import org.rogach.scallop.{ScallopConf, ScallopOption}
+import org.rogach.scallop._
 
 import java.nio.file.Path
 import scala.util.matching.Regex

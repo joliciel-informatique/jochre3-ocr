@@ -1,13 +1,15 @@
 import BuildHelper._
 import Libraries._
+import com.typesafe.sbt.packager.MappingsHelper.directory
+
 import scala.sys.process._
 import xerial.sbt.Sonatype._
 import com.typesafe.sbt.packager.docker.Cmd
 
-ThisBuild / scalaVersion := "2.13.12"
+ThisBuild / scalaVersion := "3.3.3"
 ThisBuild / organization := "com.joli-ciel"
 ThisBuild / homepage     := Some(url("https://www.joli-ciel.com/"))
-ThisBuild / licenses     := List("Apache-2.0" -> url("https://www.apache.org/licenses/LICENSE-2.0"))
+ThisBuild / licenses     := List("AGPL-v3" -> url("https://www.gnu.org/licenses/agpl-3.0.en.html"))
 ThisBuild / versionScheme := Some("semver-spec")
 
 val cloakroomVersion = "0.5.13"
@@ -158,7 +160,8 @@ lazy val api = project
     Docker / version     := version.value,
     dockerExposedPorts := Seq(3434),
     dockerExposedVolumes := Seq("/opt/docker/index"),
-    Universal / mappings += file("modules/yiddish/resources/lexicons") -> "modules/yiddish/resources/lexicons",
+    Universal / mappings ++= directory("modules/yiddish/resources/lexicons"),
+    Universal / mappings ++= directory("modules/yiddish/resources/models"),
     // Add docker commands before changing user
     Docker / dockerCommands := dockerCommands.value.flatMap {
       case Cmd("USER", args@_*) if args.contains("1001:0") => Seq(

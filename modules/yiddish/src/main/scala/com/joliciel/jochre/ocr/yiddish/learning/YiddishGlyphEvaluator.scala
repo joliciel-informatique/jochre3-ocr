@@ -3,7 +3,7 @@ package com.joliciel.jochre.ocr.yiddish.learning
 import com.joliciel.jochre.ocr.core.learning.GlyphEvaluator
 import com.joliciel.jochre.ocr.yiddish.YiddishTextSimpifier
 import com.joliciel.jochre.ocr.yiddish.learning.YiddishGlyphTrainer.ModelType
-import org.rogach.scallop.{ScallopConf, ScallopOption}
+import org.rogach.scallop._
 import org.slf4j.LoggerFactory
 
 import java.nio.file.Path

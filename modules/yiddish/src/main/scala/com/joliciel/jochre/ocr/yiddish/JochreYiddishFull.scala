@@ -35,7 +35,7 @@ object JochreYiddishFull extends ZIOAppDefault with JochreAppBase {
 
   private val fullSegmentationConfigLayer = ZLayer.fromZIO(ZIO.attempt(FullSegmentationGuesserConfig.fromConfig))
 
-  private val textSimplifierLayer: ZLayer[Any, Nothing, TextSimplifier] = ZLayer.succeed(textSimplifier.value)
+  private val textSimplifierLayer: ZLayer[Any, Nothing, TextSimplifier] = ZLayer.succeed(textSimplifier.get)
   private val textGuesserService: ZLayer[GlyphGuesser with GlyphGuessersForOtherAlphabets with Lexicon with TextSimplifier with FullSegmentationGuesserConfig, Throwable, TextGuesserService] =
     FullSegmentationGuesserService.live
 
