@@ -42,7 +42,8 @@ case class YoloAnnotator(
   private val cropToPrintArea = config.getBoolean("crop-to-print-area")
   private val cropMargin = config.getDouble("crop-margin")
   private val tileMargin = config.getDouble("tile-margin")
-  private val blockMargin = config.getDouble("block-margin")
+  private val textBlockHorizontalMargin = config.getDouble("text-block-horizontal-margin")
+  private val textBlockVerticalMargin = config.getDouble("text-block-vertical-margin")
 
   private def df(d: Double): String = String.format("%.6f", d)
   private def pad(i: Int): String = String.format("%-2s", i)
@@ -157,20 +158,20 @@ case class YoloAnnotator(
         YoloBox(YoloObjectType.TopLevelTextBlock,
           xCenter = composedBlock.rectangle.xCenter.toDouble / width,
           yCenter = composedBlock.rectangle.yCenter.toDouble / height,
-          width = composedBlock.rectangle.width.toDouble / width + blockMargin * 2.0,
-          height = composedBlock.rectangle.height.toDouble / height + blockMargin * 2.0)
+          width = composedBlock.rectangle.width.toDouble / width + textBlockHorizontalMargin * 2.0,
+          height = composedBlock.rectangle.height.toDouble / height + textBlockVerticalMargin * 2.0)
       case textBlock: TextBlock =>
         YoloBox(YoloObjectType.TopLevelTextBlock,
           xCenter = textBlock.rectangle.xCenter.toDouble / width,
           yCenter = textBlock.rectangle.yCenter.toDouble / height,
-          width = textBlock.rectangle.width.toDouble / width + blockMargin * 2.0,
-          height = textBlock.rectangle.height.toDouble / height + blockMargin * 2.0)
+          width = textBlock.rectangle.width.toDouble / width + textBlockHorizontalMargin * 2.0,
+          height = textBlock.rectangle.height.toDouble / height + textBlockVerticalMargin * 2.0)
       case illustration: Illustration =>
         YoloBox(YoloObjectType.Illustration,
           xCenter = illustration.rectangle.xCenter.toDouble / width,
           yCenter = illustration.rectangle.yCenter.toDouble / height,
-          width = illustration.rectangle.width.toDouble / width + blockMargin * 2.0,
-          height = illustration.rectangle.height.toDouble / height + blockMargin * 2.0)
+          width = illustration.rectangle.width.toDouble / width,
+          height = illustration.rectangle.height.toDouble / height)
     }.filter(box => objectTypeSet.contains(box.yoloClass))
 
     val yoloBoxes = yoloNonBlocks ++ yoloBlocks

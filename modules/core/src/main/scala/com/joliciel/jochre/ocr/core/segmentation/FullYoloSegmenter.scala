@@ -31,6 +31,7 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
   private val cropMargin = config.getDouble("crop-margin")
   private val glyphImageTileCount = config.getInt("glyph-image-tile-count")
   private val tileMargin = config.getDouble("tile-margin")
+  private val alwaysRetainBlockThreshold = config.getDouble("always-retain-block-threshold")
 
   private val language = ConfigFactory.load().getConfig("jochre.ocr").getString("language")
   private val leftToRight = StringUtils.isLeftToRight(language)
@@ -42,26 +43,27 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
       blockPredictor <- yoloPredictorService.getYoloPredictor(YoloPredictionType.Blocks, mat, fileName, debugLocation, Some(0.20))
       blockPredictions <- blockPredictor.predict()
       pageWithBlocks <- ZIO.attempt {
-        val sortedBlockPredictions = BlockSorter.sort(blockPredictions, leftToRight)
+        val textBlockPredictions = blockPredictions.filter( p => BlockType.withName(p.label).isText)
+        val imageBlockPredictions = blockPredictions.filterNot( p => BlockType.withName(p.label).isText)
+        val sortedBlockPredictions = BlockSorter.sort(textBlockPredictions, leftToRight)
           .collect{
             case p: PredictedRectangle => p
           }
 
         // For now, we simply remove overlaps
-        val sortedWithoutOverlaps = removeOverlapsUnordered(sortedBlockPredictions)
+        val withoutOverlaps = removeOverlapsUnordered(sortedBlockPredictions)
+        val allPredictions = withoutOverlaps ++ imageBlockPredictions
 
-        val blocks = sortedWithoutOverlaps.flatMap {
+        val blocks = allPredictions.flatMap {
           case PredictedRectangle(label, rect, _) =>
             val blockType = BlockType.withName(label)
             blockType match {
               case BlockType.TopLevelTextBlock => Some(TextBlock(rect, Seq.empty))
               case BlockType.Illustration => Some(Illustration(rect))
-              case BlockType.TextBox => Some(TextBlock(rect, Seq.empty))
-              case BlockType.Paragraph => Some(TextBlock(rect, Seq.empty))
-              case BlockType.Image => Some(Illustration(rect))
-              case BlockType.Table => None
             }
         }
+
+        log.info(f"Predicted ${blocks.size} blocks, of which ${withoutOverlaps.size} text blocks and ${imageBlockPredictions.size} illustrations.")
 
         Page(
           id = fileName,
@@ -94,11 +96,13 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
       wordPredictor <- yoloPredictorService.getYoloPredictor(YoloPredictionType.Words, printAreaMat, fileName, debugLocation, Some(0.05))
       wordPredictions <- wordPredictor.predict()
       glyphPredictions <- {
+        log.info(f"Predicted ${linePredictions.size} lines")
+        log.info(f"Predicted ${wordPredictions.size} words")
+
         // Get glyph predictions for overlapping tiles
         // The assumption is that if the same glyph is predicted by two tiles, one of the two will be eliminated downstream
         val tiles = croppedRectangle.tile(glyphImageTileCount, glyphImageTileCount, tileMargin)
         ZIO.foreach(tiles) { tile =>
-          log.info(f"About to predict glyphs for tile ${tile.coordinates}")
           val tileMat = crop(printAreaMat, tile)
           for {
             glyphPredictor <- yoloPredictorService.getYoloPredictor(YoloPredictionType.Glyphs, tileMat, fileName, debugLocation, Some(0.10))
@@ -495,39 +499,117 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
     val topOrdered = rects.sortBy(t => (t.rectangle.top, t.rectangle.height, t.rectangle.left, t.rectangle.width))
     val bottomOrdered = rects.sortBy(t => (t.rectangle.bottom, t.rectangle.height, t.rectangle.left, t.rectangle.width)).reverse
 
-    val toRemove = rects.foldLeft(Set.empty[PredictedRectangle]) { case (toRemove, rect) =>
+    val rectangleOverlaps = rects.foldLeft(Map.empty[PredictedRectangle, Set[PredictedRectangle]]){ case (overlaps, rect) =>
       val candidates = getIntersectingBlocks(rect, topOrdered, leftOrdered, bottomOrdered, rightOrdered) - rect
-      val candidatesWithHighIntersection = candidates.filter{ candidate =>
+      val myOverlaps = candidates.filter { candidate =>
         val candidateIntersection = candidate.rectangle.percentageIntersection(rect.rectangle)
         val rectangleIntesection = rect.rectangle.percentageIntersection(candidate.rectangle)
         candidateIntersection > 0.2 || rectangleIntesection > 0.2
       }
+
       if (log.isTraceEnabled) {
-        if (candidatesWithHighIntersection.size>1) {
-          log.trace(f"For ${rect.rectangle.coordinates} found overlaps (including already removed) with ${candidatesWithHighIntersection.map(_.rectangle.coordinates).mkString(", ")}")
+        if (candidates.size > 1) {
+          log.trace(f"For ${rect.rectangle.coordinates} found overlaps with ${myOverlaps.map(_.rectangle.coordinates).mkString(", ")}")
         }
       }
-      val notYetRemoved = candidatesWithHighIntersection.diff(toRemove)
-      if (log.isDebugEnabled) {
-        if (notYetRemoved.size > 1) {
-          log.debug(f"For ${rect.rectangle.coordinates} (${rect.confidence}%.2f) found overlaps with ${notYetRemoved.map(r => f"${r.rectangle.coordinates} (${r.confidence}%.2f)").mkString(", ")}")
-        }
-      }
-      val (higherConfidence, lowerConfidence) = notYetRemoved.partition(_.confidence > rect.confidence)
+      overlaps + (rect -> myOverlaps)
+    }
 
+    // merge rectangles if both are above a certain confidence and they overlap
+    val mergeGroups = rects.foldLeft(Seq.empty[Set[PredictedRectangle]]) { case (mergeGroups, rect) =>
+      val mergeGroupIndex = mergeGroups.zipWithIndex.find{ case (group, _) => group.contains(rect) }.map(_._2)
 
-      if (higherConfidence.nonEmpty) {
-        if (log.isDebugEnabled) {
-          log.debug(f"Removing current: ${rect.rectangle.coordinates}")
+      if (rect.confidence >= alwaysRetainBlockThreshold) {
+        val overlaps = rectangleOverlaps(rect).filter(_.confidence >= alwaysRetainBlockThreshold)
+        if (overlaps.nonEmpty) {
+          mergeGroupIndex.map{ mergeGroupIndex =>
+            val newMergeGroup = mergeGroups(mergeGroupIndex) ++ overlaps
+            if (log.isDebugEnabled) { log.debug(f"Grow merge group: ${newMergeGroup.map(r => f"${r.rectangle.coordinates} (${r.confidence}%.2f)").mkString(", ")}")}
+            (mergeGroups.take(mergeGroupIndex) :+ newMergeGroup) ++ mergeGroups.drop(mergeGroupIndex + 1)
+          }.getOrElse{
+            val newMergeGroup = overlaps + rect
+            if (log.isDebugEnabled) { log.debug(f"New merge group: ${newMergeGroup.map(r => f"${r.rectangle.coordinates} (${r.confidence}%.2f)").mkString(", ")}")}
+            mergeGroups :+ newMergeGroup
+          }
+        } else {
+          mergeGroups
         }
-        toRemove + rect
-      } else if (lowerConfidence.nonEmpty) {
-        if (log.isDebugEnabled) {
-          log.debug(f"Removing others: ${lowerConfidence.map(_.rectangle.coordinates).mkString(", ")}")
-        }
-        toRemove ++ lowerConfidence
       } else {
+        mergeGroups
+      }
+    }
+
+    val unmerged = rects.filterNot{ rect => mergeGroups.exists(_.contains(rect)) }
+    val mergedRects = unmerged ++ mergeGroups.map{ mergeGroup =>
+      val confidence = Math.exp(mergeGroup.foldLeft(0.0){ case (sum, r) => sum + Math.log(r.confidence) } / mergeGroup.size.toDouble)
+      val rectangle = mergeGroup.map(_.rectangle).reduce(_.union(_))
+      val merged = PredictedRectangle(mergeGroup.head.label, rectangle, confidence)
+      if (log.isDebugEnabled) { log.debug(f"Created merged rectangle: ${merged.rectangle.coordinates} with confidence ${merged.confidence}%.2f from rectangles ${mergeGroup.map(r => f"${r.rectangle.coordinates} (${r.confidence}%.2f)").mkString(", ")}")}
+      merged
+    }
+
+    val mergedOverlaps = if (mergeGroups.nonEmpty) {
+      val leftOrdered = mergedRects.sortBy(t => (t.rectangle.left, t.rectangle.width, t.rectangle.top, t.rectangle.height))
+      val rightOrdered = mergedRects.sortBy(t => (t.rectangle.right, t.rectangle.width, t.rectangle.top, t.rectangle.height)).reverse
+      val topOrdered = mergedRects.sortBy(t => (t.rectangle.top, t.rectangle.height, t.rectangle.left, t.rectangle.width))
+      val bottomOrdered = mergedRects.sortBy(t => (t.rectangle.bottom, t.rectangle.height, t.rectangle.left, t.rectangle.width)).reverse
+
+      mergedRects.foldLeft(Map.empty[PredictedRectangle, Set[PredictedRectangle]]) { case (overlaps, rect) =>
+        val candidates = getIntersectingBlocks(rect, topOrdered, leftOrdered, bottomOrdered, rightOrdered) - rect
+        val myOverlaps = candidates.filter { candidate =>
+          val candidateIntersection = candidate.rectangle.percentageIntersection(rect.rectangle)
+          val rectangleIntesection = rect.rectangle.percentageIntersection(candidate.rectangle)
+          candidateIntersection > 0.2 || rectangleIntesection > 0.2
+        }
+
+        if (log.isTraceEnabled) {
+          if (candidates.size > 1) {
+            log.trace(f"For ${rect.rectangle.coordinates} found overlaps with ${myOverlaps.map(_.rectangle.coordinates).mkString(", ")}")
+          }
+        }
+        overlaps + (rect -> myOverlaps)
+      }
+    } else {
+      rectangleOverlaps
+    }
+
+    val toRemove = mergedRects.foldLeft(Set.empty[PredictedRectangle]) { case (toRemove, rect) =>
+      if (toRemove.contains(rect)) {
+        if (log.isDebugEnabled) {
+          log.debug(f"Rectangle already removed: ${rect.rectangle.coordinates}")
+        }
         toRemove
+      } else {
+        if (log.isDebugEnabled) {
+          log.debug(f"Checking overlaps for rectangle ${rect.rectangle.coordinates}")
+        }
+        val candidates = mergedOverlaps(rect)
+        if (log.isTraceEnabled) {
+          if (candidates.size > 1) {
+            log.trace(f"For ${rect.rectangle.coordinates} found overlaps (including already removed) with ${candidates.map(_.rectangle.coordinates).mkString(", ")}")
+          }
+        }
+        val notYetRemoved = candidates.diff(toRemove)
+        if (log.isDebugEnabled) {
+          if (notYetRemoved.size > 1) {
+            log.debug(f"For ${rect.rectangle.coordinates} (${rect.confidence}%.2f) found overlaps with ${notYetRemoved.map(r => f"${r.rectangle.coordinates} (${r.confidence}%.2f)").mkString(", ")}")
+          }
+        }
+        val (higherConfidence, lowerConfidence) = notYetRemoved.partition(_.confidence > rect.confidence)
+
+        if (higherConfidence.nonEmpty) {
+          if (log.isDebugEnabled) {
+            log.debug(f"Removing current: ${rect.rectangle.coordinates}")
+          }
+          toRemove + rect
+        } else if (lowerConfidence.nonEmpty) {
+          if (log.isDebugEnabled) {
+            log.debug(f"Removing others: ${lowerConfidence.map(_.rectangle.coordinates).mkString(", ")}")
+          }
+          toRemove ++ lowerConfidence
+        } else {
+          toRemove
+        }
       }
     }
 
@@ -535,6 +617,6 @@ private[segmentation] class FullYoloSegmenter(yoloPredictorService: YoloPredicto
       log.debug(f"Removing overlapping rectangles: ${toRemove.map(_.rectangle.coordinates).mkString(", ")}")
     }
 
-    rects.filter(!toRemove.contains(_))
+    mergedRects.filter(!toRemove.contains(_))
   }
 }

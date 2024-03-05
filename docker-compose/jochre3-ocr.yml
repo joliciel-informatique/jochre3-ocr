@@ -11,4 +11,4 @@ services:
       DOCUMENT_LAYOUT_ANALYSIS_URL: http://yolo-dla:8444
       JOCHRE3_OCR_VERSION: ${JOCHRE3_OCR_VERSION:-0.1.0}
   yolo-dla:
-    image: registry.gitlab.com/jochre/yolo-dla-server:0.0.3
+    image: registry.gitlab.com/jochre/yolo-dla-server:1.0.0

@@ -34,7 +34,7 @@ object JochreYiddishWithYoloSegmentationTest extends JUnitRunnableSpec with XmlI
         assertTrue(myTextBlock.isDefined)
 
         val content = myTextBlock.get.content
-        assertTrue(content == "הײנט איז יום־טוב מע טאָר נישט װײנען !")
+        assertTrue(content == "הײנט איז יום־טוב — מע טאָר נישט װײנען !")
       }
     }
   ).provide(
