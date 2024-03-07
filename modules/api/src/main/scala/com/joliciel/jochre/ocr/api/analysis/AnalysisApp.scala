@@ -7,21 +7,30 @@ import sttp.capabilities.zio.ZioStreams
 import sttp.model.StatusCode
 import sttp.tapir.generic.auto._
 import sttp.tapir.json.zio.jsonBody
-import sttp.tapir.ztapir.{ZServerEndpoint, oneOfVariant, streamTextBody, endpoint => tapirEndpoint, _}
+import sttp.tapir.ztapir.{
+  ZServerEndpoint,
+  oneOfVariant,
+  streamTextBody,
+  endpoint => tapirEndpoint,
+  _
+}
 import sttp.tapir.{AnyEndpoint, CodecFormat, PublicEndpoint, multipartBody, oneOf}
 import zio.stream.ZStream
 
 import java.nio.charset.StandardCharsets
 import scala.concurrent.ExecutionContext
 
-case class AnalysisApp( executionContext: ExecutionContext)
-  extends HttpErrorProtocol
+case class AnalysisApp(executionContext: ExecutionContext)
+    extends HttpErrorProtocol
     with AnalysisLogic
-    with AnalysisApiProtocol
-{
+    with AnalysisApiProtocol {
   implicit val ec: ExecutionContext = executionContext
 
-  val postAnalyzeFileEndpoint: PublicEndpoint[FileForm, HttpError, ZStream[Any, Throwable, Byte], Any with ZioStreams]  =
+  val postAnalyzeFileEndpoint: PublicEndpoint[FileForm, HttpError, ZStream[
+    Any,
+    Throwable,
+    Byte
+  ], Any with ZioStreams] =
     tapirEndpoint
       .errorOut(
         oneOf[HttpError](
@@ -31,17 +40,30 @@ case class AnalysisApp( executionContext: ExecutionContext)
       .post
       .in("ocr")
       .in("file")
-      .in(multipartBody[FileForm].description(
-        """start (optional): for PDF files only, the start page.<br>
+      .in(
+        multipartBody[FileForm].description(
+          """start (optional): for PDF files only, the start page.<br>
           | end (optional): for PDF files only, the end page.<br>
-          | dpi (optional): for PDF files only, the DPI (defaults to 300)""".stripMargin))
-      .out(streamTextBody(ZioStreams)(CodecFormat.Xml(), Some(StandardCharsets.UTF_8)))
+          | dpi (optional): for PDF files only, the DPI (defaults to 300)""".stripMargin
+        )
+      )
+      .out(
+        streamTextBody(ZioStreams)(
+          CodecFormat.Xml(),
+          Some(StandardCharsets.UTF_8)
+        )
+      )
       .description("Post an image file for analysis and return xml result.")
 
   val postAnalyzeFileHttp: ZServerEndpoint[Requirements, Any with ZioStreams] =
     postAnalyzeFileEndpoint.zServerLogic(input => postAnalyzeFileLogic(input))
 
-  val postAnalyzeURLEndpoint: PublicEndpoint[AnalyseURLRequest, HttpError, ZStream[Any, Throwable, Byte], Any with ZioStreams] =
+  val postAnalyzeURLEndpoint: PublicEndpoint[
+    AnalyseURLRequest,
+    HttpError,
+    ZStream[Any, Throwable, Byte],
+    Any with ZioStreams
+  ] =
     tapirEndpoint
       .errorOut(
         oneOf[HttpError](
@@ -51,8 +73,17 @@ case class AnalysisApp( executionContext: ExecutionContext)
       .post
       .in("ocr")
       .in("url")
-      .in(jsonBody[AnalyseURLRequest].example(AnalysisHelper.analyzeURLRequestExample))
-      .out(streamTextBody(ZioStreams)(CodecFormat.Xml(), Some(StandardCharsets.UTF_8)))
+      .in(
+        jsonBody[AnalyseURLRequest].example(
+          AnalysisHelper.analyzeURLRequestExample
+        )
+      )
+      .out(
+        streamTextBody(ZioStreams)(
+          CodecFormat.Xml(),
+          Some(StandardCharsets.UTF_8)
+        )
+      )
       .description("Post an image URL for analysis and return xml result.")
 
   val postAnalyzeURLHttp: ZServerEndpoint[Requirements, Any with ZioStreams] =

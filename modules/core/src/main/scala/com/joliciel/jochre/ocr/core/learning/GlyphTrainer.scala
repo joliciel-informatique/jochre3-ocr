@@ -17,67 +17,66 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
 import scala.util.matching.Regex
 
-/**
- *
- * @param corpusDir
- * @param outputDir
- * @param modelName
- * @param numEpochs
- * @param modelType
- * @param imageSize
- * @param batchSize
- * @param limit
- * @param maxGpus
- * @param checkpoints save the model at the end of the epoch every checkpoint, default is 1
- * @param wordSelectionRegex if provided, will limit this trainer to glyphs contained in words whose content matches the regex
- * @param textSimplifier
- * @param altoFinder
- */
+/** @param checkpoint
+  *   save the model at the end of the epoch every checkpoint, default is 1
+  * @param wordSelectionRegex
+  *   if provided, will limit this trainer to glyphs contained in words whose content matches the
+  *   regex
+  */
 case class GlyphTrainer(
-  corpusDir: Path,
-  outputDir: Path,
-  modelName: String,
-  numEpochs: Int = 10,
-  modelType: ModelBuilder.ModelType,
-  imageSize: Int = 28,
-  batchSize: Int = 32,
-  limit: Int = 0,
-  maxGpus: Int = 0,
-  checkpoint: Int = 1,
-  wordSelectionRegex: Option[Regex] = None,
-  textSimplifier: TextSimplifier = TextSimplifier.default,
-  altoFinder: AltoFinder = AltoFinder.default
+    corpusDir: Path,
+    outputDir: Path,
+    modelName: String,
+    numEpochs: Int = 10,
+    modelType: ModelBuilder.ModelType,
+    imageSize: Int = 28,
+    batchSize: Int = 32,
+    limit: Int = 0,
+    maxGpus: Int = 0,
+    checkpoint: Int = 1,
+    wordSelectionRegex: Option[Regex] = None,
+    textSimplifier: TextSimplifier = TextSimplifier.default,
+    altoFinder: AltoFinder = AltoFinder.default
 ) {
   def train(): TrainingResult = {
     val model = Model.newInstance(modelName)
 
     val classesPath = outputDir.resolve(f"${modelName}_classes.txt")
-    Files.write(classesPath, dataset.classes.mkString("\n").getBytes(StandardCharsets.UTF_8))
+    Files.write(
+      classesPath,
+      dataset.classes.mkString("\n").getBytes(StandardCharsets.UTF_8)
+    )
 
-    val trainingResult = try {
-      model.setBlock(modelType.getModel(dataset.classes.size, imageSize))
-      // get training and validation dataset
-      val splits = dataset.randomSplit(9, 1)
-      val trainingSet = splits(0)
-      val validateSet = splits(1)
-      // setup training configuration
-      val trainer = model.newTrainer(trainingConfig)
-      val trainingResult = try {
-        trainer.setMetrics(new Metrics())
-        val inputShape = new Shape(batchSize, 1, imageSize, imageSize)
-        // initialize trainer with proper input shape
-        trainer.initialize(inputShape)
-        EasyTrain.fit(trainer, numEpochs, trainingSet, validateSet)
-        trainer.getTrainingResult
-      } finally trainer.close()
-      trainingResult
-    } finally model.close()
+    val trainingResult =
+      try {
+        model.setBlock(modelType.getModel(dataset.classes.size, imageSize))
+        // get training and validation dataset
+        val splits = dataset.randomSplit(9, 1)
+        val trainingSet = splits(0)
+        val validateSet = splits(1)
+        // setup training configuration
+        val trainer = model.newTrainer(trainingConfig)
+        val trainingResult =
+          try {
+            trainer.setMetrics(new Metrics())
+            val inputShape = new Shape(batchSize, 1, imageSize, imageSize)
+            // initialize trainer with proper input shape
+            trainer.initialize(inputShape)
+            EasyTrain.fit(trainer, numEpochs, trainingSet, validateSet)
+            trainer.getTrainingResult
+          } finally trainer.close()
+        trainingResult
+      } finally model.close()
 
     trainingResult
   }
 
-  val trainingConfig: DefaultTrainingConfig = {
-    val listener = new SaveModelTrainingListener(outputDir.toFile.getPath, modelName, checkpoint)
+  private val trainingConfig: DefaultTrainingConfig = {
+    val listener = new SaveModelTrainingListener(
+      outputDir.toFile.getPath,
+      modelName,
+      checkpoint
+    )
     listener.setSaveModelCallback(trainer => {
       val result = trainer.getTrainingResult
       val model = trainer.getModel
@@ -86,14 +85,16 @@ case class GlyphTrainer(
       model.setProperty("Loss", String.format("%.5f", result.getValidateLoss))
     })
 
-    val learningRateTracker = Tracker.cosine()
+    val learningRateTracker = Tracker
+      .cosine()
       .setBaseValue(1e-3f)
       .optFinalValue(1e-4f)
       .setMaxUpdates(20)
-      .build();
+      .build()
 
     val optimizer =
-      Adam.builder()
+      Adam
+        .builder()
         .optEpsilon(1e-5f)
         .optLearningRateTracker(learningRateTracker)
         .build();
@@ -102,7 +103,9 @@ case class GlyphTrainer(
       .addEvaluator(new Accuracy())
       .optDevices(Engine.getInstance.getDevices(maxGpus))
       .optOptimizer(optimizer)
-      .addTrainingListeners(TrainingListener.Defaults.logging(outputDir.toFile.getPath): _*)
+      .addTrainingListeners(
+        TrainingListener.Defaults.logging(outputDir.toFile.getPath): _*
+      )
       .addTrainingListeners(listener)
   }
 
@@ -112,7 +115,7 @@ case class GlyphTrainer(
       imageSize,
       textSimplifier = textSimplifier,
       altoFinder = altoFinder,
-      wordSelectionRegex = wordSelectionRegex,
+      wordSelectionRegex = wordSelectionRegex
     ).setSampling(batchSize, false, true).build()
     dataset.prepare(new ProgressBar())
     dataset

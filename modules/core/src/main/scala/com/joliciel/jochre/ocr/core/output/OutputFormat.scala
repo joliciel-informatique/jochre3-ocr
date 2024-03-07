@@ -1,6 +1,6 @@
 package com.joliciel.jochre.ocr.core.output
 
-import com.joliciel.jochre.ocr.core.model.{Alto, Page}
+import com.joliciel.jochre.ocr.core.model.Alto
 import enumeratum._
 
 import scala.xml.PrettyPrinter
@@ -12,7 +12,7 @@ sealed trait OutputFormat extends EnumEntry {
 }
 
 object OutputFormat extends Enum[OutputFormat] {
-  val values = findValues
+  val values: IndexedSeq[OutputFormat] = findValues
 
   case object Alto4 extends OutputFormat {
     override val suffix: String = "_alto4.xml"
@@ -28,9 +28,11 @@ object OutputFormat extends Enum[OutputFormat] {
     override val suffix: String = ".txt"
 
     override def apply(altoXml: Alto): String = {
-      altoXml.pages.map {
-        _.content
-      }.mkString("\n")
+      altoXml.pages
+        .map {
+          _.content
+        }
+        .mkString("\n")
     }
   }
 }

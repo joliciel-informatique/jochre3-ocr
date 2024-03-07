@@ -10,7 +10,8 @@ import scala.util.matching.Regex
 case class YiddishTextSimpifier(replaceNonHebrewAlphabets: Boolean = false) extends TextSimplifier {
 
   private implicit class StringWithRegex(val s: String) {
-    def replaceRegex(regex: Regex, replacement: String): String = regex.replaceAllIn(s, replacement)
+    def replaceRegex(regex: Regex, replacement: String): String =
+      regex.replaceAllIn(s, replacement)
   }
 
   private val pasekhTsveyYudnSeparate = """ייַ""".r
@@ -59,14 +60,14 @@ case class YiddishTextSimpifier(replaceNonHebrewAlphabets: Boolean = false) exte
       .replaceRegex(verticalBar, "")
       .replaceRegex(otherSymbol, "•")
 
-      if (replaceNonHebrewAlphabets) {
-        simplifiedText
-          .replaceRegex(latinAlphabet, "L")
-          .replaceRegex(cyrillicAlphabet, "C")
-          .replaceRegex(greekAlphabet, "G")
-      } else {
-        simplifiedText
-      }
+    if (replaceNonHebrewAlphabets) {
+      simplifiedText
+        .replaceRegex(latinAlphabet, "L")
+        .replaceRegex(cyrillicAlphabet, "C")
+        .replaceRegex(greekAlphabet, "G")
+    } else {
+      simplifiedText
+    }
   }
 
   def main(args: Array[String]): Unit = {
@@ -75,11 +76,11 @@ case class YiddishTextSimpifier(replaceNonHebrewAlphabets: Boolean = false) exte
     val writer = new PrintWriter(new File(outFile))
     for (line <- Source.fromFile(inFile).getLines) {
       val parts = line.split("\t")
-      if (parts.length==2) {
+      if (parts.length == 2) {
         val image = parts(0)
         val text = parts(1)
         val simplifiedText = simplify(text).replaceAll("֏", "")
-        if (text.length > 0) {
+        if (text.nonEmpty) {
           writer.write(f"$image\t$simplifiedText\n")
           writer.flush()
         }

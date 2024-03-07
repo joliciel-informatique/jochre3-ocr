@@ -9,12 +9,22 @@ import ai.djl.nn.norm.{BatchNorm, Dropout}
 import ai.djl.nn.pooling.Pool
 import ai.djl.nn.{Activation, Block, Blocks, SequentialBlock}
 
-case class ModelBuilder(numClasses: Int, dropOut: Float = 0.4f, denseLayer: Int = 128) {
+case class ModelBuilder(
+    numClasses: Int,
+    dropOut: Float = 0.4f,
+    denseLayer: Int = 128
+) {
   private def dropOutLayer: Dropout = Dropout.builder().optRate(dropOut).build()
   private def batchNormLayer: BatchNorm = BatchNorm.builder().build()
 
-  private def convLayer(filters: Int, kernel: Int, stride: Int = 1, padding: Int = 2): Conv2d =
-    Conv2d.builder()
+  private def convLayer(
+      filters: Int,
+      kernel: Int,
+      stride: Int = 1,
+      padding: Int = 2
+  ): Conv2d =
+    Conv2d
+      .builder()
       .setKernelShape(new Shape(kernel, kernel))
       .optPadding(new Shape(padding, padding))
       .optStride(new Shape(stride, stride))
@@ -22,9 +32,12 @@ case class ModelBuilder(numClasses: Int, dropOut: Float = 0.4f, denseLayer: Int 
       .setFilters(filters)
       .build()
 
-  private def maxPoolLayer(kernel: Int, stride: Int = 2, padding: Int = 2): Block =
+  private def maxPoolLayer(
+      kernel: Int,
+      stride: Int = 2,
+      padding: Int = 2
+  ): Block =
     Pool.maxPool2dBlock(new Shape(5, 5), new Shape(2, 2), new Shape(2, 2))
-
 
   private val modelWithMaxPooling: Block = {
     val block = new SequentialBlock()
@@ -35,7 +48,7 @@ case class ModelBuilder(numClasses: Int, dropOut: Float = 0.4f, denseLayer: Int 
       .add(maxPoolLayer(5))
       .add(dropOutLayer)
       .add(convLayer(64, 5))
-      .add{ (list: NDList) => Activation.relu(list) }
+      .add { (list: NDList) => Activation.relu(list) }
       .add(maxPoolLayer(5))
       .add(dropOutLayer)
       // Blocks.batchFlattenBlock() will transform the input of the shape (batch size, channel,
@@ -45,7 +58,7 @@ case class ModelBuilder(numClasses: Int, dropOut: Float = 0.4f, denseLayer: Int 
       .add(Linear.builder().setUnits(denseLayer).build())
       .add { (list: NDList) => Activation.relu(list) }
       .add(dropOutLayer)
-      .add(Linear.builder().setUnits(numClasses).build());
+      .add(Linear.builder().setUnits(numClasses).build())
   }
 
   private val modelWithStride: Block = {
@@ -80,7 +93,7 @@ case class ModelBuilder(numClasses: Int, dropOut: Float = 0.4f, denseLayer: Int 
       .add { (list: NDList) => Activation.relu(list) }
       .add(BatchNorm.builder().build())
       .add(dropOutLayer)
-      .add(Linear.builder().setUnits(numClasses).build());
+      .add(Linear.builder().setUnits(numClasses).build())
   }
 }
 
@@ -90,16 +103,22 @@ object ModelBuilder {
   }
 
   object ModelType {
-    case class CNNModelWithMaxPooling(dropOut: Float = 0.4f, denseLayer: Int = 128) extends ModelType {
-      override def getModel(numClasses: Int, imageSize: Int): Block = ModelBuilder(numClasses, dropOut, denseLayer).modelWithMaxPooling
+    case class CNNModelWithMaxPooling(
+        dropOut: Float = 0.4f,
+        denseLayer: Int = 128
+    ) extends ModelType {
+      override def getModel(numClasses: Int, imageSize: Int): Block =
+        ModelBuilder(numClasses, dropOut, denseLayer).modelWithMaxPooling
     }
 
     case class CNNModelWithStride(dropOut: Float = 0.4f, denseLayer: Int = 128) extends ModelType {
-      override def getModel(numClasses: Int, imageSize: Int): Block = ModelBuilder(numClasses, dropOut, denseLayer).modelWithStride
+      override def getModel(numClasses: Int, imageSize: Int): Block =
+        ModelBuilder(numClasses, dropOut, denseLayer).modelWithStride
     }
 
     case class MLPModel(layers: Array[Int] = Array[Int](128, 64)) extends ModelType {
-      override def getModel(numClasses: Int, imageSize: Int): Block = new Mlp(imageSize * imageSize, numClasses, layers)
+      override def getModel(numClasses: Int, imageSize: Int): Block =
+        new Mlp(imageSize * imageSize, numClasses, layers)
     }
   }
 }

@@ -1,6 +1,6 @@
 package com.joliciel.jochre.ocr.core
 
-import com.joliciel.jochre.ocr.core.graphics.{ImageInfo, Rectangle, WithRectangle}
+import com.joliciel.jochre.ocr.core.graphics.{ImageInfo, WithRectangle}
 import com.joliciel.jochre.ocr.core.utils.StringUtils
 import com.typesafe.config.ConfigFactory
 import org.bytedeco.opencv.opencv_core.Mat
@@ -11,7 +11,9 @@ package object model {
   trait AltoElement {
     def toXml: Elem
 
-    def transform(partialFunction: PartialFunction[AltoElement, AltoElement]): AltoElement
+    def transform(
+        partialFunction: PartialFunction[AltoElement, AltoElement]
+    ): AltoElement
   }
 
   trait PageElement extends AltoElement {
@@ -43,7 +45,10 @@ package object model {
       StringUtils.isLeftToRight(this.languageOrDefault)
     }
 
-    def getEffectiveLanguage(language: Option[String], defaultLanguage: Option[String]): String = {
+    def getEffectiveLanguage(
+        language: Option[String],
+        defaultLanguage: Option[String]
+    ): String = {
       language.getOrElse(
         defaultLanguage.getOrElse {
           ConfigFactory.load().getConfig("jochre.ocr").getString("language")

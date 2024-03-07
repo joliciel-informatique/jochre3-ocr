@@ -7,7 +7,8 @@ trait TextEvaluationMetric {
 }
 
 object CharacterCount extends TextEvaluationMetric {
-  override def evaluate(predicted: String, expected: String): Double = expected.length
+  override def evaluate(predicted: String, expected: String): Double =
+    expected.length
 
   override val name: String = "CharCount"
 }

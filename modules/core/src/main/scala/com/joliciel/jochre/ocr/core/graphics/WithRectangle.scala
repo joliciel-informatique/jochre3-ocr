@@ -38,14 +38,17 @@ trait WithRectangle {
 
 object WithRectangle {
   case class HorizontalOrdering[T <: WithRectangle](leftToRight: Boolean) extends Ordering[T] {
-    def compare(a: T, b: T): Int = a.rectangle.horizontalCompare(b.rectangle, leftToRight)
+    def compare(a: T, b: T): Int =
+      a.rectangle.horizontalCompare(b.rectangle, leftToRight)
   }
 
   case class VerticalOrdering[T <: WithRectangle]() extends Ordering[T] {
     def compare(a: T, b: T): Int = a.rectangle.verticalCompare(b.rectangle)
   }
 
-  case class SimplePageLayoutOrdering[T <: WithRectangle](leftToRight: Boolean) extends Ordering[T] {
-    def compare(a: T, b: T): Int = a.rectangle.simplePageLayoutCompare(b.rectangle, leftToRight)
+  case class SimplePageLayoutOrdering[T <: WithRectangle](leftToRight: Boolean)
+      extends Ordering[T] {
+    def compare(a: T, b: T): Int =
+      a.rectangle.simplePageLayoutCompare(b.rectangle, leftToRight)
   }
 }

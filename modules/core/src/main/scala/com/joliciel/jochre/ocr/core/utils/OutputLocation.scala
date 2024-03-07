@@ -8,7 +8,9 @@ case class OutputLocation(outDir: Path, baseName: String) {
 }
 
 object OutputLocation {
-  def apply(outDir: Path, file: File): OutputLocation = OutputLocation(outDir, FileUtils.removeFileExtension(file.getName))
+  def apply(outDir: Path, file: File): OutputLocation =
+    OutputLocation(outDir, FileUtils.removeFileExtension(file.getName))
 
-  def apply(outDir: Path, path: Path): OutputLocation = this.apply(outDir, path.toFile)
+  def apply(outDir: Path, path: Path): OutputLocation =
+    this.apply(outDir, path.toFile)
 }

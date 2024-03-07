@@ -2,9 +2,19 @@ package com.joliciel.jochre.ocr.core.model
 
 import scala.xml.{Elem, Node}
 
-case class TextStyle(id: String, fontFamily: Option[String] = None, fontType: Option[String] = None, fontWidth: Option[String] = None, fontSize: Option[Double] = None) {
+case class TextStyle(
+    id: String,
+    fontFamily: Option[String] = None,
+    fontType: Option[String] = None,
+    fontWidth: Option[String] = None,
+    fontSize: Option[Double] = None
+) {
   def toXml: Elem =
-      <TextStyle ID={id} FONTFAMILY={fontFamily.orNull} FONTTYPE={fontType.orNull} FONTWIDTH={fontWidth.orNull} FONTSIZE={fontSize.map(size => f"$size%.1f").orNull}></TextStyle>
+    <TextStyle ID={id} FONTFAMILY={fontFamily.orNull} FONTTYPE={
+      fontType.orNull
+    } FONTWIDTH={fontWidth.orNull} FONTSIZE={
+      fontSize.map(size => f"$size%.1f").orNull
+    }></TextStyle>
 }
 
 object TextStyle {
@@ -17,7 +27,14 @@ object TextStyle {
     val fontWidth = node \@ "FONTWIDTH"
     val fontWidthOption = Option.when(fontWidth.nonEmpty)(fontWidth)
     val fontSize = node \@ "FONTSIZE"
-    val fontSizeOption = Option.when(fontSize.nonEmpty)(fontSize.toDoubleOption.getOrElse(12.0))
-    TextStyle(id, fontFamily=fontFamilyOption, fontType=fontTypeOption, fontWidth=fontWidthOption, fontSize=fontSizeOption)
+    val fontSizeOption =
+      Option.when(fontSize.nonEmpty)(fontSize.toDoubleOption.getOrElse(12.0))
+    TextStyle(
+      id,
+      fontFamily = fontFamilyOption,
+      fontType = fontTypeOption,
+      fontWidth = fontWidthOption,
+      fontSize = fontSizeOption
+    )
   }
 }

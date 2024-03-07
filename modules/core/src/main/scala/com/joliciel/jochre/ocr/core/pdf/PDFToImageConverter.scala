@@ -13,35 +13,54 @@ import javax.imageio.{ImageIO, ImageReader}
 
 import scala.jdk.CollectionConverters._
 
-case class PDFToImageConverter(source: () => InputStream, startPage: Option[Int] = None, endPage: Option[Int] = None, dpi: Option[Int] = None) {
+case class PDFToImageConverter(
+    source: () => InputStream,
+    startPage: Option[Int] = None,
+    endPage: Option[Int] = None,
+    dpi: Option[Int] = None
+) {
   private val log = LoggerFactory.getLogger(getClass)
 
-
-  def process[T](convert: (BufferedImage, Int) => Task[T]): ZStream[Any, Throwable, T] = {
-    ZStream.acquireReleaseWith(ZIO.attempt {
-      val inputStream = source()
-      val pdfStream = new RandomAccessReadBuffer(inputStream)
-      val document = Loader.loadPDF(pdfStream)
-      val pdfRenderer = new PDFRenderer(document)
-      (inputStream, document, pdfRenderer)
-    }) { case (inputStream, document, _) =>
-      ZIO.attempt{
-        document.close()
-        inputStream.close()
-      }.orDieWith { ex =>
-          log.error("Cannot close document", ex)
-          ex
-        }
-    }.flatMap {
-      case (_, document, pdfRenderer) =>
+  def process[T](
+      convert: (BufferedImage, Int) => Task[T]
+  ): ZStream[Any, Throwable, T] = {
+    ZStream
+      .acquireReleaseWith(ZIO.attempt {
+        val inputStream = source()
+        val pdfStream = new RandomAccessReadBuffer(inputStream)
+        val document = Loader.loadPDF(pdfStream)
+        val pdfRenderer = new PDFRenderer(document)
+        (inputStream, document, pdfRenderer)
+      }) { case (inputStream, document, _) =>
+        ZIO
+          .attempt {
+            document.close()
+            inputStream.close()
+          }
+          .orDieWith { ex =>
+            log.error("Cannot close document", ex)
+            ex
+          }
+      }
+      .flatMap { case (_, document, pdfRenderer) =>
         val pageCount = document.getNumberOfPages
         val start = startPage.getOrElse(1)
-        val end = endPage.map(endPage => if (pageCount < endPage) { pageCount } else { endPage }).getOrElse(pageCount)
-        ZStream.fromIterable(start to end)
+        val end = endPage
+          .map(endPage =>
+            if (pageCount < endPage) { pageCount }
+            else { endPage }
+          )
+          .getOrElse(pageCount)
+        ZStream
+          .fromIterable(start to end)
           .mapZIO { i =>
             ZIO.attempt {
               log.info(f"Extracting image $i")
-              val image = pdfRenderer.renderImageWithDPI(i-1, dpi.getOrElse(300).toFloat, ImageType.RGB)
+              val image = pdfRenderer.renderImageWithDPI(
+                i - 1,
+                dpi.getOrElse(300).toFloat,
+                ImageType.RGB
+              )
               image -> i
             }
           }
@@ -49,13 +68,14 @@ case class PDFToImageConverter(source: () => InputStream, startPage: Option[Int]
             log.info(f"Converting image $i")
             convert(image, i)
           }
-    }
+      }
   }
 }
 
 object PDFToImageConverter {
   def main(args: Array[String]): Unit = {
-    val readers: Iterator[ImageReader] = ImageIO.getImageReadersByFormatName("JPEG").asScala
+    val readers: Iterator[ImageReader] =
+      ImageIO.getImageReadersByFormatName("JPEG").asScala
 
     readers.foreach(r => println(f"$r"))
   }

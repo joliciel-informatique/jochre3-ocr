@@ -4,10 +4,8 @@ import scala.collection.SeqMap
 import scala.io.Source
 import scala.util.matching.Regex
 
-/**
- * Ported from Python to Scala.
- * Origin: https://github.com/ibleaman/yiddish
- */
+/** Ported from Python to Scala. Origin: https://github.com/ibleaman/yiddish
+  */
 object YivoTransliterator {
 
   private val precombinedUnicodePairs = SeqMap(
@@ -24,16 +22,24 @@ object YivoTransliterator {
     ("פּ", "פּ"),
     ("פֿ", "פֿ"),
     ("שׂ", "שׂ"),
-    ("תּ", "תּ"),
+    ("תּ", "תּ")
   )
 
-  private val pairsWithoutVovYud = precombinedUnicodePairs.removedAll(Seq("װ", "ױ", "ײ"))
+  private val pairsWithoutVovYud =
+    precombinedUnicodePairs.removedAll(Seq("װ", "ױ", "ײ"))
 
   private def replaceAll(map: Seq[(String, String)], string: String): String =
-    map.foldLeft(string) { case (string, (find, replace)) => string.replace(find, replace) }
+    map.foldLeft(string) { case (string, (find, replace)) =>
+      string.replace(find, replace)
+    }
 
-  private def replaceAllRegex(map: Seq[(Regex, String)], string: String): String =
-    map.foldLeft(string) { case (string, (find, replace)) => find.replaceAllIn(string, replace) }
+  private def replaceAllRegex(
+      map: Seq[(Regex, String)],
+      string: String
+  ): String =
+    map.foldLeft(string) { case (string, (find, replace)) =>
+      find.replaceAllIn(string, replace)
+    }
 
   def replaceWithPrecombined(string: String): String =
     replaceAll(precombinedUnicodePairs.toSeq, string)
@@ -42,7 +48,7 @@ object YivoTransliterator {
 
   // When vovYud==True, these will be preserved as precombined chars:
   //      װ, ײ, ױ
-  def replaceWithDecomposed(string: String, vovYud: Boolean = false): String = {
+  private def replaceWithDecomposed(string: String, vovYud: Boolean = false): String = {
     val pairsToReplace = if (vovYud) {
       pairsWithoutVovYud
     } else {
@@ -54,14 +60,16 @@ object YivoTransliterator {
       .replace("בּ", "ב")
   }
 
-  def replacePunctuation(string: String): String = {
+  private def replacePunctuation(string: String): String = {
     string
       .replace("-", "־")
       .replace("′", "\"")
       .replace("׳", "\"")
-      .replace("″",
+      .replace(
+        "″",
         """)
-      .replace("״", """)
+      .replace("״", """
+      )
   }
 
   private val diacritics = """[ִַַָּּּּֿֿׂ]""".r
@@ -70,23 +78,58 @@ object YivoTransliterator {
     diacritics.replaceAllIn(replaceWithDecomposed(string), "")
   }
 
-  private val loshnKoydeshPronunciationList = Source.fromResource("yiddish/orthographic-to-phonetic.txt").getLines()
+  private val loshnKoydeshPronunciationList =
+    Source.fromResource("yiddish/orthographic-to-phonetic.txt").getLines()
 
-  private val loshnKoydeshPronunciationMap: Map[String, Seq[String]] = loshnKoydeshPronunciationList
-    .map (_.split("\t"))
-    .map (_.map (replaceWithPrecombined(_)).map(replacePunctuation(_)))
-    .map ( words => words(0) -> words(1) )
-    .toMap
-    .view
-    .mapValues(_.split(",").toSeq)
-    .toMap
+  private val loshnKoydeshPronunciationMap: Map[String, Seq[String]] =
+    loshnKoydeshPronunciationList
+      .map(_.split("\t"))
+      .map(_.map(replaceWithPrecombined).map(replacePunctuation))
+      .map(words => words(0) -> words(1))
+      .toMap
+      .view
+      .mapValues(_.split(",").toSeq)
+      .toMap
 
-  private val reverseLoshnKoydeshPronunciationMap: Map[String, String] = loshnKoydeshPronunciationMap
-    .flatMap { case (key, entries) => entries.map(_ -> key).toMap }
+  private val reverseLoshnKoydeshPronunciationMap: Map[String, String] =
+    loshnKoydeshPronunciationMap
+      .flatMap { case (key, entries) => entries.map(_ -> key).toMap }
 
-  private val germanicSemiticHomographs = Set("אין", "צום", "בין", "ברי", "מיד", "קין", "שער", "מעגן", "צו", "מאַנס", "טוען", "מערער")
+  private val germanicSemiticHomographs = Set(
+    "אין",
+    "צום",
+    "בין",
+    "ברי",
+    "מיד",
+    "קין",
+    "שער",
+    "מעגן",
+    "צו",
+    "מאַנס",
+    "טוען",
+    "מערער"
+  )
 
-  private val lessCommonLoshnKoydeshPronunciations = Set("אַדױשעם", "כאַנוקע", "גדױלע", "כאַװײרע", "מיכיע", "כאָװער", "אָרעװ", "מאָסער", "כיִעס", "זקאָנים", "נעװאָלע", "מאַשלעם", "כפֿאָצים", "כאַכאָמע", "טאַנאָיִם", "יאָסעף", "יאָסעפֿס", "יאָסעפֿן")
+  private val lessCommonLoshnKoydeshPronunciations = Set(
+    "אַדױשעם",
+    "כאַנוקע",
+    "גדױלע",
+    "כאַװײרע",
+    "מיכיע",
+    "כאָװער",
+    "אָרעװ",
+    "מאָסער",
+    "כיִעס",
+    "זקאָנים",
+    "נעװאָלע",
+    "מאַשלעם",
+    "כפֿאָצים",
+    "כאַכאָמע",
+    "טאַנאָיִם",
+    "יאָסעף",
+    "יאָסעפֿס",
+    "יאָסעפֿן"
+  )
 
   private val transliterationTable = Seq( // all are precombined
     ("א", ""),
@@ -134,11 +177,11 @@ object YivoTransliterator {
     ("שׂ", "s"),
     ("תּ", "t"),
     ("ת", "s"),
-    ("־", "-"),
+    ("־", "-")
   )
 
-
-  private val yiddishTokenizer = """[אאַאָבבֿגדהוװוּױזחטייִײײַככּךלמםנןסעפּפֿףצץקרששׂתּת\-־"]+|[^אאַאָבבֿגדהוװוּױזחטייִײײַככּךלמםנןסעפּפֿףצץקרששׂתּת\-־"]""".r
+  private val yiddishTokenizer =
+    """[אאַאָבבֿגדהוװוּױזחטייִײײַככּךלמםנןסעפּפֿףצץקרששׂתּת\-־"]+|[^אאַאָבבֿגדהוװוּױזחטייִײײַככּךלמםנןסעפּפֿףצץקרששׂתּת\-־"]""".r
 
   // if loshnKoydesh, look up string in LK dictionary
   def transliterate(string: String, loshnKoydesh: Boolean = true): String = {
@@ -147,11 +190,19 @@ object YivoTransliterator {
     val withLoshnKoydesh = if (loshnKoydesh) {
       val tokens = yiddishTokenizer.findAllIn(precombined)
       val newTokens = tokens.map { token =>
-        if (loshnKoydeshPronunciationMap.contains(token) && !germanicSemiticHomographs.contains(token)) {
-          if (lessCommonLoshnKoydeshPronunciations.contains(loshnKoydeshPronunciationMap(token)(0)) && loshnKoydeshPronunciationMap(token).size > 1) {
+        if (
+          loshnKoydeshPronunciationMap.contains(
+            token
+          ) && !germanicSemiticHomographs.contains(token)
+        ) {
+          if (
+            lessCommonLoshnKoydeshPronunciations.contains(
+              loshnKoydeshPronunciationMap(token).head
+            ) && loshnKoydeshPronunciationMap(token).size > 1
+          ) {
             loshnKoydeshPronunciationMap(token)(1).replace("־", "-")
           } else {
-            loshnKoydeshPronunciationMap(token)(0).replace("־", "-")
+            loshnKoydeshPronunciationMap(token).head.replace("־", "-")
           }
         } else {
           token
@@ -178,71 +229,72 @@ object YivoTransliterator {
     ("""m\b""".r, "ם"),
     ("""n\b""".r, "ן"),
     ("""f\b""".r, "ף"),
-    ("""ts\b""".r, "ץ"),
+    ("""ts\b""".r, "ץ")
   )
 
-  private val reverseTransliterationTable: Seq[(String, String)] = Seq( // to precombined
-    ("ayi", "ײַיִ"), // מאַלײַיִש
-    ("eyi", "ײיִ"), // פּאַרטײיִש, שנײיִק
-    ("oyi", "ױיִ"), // פֿרױיִש
-    ("ay", "ײַ"),
-    ("ey", "ײ"),
-    ("oy", "ױ"),
-    ("zh", "זש"),
-    ("kh", "כ"),
-    ("sh", "ש"), // דײַטש, *דײַצה
-    ("ts", "צ"),
-    ("ia", "יִאַ"), // ?
-    ("ai", "אַיִ"), // יודאַיִסטיק
-    ("ie", "יִע"), // פֿריִער, בליִען, קיִעװ
-    ("ei", "עיִ"), // העברעיִש, פֿעיִק
-    ("ii", "יִיִ"), // װאַריִיִרן, פֿריִיִק, אַליִיִרט
-    ("io", "יִאָ"), // טריִאָ
-    ("oi", "אָיִ"), // דאָיִק
-    ("iu", "יִו"), // בליִונג, באַציִונג
-    ("ui", "ויִ"), // גראַדויִר
-    ("iyi", "יִייִ"), // ?
-    ("yi", "ייִ"),
-    ("iy", "יִי"), // ?
-    ("uvu", "וּװוּ"), // פּרוּװוּנג, צוּװוּקס
-    ("uv", "וּװ"),
-    ("vu", "װוּ"),
-    ("uu", "וּו"), // טוּונג, דוּומװיראַט
-    ("uy", "וּי"), // בורזשוּי
-    ("a", "אַ"),
-    ("b", "ב"),
-    ("d", "ד"),
-    ("e", "ע"),
-    ("f", "פֿ"),
-    ("g", "ג"),
-    ("h", "ה"),
-    ("i", "י"),
-    ("k", "ק"),
-    ("l", "ל"),
-    ("m", "מ"),
-    ("n", "נ"),
-    ("o", "אָ"),
-    ("p", "פּ"),
-    ("r", "ר"),
-    ("s", "ס"),
-    ("t", "ט"),
-    ("u", "ו"),
-    ("v", "װ"),
-    ("y", "י"),
-    ("z", "ז"),
-  )
+  private val reverseTransliterationTable: Seq[(String, String)] =
+    Seq( // to precombined
+      ("ayi", "ײַיִ"), // מאַלײַיִש
+      ("eyi", "ײיִ"), // פּאַרטײיִש, שנײיִק
+      ("oyi", "ױיִ"), // פֿרױיִש
+      ("ay", "ײַ"),
+      ("ey", "ײ"),
+      ("oy", "ױ"),
+      ("zh", "זש"),
+      ("kh", "כ"),
+      ("sh", "ש"), // דײַטש, *דײַצה
+      ("ts", "צ"),
+      ("ia", "יִאַ"), // ?
+      ("ai", "אַיִ"), // יודאַיִסטיק
+      ("ie", "יִע"), // פֿריִער, בליִען, קיִעװ
+      ("ei", "עיִ"), // העברעיִש, פֿעיִק
+      ("ii", "יִיִ"), // װאַריִיִרן, פֿריִיִק, אַליִיִרט
+      ("io", "יִאָ"), // טריִאָ
+      ("oi", "אָיִ"), // דאָיִק
+      ("iu", "יִו"), // בליִונג, באַציִונג
+      ("ui", "ויִ"), // גראַדויִר
+      ("iyi", "יִייִ"), // ?
+      ("yi", "ייִ"),
+      ("iy", "יִי"), // ?
+      ("uvu", "וּװוּ"), // פּרוּװוּנג, צוּװוּקס
+      ("uv", "וּװ"),
+      ("vu", "װוּ"),
+      ("uu", "וּו"), // טוּונג, דוּומװיראַט
+      ("uy", "וּי"), // בורזשוּי
+      ("a", "אַ"),
+      ("b", "ב"),
+      ("d", "ד"),
+      ("e", "ע"),
+      ("f", "פֿ"),
+      ("g", "ג"),
+      ("h", "ה"),
+      ("i", "י"),
+      ("k", "ק"),
+      ("l", "ל"),
+      ("m", "מ"),
+      ("n", "נ"),
+      ("o", "אָ"),
+      ("p", "פּ"),
+      ("r", "ר"),
+      ("s", "ס"),
+      ("t", "ט"),
+      ("u", "ו"),
+      ("v", "װ"),
+      ("y", "י"),
+      ("z", "ז")
+    )
 
   private val reversTransliterationFinalRegex: Seq[(Regex, String)] = Seq(
-    ("""ך(\"|")""".r, "כ$1"), // fix mistakes: for abbreviations/acronyms
-    ("""ם(\"|")""".r, "מ$1"),
-    ("""ן(\"|")""".r, "נ$1"),
-    ("""ף(\"|")""".r, "פֿ$1"),
-    ("""ץ(\"|")""".r, "צ$1"),
+    ("""ך(“|")""".r, "כ$1"), // fix mistakes: for abbreviations/acronyms
+    ("""ם(“|")""".r, "מ$1"),
+    ("""ן(“|")""".r, "נ$1"),
+    ("""ף(“|")""".r, "פֿ$1"),
+    ("""ץ(“|")""".r, "צ$1"),
     ("""\bך""".r, "כ"), // no word-initial final letters
     ("""\bם""".r, "מ"),
     ("""\bן""".r, "נ"),
     ("""\bף""".r, "פֿ"),
-    ("""\bץ""".r, "צ"),
+    ("""\bץ""".r, "צ")
   )
 
   private val reverseTransliterationExceptions: Seq[(Regex, String)] = Seq(
@@ -361,9 +413,12 @@ object YivoTransliterator {
     ("""\bkrikhalt""".r, "קריקהאַלט"),
 
     // sh != ש
-    ("""\boysh(?!ers?\b|vits(er)?\b)""".r, "אױסה"), // the only exceptions to oysh = אױסה {
+    (
+      """\boysh(?!ers?\b|vits(er)?\b)""".r,
+      "אױסה"
+    ), // the only exceptions to oysh = אױסה {
     // עושר, עושרס, אױשװיץ, אױשװיצער
-    ("""\baroysh""".r, "אַרױסה"),
+    ("""\baroysh""".r, "אַרױסה")
   )
 
   private val semiticGermanicHomophones: Set[String] = Set(
@@ -392,7 +447,7 @@ object YivoTransliterator {
     "קעץ",
     "שװאַך",
     "שיִער",
-    "שנײ",
+    "שנײ"
   )
 
   private val tokenizerRegex: Regex = """(?U)[\w\-־]+|[^\w\-־]""".r
@@ -400,15 +455,21 @@ object YivoTransliterator {
   // note: output uses precombined Unicode characters
   // if loshnKoydesh, look up string in LK dictionary
   def detransliterate(string: String, loshnKoydesh: Boolean = true): String = {
-    val string1 = replaceAllRegex(reverseTransliterationExceptions, string.toLowerCase)
+    val string1 =
+      replaceAllRegex(reverseTransliterationExceptions, string.toLowerCase)
     val string2 = replaceAllRegex(reverseTransliterationRegex, string1)
     val string3 = replaceAll(reverseTransliterationTable, string2)
     val string4 = replaceAllRegex(reversTransliterationFinalRegex, string3)
 
     val string5 = if (loshnKoydesh) {
       val newTokens = tokenizerRegex.findAllIn(string4).map { token =>
-        if (reverseLoshnKoydeshPronunciationMap.contains(token.replace('-', '־')) && !semiticGermanicHomophones.contains(token)) {
-          reverseLoshnKoydeshPronunciationMap(token.replace('-', '־')).replace('־', '-')
+        if (
+          reverseLoshnKoydeshPronunciationMap.contains(
+            token.replace('-', '־')
+          ) && !semiticGermanicHomophones.contains(token)
+        ) {
+          reverseLoshnKoydeshPronunciationMap(token.replace('-', '־'))
+            .replace('־', '-')
         } else {
           token
         }

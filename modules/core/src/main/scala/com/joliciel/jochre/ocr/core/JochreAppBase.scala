@@ -10,7 +10,6 @@ import java.io.{File, FileWriter}
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 
-
 trait JochreAppBase {
   def textSimplifier: Option[TextSimplifier]
 
@@ -23,7 +22,8 @@ trait JochreAppBase {
     val startPage = options.startPage.toOption
     val endPage = options.endPage.toOption
     val dpi = options.dpi.toOption
-    val outputFormats = options.outputFormats().split(",").map(OutputFormat.withName(_)).toSeq
+    val outputFormats =
+      options.outputFormats().split(",").map(OutputFormat.withName).toSeq
     for {
       testRectangle <- ZIO.attempt {
         options.testRectangle.toOption.map { rectString =>
@@ -37,30 +37,73 @@ trait JochreAppBase {
         outDir.toFile.mkdirs()
       }
       _ <- ZIO.serviceWithZIO[Jochre] { jochre =>
-        evalDir.map { evalDir =>
-          if (input.toFile.isFile) {
-            throw new Exception(f"For evaluation, input must be a directory, got: ${input.toFile.getPath}")
-          }
-          val evaluator = Evaluator(jochre, Seq(CharacterErrorRate, CharacterCount), evalDir, textSimplifier)
-          val evalWriter = new FileWriter(new File(evalDir.toFile, "eval.tsv"), StandardCharsets.UTF_8)
-          for {
-            results <- evaluator.evaluate(input, outputFormats, Some(outDir), debugDir, maxImages, testRectangle)
-            _ <- ZIO.attempt {
-              evaluator.writeResults(evalWriter, results)
+        evalDir
+          .map { evalDir =>
+            if (input.toFile.isFile) {
+              throw new Exception(
+                f"For evaluation, input must be a directory, got: ${input.toFile.getPath}"
+              )
             }
-          } yield {
-            results
+            val evaluator = Evaluator(
+              jochre,
+              Seq(CharacterErrorRate, CharacterCount),
+              evalDir,
+              textSimplifier
+            )
+            val evalWriter = new FileWriter(
+              new File(evalDir.toFile, "eval.tsv"),
+              StandardCharsets.UTF_8
+            )
+            for {
+              results <- evaluator.evaluate(
+                input,
+                outputFormats,
+                Some(outDir),
+                debugDir,
+                maxImages,
+                testRectangle
+              )
+              _ <- ZIO.attempt {
+                evaluator.writeResults(evalWriter, results)
+              }
+            } yield {
+              results
+            }
           }
-        }.getOrElse {
-          if (input.toFile.isDirectory) {
-            jochre.processDirectory(input, outputFormats, Some(outDir), debugDir, maxImages, testRectangle)
-          } else if (input.toFile.getName.endsWith(".pdf")) {
-            jochre.processPdf(input, None, outputFormats, Some(outDir), debugDir, startPage, endPage, dpi, testRectangle)
-          } else {
-            // Assume image file
-            jochre.processImageFile(input, None, outputFormats, Some(outDir), debugDir, testRectangle)
+          .getOrElse {
+            if (input.toFile.isDirectory) {
+              jochre.processDirectory(
+                input,
+                outputFormats,
+                Some(outDir),
+                debugDir,
+                maxImages,
+                testRectangle
+              )
+            } else if (input.toFile.getName.endsWith(".pdf")) {
+              jochre.processPdf(
+                input,
+                None,
+                outputFormats,
+                Some(outDir),
+                debugDir,
+                startPage,
+                endPage,
+                dpi,
+                testRectangle
+              )
+            } else {
+              // Assume image file
+              jochre.processImageFile(
+                input,
+                None,
+                outputFormats,
+                Some(outDir),
+                debugDir,
+                testRectangle
+              )
+            }
           }
-        }
       }
     } yield ExitCode.success
   }

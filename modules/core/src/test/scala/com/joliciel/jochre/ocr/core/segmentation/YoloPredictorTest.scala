@@ -17,7 +17,8 @@ object YoloPredictorTest extends JUnitRunnableSpec with ImageUtils {
 
   override def spec: Spec[TestEnvironment with Scope, Any] = suite("YoloPredictor")(
     test("predict blocks") {
-      val image = ImageIO.read(getClass.getResourceAsStream("/images/nybc200089_0011_deskewered.jpg"))
+      val image =
+        ImageIO.read(getClass.getResourceAsStream("/images/nybc200089_0011_deskewered.jpg"))
       val mat = fromBufferedImage(image)
       val fileName = "nybc200089_0011_deskewered.jpg"
       val config = ConfigFactory.load()
@@ -27,18 +28,26 @@ object YoloPredictorTest extends JUnitRunnableSpec with ImageUtils {
       val outputLocation = Some(OutputLocation(outputPath, "nybc200089_0011"))
       for {
         yoloPredictorService <- ZIO.service[YoloPredictorService]
-        blockPredictor <- yoloPredictorService.getYoloPredictor(YoloPredictionType.Blocks, mat, fileName, outputLocation, minConfidence = Some(0.7))
+        blockPredictor <- yoloPredictorService.getYoloPredictor(
+          YoloPredictionType.Blocks,
+          mat,
+          fileName,
+          outputLocation,
+          minConfidence = Some(0.7)
+        )
         result <- blockPredictor.predict()
       } yield {
         log.info(f"Result: ${result.map(_.rectangle).mkString(", ")}")
         val expected = Seq(
-          Rectangle(1792,1442,101,151),
-          Rectangle(708,1620,2295,185),
-          Rectangle(1771,2037,130,139),
-          Rectangle(615,2240,2430,1919),
-          Rectangle(1809,4163,84,122)
+          Rectangle(1792, 1442, 101, 151),
+          Rectangle(708, 1620, 2295, 185),
+          Rectangle(1771, 2037, 130, 139),
+          Rectangle(615, 2240, 2430, 1919),
+          Rectangle(1809, 4163, 84, 122)
         )
-        assertTrue(result.forall(rect => expected.find(other => rect.rectangle.iou(other) > 0.9).isDefined))
+        assertTrue(
+          result.forall(rect => expected.exists(other => rect.rectangle.iou(other) > 0.9))
+        )
       }
     }
   ).provide(

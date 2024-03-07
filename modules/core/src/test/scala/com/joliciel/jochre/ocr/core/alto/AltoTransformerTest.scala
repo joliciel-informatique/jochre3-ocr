@@ -6,20 +6,18 @@ import org.scalatest.matchers.should.Matchers
 
 import scala.xml.PrettyPrinter
 
-class AltoTransformerTest extends AnyFlatSpec
-  with Matchers
-{
+class AltoTransformerTest extends AnyFlatSpec with Matchers {
   "addAlternativesToFile" should "add alternatives to an alto file" in {
     val sillyAltoProcessor = new AltoTransformer {
       override val removeGlyphs: Boolean = true
       override def getAlternatives(content: String): Set[SpellingAlternative] = Set(
-        SpellingAlternative("X", f"X_${content}"),
-        SpellingAlternative("Y", f"Y_${content}")
+        SpellingAlternative("X", f"X_$content"),
+        SpellingAlternative("Y", f"Y_$content")
       )
     }
 
     val altoFile = {
-        <Page>
+      <Page>
           <Paragraph>
             <String CONTENT="Jimi"><Glyph CONTENT="J" /></String><String CONTENT="Hendrix"/>
           </Paragraph>
@@ -32,7 +30,7 @@ class AltoTransformerTest extends AnyFlatSpec
     val page = Page.fromXML(altoFile)
 
     val expected =
-        <Page>
+      <Page>
           <Paragraph>
             <String CONTENT="Jimi">
               <ALTERNATIVE PURPOSE="X">X_Jimi</ALTERNATIVE> <ALTERNATIVE PURPOSE="Y">Y_Jimi</ALTERNATIVE>

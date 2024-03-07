@@ -16,7 +16,9 @@ import javax.imageio.ImageIO
 trait AnalysisLogic extends HttpErrorMapper with ImageUtils with FileUtils {
   private val log = LoggerFactory.getLogger(getClass)
 
-  def postAnalyzeFileLogic(fileForm: FileForm): ZIO[Requirements, HttpError, ZStream[Any, Throwable, Byte]] = {
+  def postAnalyzeFileLogic(
+      fileForm: FileForm
+  ): ZIO[Requirements, HttpError, ZStream[Any, Throwable, Byte]] = {
     val fileName = fileForm.image.fileName.getOrElse("Unknown")
     val getAlto = if (fileName.endsWith(".pdf")) {
       for {
@@ -60,7 +62,9 @@ trait AnalysisLogic extends HttpErrorMapper with ImageUtils with FileUtils {
       .mapError(mapToHttpError)
   }
 
-  def postAnalyzeURLLogic(body: AnalyseURLRequest): ZIO[Requirements, HttpError, ZStream[Any, Throwable, Byte]] = {
+  def postAnalyzeURLLogic(
+      body: AnalyseURLRequest
+  ): ZIO[Requirements, HttpError, ZStream[Any, Throwable, Byte]] = {
     val fileName = body.fileName.getOrElse(FilenameUtils.getName(body.url))
     val getAlto = if (fileName.endsWith(".pdf")) {
       for {

@@ -14,7 +14,15 @@ class BoxTransform(dimension: Int) extends ImageTransformer[Unit] {
     val right = dimension - (width + left)
 
     val dest = new Mat()
-    opencv_core.copyMakeBorder(src, dest, top, bottom, left, right, opencv_core.BORDER_CONSTANT)
+    opencv_core.copyMakeBorder(
+      src,
+      dest,
+      top,
+      bottom,
+      left,
+      right,
+      opencv_core.BORDER_CONSTANT
+    )
     dest -> ()
   }
 }

@@ -1,5 +1,3 @@
 package com.joliciel.jochre.ocr
 
-package object yiddish {
-
-}
+package object yiddish {}

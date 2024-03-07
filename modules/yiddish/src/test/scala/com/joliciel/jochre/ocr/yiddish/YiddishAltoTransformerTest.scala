@@ -429,7 +429,7 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
 
   "addHyphenRule" should "split off hyphens at the end of a text line" in {
     val alto =
-        <TextLine HPOS="0" VPOS="10" WIDTH="90" HEIGHT="100">
+      <TextLine HPOS="0" VPOS="10" WIDTH="90" HEIGHT="100">
           <String HPOS="0" VPOS="10" WIDTH="40" HEIGHT="100" CONTENT="Jimi" WC="0.5">
             <Glyph HPOS="0" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="J" GC="0.5"></Glyph>
             <Glyph HPOS="10" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="i" GC="0.5"></Glyph>
@@ -453,7 +453,7 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
     val actualTextLine = transform(textLine).asInstanceOf[TextLine]
 
     val expected =
-        <TextLine HPOS="0" VPOS="10" WIDTH="90" HEIGHT="100">
+      <TextLine HPOS="0" VPOS="10" WIDTH="90" HEIGHT="100">
           <String HPOS="0" VPOS="10" WIDTH="40" HEIGHT="100" CONTENT="Jimi" WC="0.5">
             <Glyph HPOS="0" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="J" GC="0.5"></Glyph>
             <Glyph HPOS="10" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="i" GC="0.5"></Glyph>
@@ -477,7 +477,7 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
   it should "correctly handle strange glyphs with two letters" in {
     // Note we write HPOS elements as if the text was right-to-left
     val alto =
-        <TextLine HPOS="10" VPOS="10" WIDTH="90" HEIGHT="100">
+      <TextLine HPOS="10" VPOS="10" WIDTH="90" HEIGHT="100">
           <String HPOS="70" VPOS="10" WIDTH="40" HEIGHT="100" CONTENT="Jimi" WC="0.5">
             <Glyph HPOS="100" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="J" GC="0.5"></Glyph>
             <Glyph HPOS="90" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="i" GC="0.5"></Glyph>
@@ -499,7 +499,7 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
 
     val actualTextLine = transform(textLine).asInstanceOf[TextLine]
     val expected =
-        <TextLine HPOS="10" VPOS="10" WIDTH="90" HEIGHT="100">
+      <TextLine HPOS="10" VPOS="10" WIDTH="90" HEIGHT="100">
           <String HPOS="70" VPOS="10" WIDTH="40" HEIGHT="100" CONTENT="Jimi" WC="0.5">
             <Glyph HPOS="100" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="J" GC="0.5"></Glyph>
             <Glyph HPOS="90" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="i" GC="0.5"></Glyph>

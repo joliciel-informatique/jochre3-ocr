@@ -1,17 +1,24 @@
 package com.joliciel.jochre.ocr.core.lexicon
 
 import com.joliciel.jochre.ocr.core.corpus.TextSimplifier
-import org.rogach.scallop._
+import org.rogach.scallop.*
 import org.slf4j.LoggerFactory
 
 import java.io.{File, FileInputStream, FileOutputStream, ObjectInputStream, ObjectOutputStream}
 import java.nio.file.Path
 import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
+import scala.collection.immutable.ArraySeq
 import scala.io.Source
 
-case class TextFileLexicon(entries: Set[String], textSimplifier: Option[TextSimplifier] = None) extends Lexicon {
+case class TextFileLexicon(
+    entries: Set[String],
+    textSimplifier: Option[TextSimplifier] = None
+) extends Lexicon {
   private val log = LoggerFactory.getLogger(getClass)
-  override def getFrequency(word: String, presimplified: Boolean = false): Int = {
+  override def getFrequency(
+      word: String,
+      presimplified: Boolean = false
+  ): Int = {
     val testWord = if (presimplified) {
       word
     } else {
@@ -47,7 +54,10 @@ case class TextFileLexicon(entries: Set[String], textSimplifier: Option[TextSimp
 
 object TextFileLexicon {
   private val log = LoggerFactory.getLogger(getClass)
-  def deserialize(file: File, textSimplifier: Option[TextSimplifier] = None): TextFileLexicon = {
+  def deserialize(
+      file: File,
+      textSimplifier: Option[TextSimplifier] = None
+  ): TextFileLexicon = {
     val fis = new FileInputStream(file)
     val zis = new ZipInputStream(fis)
     try {
@@ -61,15 +71,25 @@ object TextFileLexicon {
     }
   }
 
-  def loadTextFileLexicon(input: File, textSimplifier: Option[TextSimplifier] = None) : TextFileLexicon =
+  private def loadTextFileLexicon(
+      input: File,
+      textSimplifier: Option[TextSimplifier] = None
+  ): TextFileLexicon =
     load(input, textSimplifier, TextFileLexicon(_, _))
 
-  def load[T <: TextFileLexicon](input: File, textSimplifier: Option[TextSimplifier] = None, constructor: (Set[String], Option[TextSimplifier]) => T): T = {
+  def load[T <: TextFileLexicon](
+      input: File,
+      textSimplifier: Option[TextSimplifier] = None,
+      constructor: (Set[String], Option[TextSimplifier]) => T
+  ): T = {
     if (input.isDirectory) {
       val files = Option(input.listFiles).getOrElse(Array.empty[File])
-      val entries = files.filter(_.getName.endsWith(".txt"))
-        .foldLeft(Set.empty[String]){ case (entries, file) =>
-          log.info(f"Loaded ${entries.size} entries before file ${file.getPath}")
+      val entries = files
+        .filter(_.getName.endsWith(".txt"))
+        .foldLeft(Set.empty[String]) { case (entries, file) =>
+          log.info(
+            f"Loaded ${entries.size} entries before file ${file.getPath}"
+          )
           val newEntries = loadFile(file, textSimplifier)
           entries ++ newEntries
         }
@@ -81,22 +101,25 @@ object TextFileLexicon {
     }
   }
 
-  private def loadFile(input: File, textSimplifier: Option[TextSimplifier] = None): Iterator[String] = {
+  private def loadFile(
+      input: File,
+      textSimplifier: Option[TextSimplifier] = None
+  ): Iterator[String] = {
     val fileEntries = Source.fromFile(input).getLines()
-    val simplifiedEntries = textSimplifier.map { textSimplifier => fileEntries.map(textSimplifier.simplify(_)) }
+    val simplifiedEntries = textSimplifier
+      .map { textSimplifier => fileEntries.map(textSimplifier.simplify) }
       .getOrElse(fileEntries)
     simplifiedEntries
   }
 
-  class LexiconCLI(arguments: Seq[String]) extends ScallopConf(arguments) {
+  private class LexiconCLI(arguments: Seq[String]) extends ScallopConf(arguments) {
     val lexiconDir: ScallopOption[String] = opt[String](required = true)
     val outputPath: ScallopOption[String] = opt[String](required = true)
     verify()
   }
 
-
   def main(args: Array[String]): Unit = {
-    val cli = new LexiconCLI(args)
+    val cli = new LexiconCLI(ArraySeq.unsafeWrapArray(args))
     val lexiconDir = Path.of(cli.lexiconDir())
     val outputPath = Path.of(cli.outputPath())
 

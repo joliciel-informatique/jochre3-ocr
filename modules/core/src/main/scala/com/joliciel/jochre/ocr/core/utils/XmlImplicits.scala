@@ -1,5 +1,6 @@
 package com.joliciel.jochre.ocr.core.utils
 
+import scala.language.implicitConversions
 import scala.xml.{Atom, Attribute, MetaData, Node, Null, Text}
 
 trait XmlImplicits {
@@ -10,15 +11,17 @@ trait XmlImplicits {
 
   implicit def iterableToMetaData(items: Iterable[MetaData]): MetaData = {
     items match {
-      case Nil => Null
+      case Nil          => Null
       case head :: tail => head.copy(next = iterableToMetaData(tail))
     }
   }
 
   implicit class EnrichedNode(node: Node) {
-    def textContent: String = node.child.collect {
-      case textNode: Atom[_] => textNode.text
-    }.mkString("")
+    def textContent: String = node.child
+      .collect { case textNode: Atom[_] =>
+        textNode.text
+      }
+      .mkString("")
   }
 }
 
