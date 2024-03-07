@@ -12,4 +12,4 @@ services:
       JOCHRE3_OCR_VERSION: ${JOCHRE3_OCR_VERSION:-0.2.2-SNAPSHOT}
       JOCHRE3_OCR_DIRECTORY: /opt/docker
   yolo-dla:
-    image: registry.gitlab.com/jochre/yolo-dla-server:1.0.1
+    image: registry.gitlab.com/jochre/yolo-dla-server:1.0.0
