@@ -2,15 +2,13 @@ package com.joliciel.jochre.ocr.yiddish
 
 import com.joliciel.jochre.ocr.core.alto.AltoTransformer
 import com.joliciel.jochre.ocr.core.corpus.TextSimplifier
-import com.joliciel.jochre.ocr.core.lexicon.Lexicon
 import com.joliciel.jochre.ocr.core.graphics.Rectangle
 import com.joliciel.jochre.ocr.core.model
 import com.joliciel.jochre.ocr.core.model.{AltoElement, Glyph, Hyphen, SpellingAlternative, TextLine, Word}
 import com.joliciel.jochre.ocr.core.utils.{StringUtils, XmlImplicits}
 import com.joliciel.jochre.ocr.yiddish.YiddishAltoTransformer.{Purpose, punctuationAndNotRegex}
 import com.joliciel.jochre.ocr.yiddish.lexicon.YivoLexicon
-import com.joliciel.yivoTranscriber.YivoTranscriber
-import enumeratum.*
+import enumeratum._
 
 case class YiddishAltoTransformer(yiddishConfig: YiddishConfig, lexicon: YivoLexicon, override val textSimplifier: Option[TextSimplifier] = Some(YiddishTextSimpifier(replaceNonHebrewAlphabets = false))) extends AltoTransformer with XmlImplicits {
   // match an alef if:
