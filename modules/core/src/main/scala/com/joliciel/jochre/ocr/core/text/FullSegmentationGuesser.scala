@@ -23,6 +23,7 @@ import org.bytedeco.opencv.opencv_core.Mat
 import org.slf4j.LoggerFactory
 import zio.{Task, ZIO, ZIOAppArgs, ZLayer}
 
+import java.time.Instant
 import scala.collection.mutable
 import scala.util.matching.Regex
 
@@ -116,15 +117,21 @@ case class FullSegmentationGuesser(
       fileName: String,
       debugLocation: Option[OutputLocation]
   ): Task[Page] = ZIO.attempt {
+    val startTime = Instant.now
     val withGuesses = if (beamWidth <= 1) {
       page.transform(guessWithoutBeam(mat))
     } else {
       page.transform(guessTextBlockWithBeam(mat))
     }
-    withGuesses
+    val withLanguageCorrected = withGuesses
       .transform(changeTextLineLanguageIfRequired)
       .transform(changeTextBlockLanguageIfRequired)
       .transform(changePageLanguageIfRequired)
+
+    val duration = (Instant.now.toEpochMilli - startTime.toEpochMilli).toDouble / 1000.0
+    log.info(f"Finished guessing content for $fileName in $duration%.2f seconds")
+
+    withLanguageCorrected
   }
 
   private def guessWithoutBeam(

@@ -207,7 +207,7 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None)
       )
 
       val meanAngle = inliers.map(_.correctedAngle).sum / inliers.size
-      log.info(f"Deskewed $path, meanAngle: $meanAngle")
+      log.info(f"Deskewed $path, meanAngle: $meanAngle%.3f")
       meanAngle
     }
   }

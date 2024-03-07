@@ -25,6 +25,7 @@ import zio.{Task, ZIO, ZLayer}
 
 import java.io.{FileOutputStream, OutputStreamWriter}
 import java.nio.charset.StandardCharsets
+import java.time.Instant
 import scala.annotation.tailrec
 import scala.util.Using
 
@@ -68,6 +69,7 @@ private[segmentation] class FullYoloSegmenter(
       debugLocation: Option[OutputLocation],
       testRectangle: Option[Rectangle] = None
   ): Task[Page] = {
+    val startTime = Instant.now
     for {
       blockPredictor <- yoloPredictorService.getYoloPredictor(
         YoloPredictionType.Blocks,
@@ -102,7 +104,7 @@ private[segmentation] class FullYoloSegmenter(
         }
 
         log.info(
-          f"Predicted ${blocks.size} blocks, of which ${withoutOverlaps.size} text blocks and ${imageBlockPredictions.size} illustrations."
+          f"Predicted ${blocks.size} blocks for $fileName, of which ${withoutOverlaps.size} text blocks and ${imageBlockPredictions.size} illustrations."
         )
 
         Page(
@@ -153,8 +155,8 @@ private[segmentation] class FullYoloSegmenter(
       )
       wordPredictions <- wordPredictor.predict()
       glyphPredictions <- {
-        log.info(f"Predicted ${linePredictions.size} lines")
-        log.info(f"Predicted ${wordPredictions.size} words")
+        log.info(f"Predicted ${linePredictions.size} lines for $fileName")
+        log.info(f"Predicted ${wordPredictions.size} words for $fileName")
 
         // Get glyph predictions for overlapping tiles
         // The assumption is that if the same glyph is predicted by two tiles, one of the two will be eliminated downstream
@@ -177,7 +179,7 @@ private[segmentation] class FullYoloSegmenter(
               glyphPredictions <- glyphPredictor.predict()
             } yield {
               log.info(
-                f"Predicted ${glyphPredictions.size} glyphs for tile ${tile.coordinates}"
+                f"Predicted ${glyphPredictions.size} glyphs for $fileName, tile ${tile.coordinates}"
               )
               glyphPredictions.map { prediction =>
                 prediction.copy(rectangle = prediction.rectangle.translate(tile.left, tile.top))
@@ -187,6 +189,14 @@ private[segmentation] class FullYoloSegmenter(
           .map(_.flatten)
       }
       page <- ZIO.attempt {
+        val predictionDuration =
+          (Instant.now.toEpochMilli - startTime.toEpochMilli).toDouble / 1000.0
+
+        log.info(f"Predicted ${glyphPredictions.size} glyphs for $fileName")
+        log.info(
+          f"Finished predicting segments for page $fileName in $predictionDuration%.2f seconds"
+        )
+
         val textBlocks = pageWithBlocks.textBlocks
         val textBlocksToConsider = testRectangle
           .map(testRect =>
@@ -198,25 +208,6 @@ private[segmentation] class FullYoloSegmenter(
           )
           .getOrElse(textBlocks)
 
-        debugLocation.foreach { debugLocation =>
-          val rightLeftCoordsFile = debugLocation.resolve("_right-left.txt")
-          Using(
-            new OutputStreamWriter(
-              new FileOutputStream(rightLeftCoordsFile.toFile),
-              StandardCharsets.UTF_8
-            )
-          ) { writer =>
-            val leftCoords =
-              textBlocksToConsider.map(_.rectangle.left).mkString(",")
-            val rightCoords =
-              textBlocksToConsider.map(_.rectangle.right).mkString(",")
-            writer.write(leftCoords)
-            writer.write("\n")
-            writer.write(rightCoords)
-            writer.write("\n")
-            writer.flush()
-          }
-        }
         val illustrations = pageWithBlocks.illustrations
 
         // Place lines inside blocks
@@ -434,6 +425,8 @@ private[segmentation] class FullYoloSegmenter(
           blocks = newBlocks
         ).withCleanIds.withDefaultLanguage
 
+        val duration = (Instant.now.toEpochMilli - startTime.toEpochMilli).toDouble / 1000.0
+        log.info(f"Finished full segmentation for page $fileName in $duration%.2f seconds")
         page
       }
     } yield page
