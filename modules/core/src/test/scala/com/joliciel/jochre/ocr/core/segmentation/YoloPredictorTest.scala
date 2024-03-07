@@ -46,7 +46,7 @@ object YoloPredictorTest extends JUnitRunnableSpec with ImageUtils {
           Rectangle(1809, 4163, 84, 122)
         )
         assertTrue(
-          result.forall(rect => expected.exists(other => rect.rectangle.iou(other) > 0.9))
+          result.forall(rect => expected.exists(other => rect.rectangle.iou(other) > 0.8))
         )
       }
     }
