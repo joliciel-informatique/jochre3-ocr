@@ -9,15 +9,7 @@ import com.joliciel.jochre.ocr.core.learning.{
   Prediction
 }
 import com.joliciel.jochre.ocr.core.lexicon.Lexicon
-import com.joliciel.jochre.ocr.core.model.{
-  AltoElement,
-  Page,
-  SubsType,
-  TextBlock,
-  TextLine,
-  Word,
-  WordOrSpace
-}
+import com.joliciel.jochre.ocr.core.model.{AltoElement, Page, SubsType, TextBlock, TextLine, Word, WordOrSpace}
 import com.joliciel.jochre.ocr.core.utils.{OutputLocation, StringUtils}
 import com.typesafe.config.ConfigFactory
 import org.bytedeco.opencv.opencv_core.Mat
@@ -30,10 +22,7 @@ import scala.util.matching.Regex
 
 object FullSegmentationGuesserService {
   val live: ZLayer[
-    GlyphGuesser
-      with GlyphGuessersForOtherAlphabets
-      with Lexicon
-      with FullSegmentationGuesserConfig,
+    GlyphGuesser with GlyphGuessersForOtherAlphabets with Lexicon with FullSegmentationGuesserConfig,
     Nothing,
     TextGuesserService
   ] = ZLayer.fromFunction {
@@ -117,8 +106,8 @@ case class FullSegmentationGuesser(
   private case class HyphenatedPart2WithHyphen(hyphenatedWord: String) extends HyphenationStatus
   private case class HyphenatedPart2WithoutHyphen(hyphenatedWord: String) extends HyphenationStatus
 
-  /** Given an image and a pre-segmented [[Page]] structure, attempt to guess the text within the
-    * page by assigning content to the resulting page.
+  /** Given an image and a pre-segmented [[Page]] structure, attempt to guess the text within the page by assigning
+    * content to the resulting page.
     */
   override def guess(
       page: Page,
@@ -304,9 +293,7 @@ case class FullSegmentationGuesser(
                         )
 
                         val hyphenationStatus =
-                          if (
-                            combinedGuessWithHyphenFrequency > combinedGuessWithoutHyphenFrequency
-                          ) {
+                          if (combinedGuessWithHyphenFrequency > combinedGuessWithoutHyphenFrequency) {
                             HyphenatedWithHyphen(combinedGuessWithHyphen.word)
                           } else {
                             HyphenatedWithoutHyphen(combinedGuessWithoutHyphen.word)
@@ -453,18 +440,17 @@ case class FullSegmentationGuesser(
       glyphGuesser.guess(mat, glyph, beamWidth)
     }
     val beam =
-      predictionsPerGlyph.foldLeft(mutable.PriorityQueue(Guess(Seq.empty))) {
-        case (beam, predictions) =>
-          val end = Math.min(beamWidth, beam.size)
-          val topChoices = (1 to end).map(_ => beam.dequeue())
-          val newChoices = topChoices.flatMap { topChoice =>
-            predictions.map { prediction =>
-              topChoice.copy(glyphPredictions = topChoice.glyphPredictions :+ prediction)
-            }
+      predictionsPerGlyph.foldLeft(mutable.PriorityQueue(Guess(Seq.empty))) { case (beam, predictions) =>
+        val end = Math.min(beamWidth, beam.size)
+        val topChoices = (1 to end).map(_ => beam.dequeue())
+        val newChoices = topChoices.flatMap { topChoice =>
+          predictions.map { prediction =>
+            topChoice.copy(glyphPredictions = topChoice.glyphPredictions :+ prediction)
           }
-          val newBeam = mutable.PriorityQueue.empty[Guess]
-          newChoices.foreach(newBeam.enqueue(_))
-          newBeam
+        }
+        val newBeam = mutable.PriorityQueue.empty[Guess]
+        newChoices.foreach(newBeam.enqueue(_))
+        newBeam
       }
     val end = Math.min(beamWidth, beam.size)
     val topGuesses = (1 to end)
@@ -478,66 +464,63 @@ case class FullSegmentationGuesser(
   private def guessWithOtherAlphabets(mat: Mat, word: Word): Option[Word] = {
     // TODO: set entire line or block to language if all non-number non-punctuation elements are another language
     val otherAlphabetGuesser =
-      glyphGuessersForOtherAlphabets.glyphGuessers.find {
-        case GlyphGuesserForAnotherAlphabet(language, regex, _) =>
-          val matched = regex.matches(word.content)
-          if (matched) {
-            if (log.isDebugEnabled) {
-              log.debug(
-                f"Using glyph guesser $language for word ${word.content}"
-              )
-            }
+      glyphGuessersForOtherAlphabets.glyphGuessers.find { case GlyphGuesserForAnotherAlphabet(language, regex, _) =>
+        val matched = regex.matches(word.content)
+        if (matched) {
+          if (log.isDebugEnabled) {
+            log.debug(
+              f"Using glyph guesser $language for word ${word.content}"
+            )
           }
-          matched
+        }
+        matched
       }
 
-    otherAlphabetGuesser.map {
-      case GlyphGuesserForAnotherAlphabet(language, _, otherAlphabetGuesser) =>
-        val leftToRight = StringUtils.isLeftToRight(language)
-        val newGlyphs = if (word.isLeftToRight != leftToRight) {
-          word.glyphs.sorted(WithRectangle.HorizontalOrdering(leftToRight))
-        } else {
-          word.glyphs
-        }
-        val updatedWord =
-          word.copy(language = Some(language), glyphs = newGlyphs)
-        guessWordWithoutBeam(mat, updatedWord, otherAlphabetGuesser)
+    otherAlphabetGuesser.map { case GlyphGuesserForAnotherAlphabet(language, _, otherAlphabetGuesser) =>
+      val leftToRight = StringUtils.isLeftToRight(language)
+      val newGlyphs = if (word.isLeftToRight != leftToRight) {
+        word.glyphs.sorted(WithRectangle.HorizontalOrdering(leftToRight))
+      } else {
+        word.glyphs
+      }
+      val updatedWord =
+        word.copy(language = Some(language), glyphs = newGlyphs)
+      guessWordWithoutBeam(mat, updatedWord, otherAlphabetGuesser)
     }
   }
 
-  private def changeTextLineLanguageIfRequired: PartialFunction[AltoElement, AltoElement] = {
-    case textLine: TextLine =>
-      val languages = textLine.words
-        .map(_.language)
-        .groupBy(identity)
-        .view
-        .mapValues(_.size)
-        .toSeq
-        .sortBy(0 - _._2)
+  private def changeTextLineLanguageIfRequired: PartialFunction[AltoElement, AltoElement] = { case textLine: TextLine =>
+    val languages = textLine.words
+      .map(_.language)
+      .groupBy(identity)
+      .view
+      .mapValues(_.size)
+      .toSeq
+      .sortBy(0 - _._2)
 
-      if (languages.nonEmpty && languages.head._1.isDefined) {
-        val topLanguage = languages.head._1.get
-        if (log.isDebugEnabled) {
-          log.debug(
-            f"Changing language to $topLanguage for textLine ${textLine.baseLine}. Word languages: ${textLine.words.map(_.language).mkString(", ")}"
-          )
-        }
-        textLine.copy(
-          language = Some(topLanguage),
-          wordsAndSpaces = textLine.wordsAndSpaces
-            .map {
-              case word: Word => word.withDefaultLanguage(topLanguage)
-              case other      => other
-            }
-            .sorted(
-              WithRectangle.HorizontalOrdering(
-                StringUtils.isLeftToRight(topLanguage)
-              )
-            )
+    if (languages.nonEmpty && languages.head._1.isDefined) {
+      val topLanguage = languages.head._1.get
+      if (log.isDebugEnabled) {
+        log.debug(
+          f"Changing language to $topLanguage for textLine ${textLine.baseLine}. Word languages: ${textLine.words.map(_.language).mkString(", ")}"
         )
-      } else {
-        textLine
       }
+      textLine.copy(
+        language = Some(topLanguage),
+        wordsAndSpaces = textLine.wordsAndSpaces
+          .map {
+            case word: Word => word.withDefaultLanguage(topLanguage)
+            case other      => other
+          }
+          .sorted(
+            WithRectangle.HorizontalOrdering(
+              StringUtils.isLeftToRight(topLanguage)
+            )
+          )
+      )
+    } else {
+      textLine
+    }
   }
 
   private def changeTextBlockLanguageIfRequired: PartialFunction[AltoElement, AltoElement] = {
@@ -566,30 +549,29 @@ case class FullSegmentationGuesser(
       }
   }
 
-  private def changePageLanguageIfRequired: PartialFunction[AltoElement, AltoElement] = {
-    case page: Page =>
-      val languages = page.textBlocks
-        .map(_.language)
-        .groupBy(identity)
-        .view
-        .mapValues(_.size)
-        .toSeq
-        .sortBy(0 - _._2)
-        .map(_._1)
+  private def changePageLanguageIfRequired: PartialFunction[AltoElement, AltoElement] = { case page: Page =>
+    val languages = page.textBlocks
+      .map(_.language)
+      .groupBy(identity)
+      .view
+      .mapValues(_.size)
+      .toSeq
+      .sortBy(0 - _._2)
+      .map(_._1)
 
-      if (languages.nonEmpty && languages.head.isDefined) {
-        val topLanguage = languages.head.get
-        if (log.isDebugEnabled) {
-          log.debug(
-            f"Changing language to $topLanguage for page ${page.physicalPageNumber}"
-          )
-          log.debug(
-            f"Textblock languages: ${page.textBlocks.map(_.language).mkString(", ")}"
-          )
-        }
-        page.withLanguage(topLanguage)
-      } else {
-        page
+    if (languages.nonEmpty && languages.head.isDefined) {
+      val topLanguage = languages.head.get
+      if (log.isDebugEnabled) {
+        log.debug(
+          f"Changing language to $topLanguage for page ${page.physicalPageNumber}"
+        )
+        log.debug(
+          f"Textblock languages: ${page.textBlocks.map(_.language).mkString(", ")}"
+        )
       }
+      page.withLanguage(topLanguage)
+    } else {
+      page
+    }
   }
 }

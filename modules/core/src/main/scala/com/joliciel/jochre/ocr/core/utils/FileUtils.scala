@@ -5,14 +5,7 @@ import org.bytedeco.opencv.opencv_core.Mat
 import java.io.File
 import java.net.{URI, URL}
 import java.nio.charset.StandardCharsets
-import java.nio.file.{
-  FileSystemNotFoundException,
-  FileSystems,
-  Files,
-  Path,
-  Paths,
-  StandardCopyOption
-}
+import java.nio.file.{FileSystemNotFoundException, FileSystems, Files, Path, Paths, StandardCopyOption}
 import scala.io.Source
 import scala.util.{Try, Using}
 import scala.util.matching.Regex

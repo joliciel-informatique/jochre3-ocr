@@ -39,47 +39,46 @@ case class YiddishCorpusTransformer(
   ): Unit = {
     val transformed = alto.transform { case word: Word =>
       val (newGlyphs, somethingChanged) =
-        word.glyphs.foldLeft(Seq.empty[Glyph] -> false) {
-          case ((newGlyphs, somethingChanged), glyph) =>
-            newGlyphs match {
-              case Nil => (newGlyphs :+ glyph) -> somethingChanged
-              case _ =>
-                if (pasekhTsveyYudn && glyph.content == "יַ" && newGlyphs.last.content == "י") {
-                  val combinedGlyph = Glyph(
-                    "ײַ",
-                    glyph.rectangle.union(newGlyphs.last.rectangle),
-                    confidence = 1.0
-                  )
-                  (newGlyphs.init :+ combinedGlyph) -> true
-                } else if (
-                  tsveyYudn && (glyph.content == "י" || glyph.content == "יָ" || glyph.content == "יַ" || glyph.content == "יֵ" || glyph.content == "יֶ") && newGlyphs.last.content == "י"
-                ) {
-                  val combinedGlyph = Glyph(
-                    "ײ",
-                    glyph.rectangle.union(newGlyphs.last.rectangle),
-                    confidence = 1.0
-                  )
-                  (newGlyphs.init :+ combinedGlyph) -> true
-                } else if (yudKhirikYud && glyph.content == "יִ" && newGlyphs.last.content == "י") {
-                  val combinedGlyph = Glyph(
-                    "ייִ",
-                    glyph.rectangle.union(newGlyphs.last.rectangle),
-                    confidence = 1.0
-                  )
-                  (newGlyphs.init :+ combinedGlyph) -> true
-                } else if (
-                  tsveyVovn && (glyph.content == "ו" || glyph.content == "וִ" || glyph.content == "וַ" || glyph.content == "וָ" || glyph.content == "וֶ" || glyph.content == "וֵ" || glyph.content == "וְ") && newGlyphs.last.content == "ו"
-                ) {
-                  val combinedGlyph = Glyph(
-                    "װ",
-                    glyph.rectangle.union(newGlyphs.last.rectangle),
-                    confidence = 1.0
-                  )
-                  (newGlyphs.init :+ combinedGlyph) -> true
-                } else {
-                  (newGlyphs :+ glyph) -> somethingChanged
-                }
-            }
+        word.glyphs.foldLeft(Seq.empty[Glyph] -> false) { case ((newGlyphs, somethingChanged), glyph) =>
+          newGlyphs match {
+            case Nil => (newGlyphs :+ glyph) -> somethingChanged
+            case _ =>
+              if (pasekhTsveyYudn && glyph.content == "יַ" && newGlyphs.last.content == "י") {
+                val combinedGlyph = Glyph(
+                  "ײַ",
+                  glyph.rectangle.union(newGlyphs.last.rectangle),
+                  confidence = 1.0
+                )
+                (newGlyphs.init :+ combinedGlyph) -> true
+              } else if (
+                tsveyYudn && (glyph.content == "י" || glyph.content == "יָ" || glyph.content == "יַ" || glyph.content == "יֵ" || glyph.content == "יֶ") && newGlyphs.last.content == "י"
+              ) {
+                val combinedGlyph = Glyph(
+                  "ײ",
+                  glyph.rectangle.union(newGlyphs.last.rectangle),
+                  confidence = 1.0
+                )
+                (newGlyphs.init :+ combinedGlyph) -> true
+              } else if (yudKhirikYud && glyph.content == "יִ" && newGlyphs.last.content == "י") {
+                val combinedGlyph = Glyph(
+                  "ייִ",
+                  glyph.rectangle.union(newGlyphs.last.rectangle),
+                  confidence = 1.0
+                )
+                (newGlyphs.init :+ combinedGlyph) -> true
+              } else if (
+                tsveyVovn && (glyph.content == "ו" || glyph.content == "וִ" || glyph.content == "וַ" || glyph.content == "וָ" || glyph.content == "וֶ" || glyph.content == "וֵ" || glyph.content == "וְ") && newGlyphs.last.content == "ו"
+              ) {
+                val combinedGlyph = Glyph(
+                  "װ",
+                  glyph.rectangle.union(newGlyphs.last.rectangle),
+                  confidence = 1.0
+                )
+                (newGlyphs.init :+ combinedGlyph) -> true
+              } else {
+                (newGlyphs :+ glyph) -> somethingChanged
+              }
+          }
         }
       if (somethingChanged) {
         val newContent = newGlyphs.map(_.content).mkString

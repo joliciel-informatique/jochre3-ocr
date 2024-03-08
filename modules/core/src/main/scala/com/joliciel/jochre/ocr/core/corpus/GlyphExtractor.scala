@@ -131,8 +131,7 @@ object GlyphExtractor {
     )
     val validationOneEvery: ScallopOption[Int] = opt[Int](
       required = false,
-      descr =
-        "If present, add train/val sub-directories and mark one out of every n files for validation"
+      descr = "If present, add train/val sub-directories and mark one out of every n files for validation"
     )
 
     verify()

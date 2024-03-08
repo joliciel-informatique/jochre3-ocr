@@ -52,9 +52,7 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None)
     val blur = new Mat()
     GaussianBlur(resized, blur, new Size(9, 9), 0)
 
-    debugDir.foreach(debugDir =>
-      saveImage(blur, debugDir.resolve(f"${baseName}_deskewer1_blur.jpg"))
-    )
+    debugDir.foreach(debugDir => saveImage(blur, debugDir.resolve(f"${baseName}_deskewer1_blur.jpg")))
 
     val thresh = new Mat()
     threshold(blur, thresh, 0, 255, THRESH_BINARY_INV + THRESH_OTSU)
@@ -181,22 +179,21 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None)
         contoursWithAngles(contoursWithAngles.size / 2).correctedAngle
       log.debug(f"medianAngle: $medianAngle")
 
-      val inliers = contoursWithAngles.filter {
-        case ContourWithAngle(_, _, rotatedRect, container, angle) =>
-          val isInlier =
-            medianAngle - 1.0 <= angle && angle <= medianAngle + 1.0
-          if (isInlier) {
-            log.debug(
-              f"Found inlier with angle $angle (median angle: $medianAngle): $container"
-            )
-            drawRotatedRect(colored, rotatedRect, Color.red, thickness = 5)
-          } else {
-            log.debug(
-              f"Found outlier with angle $angle (median angle: $medianAngle): $container"
-            )
-            drawRotatedRect(colored, rotatedRect, Color.blue, thickness = 5)
-          }
-          isInlier
+      val inliers = contoursWithAngles.filter { case ContourWithAngle(_, _, rotatedRect, container, angle) =>
+        val isInlier =
+          medianAngle - 1.0 <= angle && angle <= medianAngle + 1.0
+        if (isInlier) {
+          log.debug(
+            f"Found inlier with angle $angle (median angle: $medianAngle): $container"
+          )
+          drawRotatedRect(colored, rotatedRect, Color.red, thickness = 5)
+        } else {
+          log.debug(
+            f"Found outlier with angle $angle (median angle: $medianAngle): $container"
+          )
+          drawRotatedRect(colored, rotatedRect, Color.blue, thickness = 5)
+        }
+        isInlier
       }
 
       debugDir.foreach(debugDir =>

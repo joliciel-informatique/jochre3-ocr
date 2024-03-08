@@ -15,19 +15,16 @@ class JochreCLI(arguments: Seq[String]) extends ScallopConf(arguments) {
     opt[Int](descr = "For PDF files, the start page, starting at 1.")
   val endPage: ScallopOption[Int] =
     opt[Int](descr = "For PDF files, the end page, starting at 1. 0 means all pages.")
-  val dpi: ScallopOption[Int] = opt[Int](descr =
-    "For PDF files, the DPI at which to export the file before analyzing. Default 300."
-  )
+  val dpi: ScallopOption[Int] =
+    opt[Int](descr = "For PDF files, the DPI at which to export the file before analyzing. Default 300.")
   val outputFormats: ScallopOption[String] = opt[String](
     default = Some(OutputFormat.Alto4.entryName),
-    descr =
-      f"Comma-separated list of output formats among: ${OutputFormat.values.map(_.entryName).mkString(", ")}"
+    descr = f"Comma-separated list of output formats among: ${OutputFormat.values.map(_.entryName).mkString(", ")}"
   )
   val evalDir: ScallopOption[String] = opt[String]()
   val testRectangle: ScallopOption[String] = opt[String]()
-  val beamWidth: ScallopOption[Int] = opt[Int](descr =
-    "The beam width to use if the algorithm uses it. If not provided will use value from config."
-  )
+  val beamWidth: ScallopOption[Int] =
+    opt[Int](descr = "The beam width to use if the algorithm uses it. If not provided will use value from config.")
   val unknownWordFactor: ScallopOption[Double] = opt[Double](descr =
     "Factor to apply to unknown words in order to reduce their score. If not provided, will use value from config."
   )

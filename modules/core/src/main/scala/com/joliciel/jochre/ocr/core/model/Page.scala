@@ -30,8 +30,8 @@ case class Page(
     textBlock
   }
 
-  lazy val composedBlocks: Seq[ComposedBlock] = blocks.collect {
-    case composedBlock: ComposedBlock => composedBlock
+  lazy val composedBlocks: Seq[ComposedBlock] = blocks.collect { case composedBlock: ComposedBlock =>
+    composedBlock
   }
 
   lazy val illustrations: Seq[Illustration] = blocks.collect { case illustration: Illustration =>
@@ -174,9 +174,8 @@ case class Page(
     val baseId = f"$physicalPageNumber%05d"
     val newBlocks = blocks.zipWithIndex.map {
       case (composedBlock: ComposedBlock, i) =>
-        val newTextBlocks = composedBlock.textBlocks.zipWithIndex.map {
-          case (textBlock: TextBlock, j) =>
-            textBlock.copy(id = f"TB_${baseId}_${i + 1}%03d_${j + 1}%03d")
+        val newTextBlocks = composedBlock.textBlocks.zipWithIndex.map { case (textBlock: TextBlock, j) =>
+          textBlock.copy(id = f"TB_${baseId}_${i + 1}%03d_${j + 1}%03d")
         }
         composedBlock.copy(
           id = f"CB_${baseId}_${i + 1}%03d",
@@ -205,9 +204,7 @@ case class Page(
       val newBlocks = this.blocks.map {
         case textBlock: TextBlock => textBlock.withDefaultLanguage(newLanguage)
         case composedBlock: ComposedBlock =>
-          composedBlock.copy(textBlocks =
-            composedBlock.textBlocks.map(_.withDefaultLanguage(newLanguage))
-          )
+          composedBlock.copy(textBlocks = composedBlock.textBlocks.map(_.withDefaultLanguage(newLanguage)))
         case other => other
       }
 

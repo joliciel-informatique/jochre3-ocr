@@ -6,9 +6,7 @@ import org.bytedeco.opencv.opencv_core.Mat
 
 import scala.xml.{Elem, Node}
 
-case class Glyph(content: String, rectangle: Rectangle, confidence: Double)
-    extends PageElement
-    with WithRectangle {
+case class Glyph(content: String, rectangle: Rectangle, confidence: Double) extends PageElement with WithRectangle {
   override def translate(xDiff: Int, yDiff: Int): Glyph =
     this.copy(rectangle = rectangle.translate(xDiff, yDiff))
 

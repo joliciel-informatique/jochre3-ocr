@@ -2,8 +2,7 @@ package com.joliciel.jochre.ocr.core.utils
 
 trait StringUtils {
 
-  /** Splits a string into characters, but keeps combining characters combined with their base
-    * character.
+  /** Splits a string into characters, but keeps combining characters combined with their base character.
     */
   def stringToChars(string: String): Seq[String] =
     string.foldLeft(Seq.empty[String]) { case (chars, char) =>

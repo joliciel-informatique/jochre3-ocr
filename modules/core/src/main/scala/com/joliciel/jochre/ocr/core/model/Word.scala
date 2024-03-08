@@ -101,8 +101,8 @@ case class Word(
         glyph
       }
     val newAlternatives =
-      transformed.alternatives.map(_.transform(partialFunction)).collect {
-        case alternative: SpellingAlternative => alternative
+      transformed.alternatives.map(_.transform(partialFunction)).collect { case alternative: SpellingAlternative =>
+        alternative
       }
     transformed.copy(glyphs = newGlyphs, alternatives = newAlternatives)
   }

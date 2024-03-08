@@ -56,8 +56,8 @@ case class Rectangle(
   def iou(that: Rectangle): Double =
     areaOfIntersection(that) / areaOfUnion(that)
 
-  /** Note: this compare will fail for complex pages. Use BlockSorter instead (which tries this
-    * compare and, if it fails, performs a more complex compare).
+  /** Note: this compare will fail for complex pages. Use BlockSorter instead (which tries this compare and, if it
+    * fails, performs a more complex compare).
     */
   def simplePageLayoutCompare(that: Rectangle, leftToRight: Boolean): Int = {
     if (leftToRight) {
@@ -111,8 +111,8 @@ case class Rectangle(
     0
   }
 
-  /** Return 0 if there's an overlap > 50%. Return -1 if we should check later rectangles. Return 1
-    * if we should check earlier rectangles.
+  /** Return 0 if there's an overlap > 50%. Return -1 if we should check later rectangles. Return 1 if we should check
+    * earlier rectangles.
     */
   def testVerticalOverlap(that: Rectangle): Int = {
     if (this.top >= that.bottom) return 1
@@ -125,8 +125,8 @@ case class Rectangle(
     -1
   }
 
-  /** Return 0 if there's an overlap > 50%. Return -1 if we should check later rectangles. Return 1
-    * if we should check earlier rectangles.
+  /** Return 0 if there's an overlap > 50%. Return -1 if we should check later rectangles. Return 1 if we should check
+    * earlier rectangles.
     */
   def testHorizontalOverlap(that: Rectangle, leftToRight: Boolean): Int = {
     if (leftToRight) {

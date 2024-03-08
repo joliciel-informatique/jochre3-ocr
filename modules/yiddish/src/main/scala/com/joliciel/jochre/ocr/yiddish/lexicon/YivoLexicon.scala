@@ -30,9 +30,7 @@ trait YivoLexicon extends Lexicon {
   def toYivo(word: String, presimplified: Boolean = false): String
 }
 
-private class YivoLexiconImpl(entries: Set[String])
-    extends TextFileLexicon(entries)
-    with YivoLexicon {
+private class YivoLexiconImpl(entries: Set[String]) extends TextFileLexicon(entries) with YivoLexicon {
   private val yivoTranscriber = new YivoTranscriber()
   private var wordToYivo = Map.empty[String, String]
 
@@ -103,13 +101,12 @@ private class YivoLexiconImpl(entries: Set[String])
         .lazyZip("" +: "" +: punctuationSplits)
         .toSeq
 
-      val abbreviationIndexes = splitTriplets.zipWithIndex.flatMap {
-        case ((next, current, prev), i) =>
-          Option.when(
-            quoteRegex.matches(current) && abbreviationRegex.matches(
-              f"$prev$current$next"
-            )
-          )(i - 1)
+      val abbreviationIndexes = splitTriplets.zipWithIndex.flatMap { case ((next, current, prev), i) =>
+        Option.when(
+          quoteRegex.matches(current) && abbreviationRegex.matches(
+            f"$prev$current$next"
+          )
+        )(i - 1)
       }.toSet
 
       val decimalIndexes = splitTriplets.zipWithIndex.flatMap { case ((next, current, prev), i) =>

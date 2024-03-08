@@ -4,14 +4,7 @@ import com.joliciel.jochre.ocr.core.alto.AltoTransformer
 import com.joliciel.jochre.ocr.core.corpus.TextSimplifier
 import com.joliciel.jochre.ocr.core.graphics.Rectangle
 import com.joliciel.jochre.ocr.core.model
-import com.joliciel.jochre.ocr.core.model.{
-  AltoElement,
-  Glyph,
-  Hyphen,
-  SpellingAlternative,
-  TextLine,
-  Word
-}
+import com.joliciel.jochre.ocr.core.model.{AltoElement, Glyph, Hyphen, SpellingAlternative, TextLine, Word}
 import com.joliciel.jochre.ocr.core.utils.{StringUtils, XmlImplicits}
 import com.joliciel.jochre.ocr.yiddish.YiddishAltoTransformer.{Purpose, punctuationAndNotRegex}
 import com.joliciel.jochre.ocr.yiddish.lexicon.YivoLexicon
@@ -165,16 +158,15 @@ object YiddishAltoTransformer extends XmlImplicits with StringUtils {
             .lazyZip("" +: "" +: contentSeq)
             .toSeq
 
-          val abbreviationIndexes = contentTriplets.zipWithIndex.flatMap {
-            case ((next, current, prev), i) =>
-              Option.when(
-                (quoteRegex.matches(current) && abbreviationRegex.matches(
+          val abbreviationIndexes = contentTriplets.zipWithIndex.flatMap { case ((next, current, prev), i) =>
+            Option.when(
+              (quoteRegex.matches(current) && abbreviationRegex.matches(
+                f"$prev$current$next"
+              )) ||
+                (dotRegex.matches(current) && decimalNumberRegex.matches(
                   f"$prev$current$next"
-                )) ||
-                  (dotRegex.matches(current) && decimalNumberRegex.matches(
-                    f"$prev$current$next"
-                  ))
-              )(i - 1)
+                ))
+            )(i - 1)
           }.toSet
 
           val correctedGlyphSequences = glyphSequences.zipWithIndex.flatMap { case (nodes, i) =>

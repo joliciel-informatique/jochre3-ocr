@@ -14,13 +14,12 @@ package object model {
   object SubsType extends Enum[SubsType] {
     val values: IndexedSeq[SubsType] = findValues
 
-    /** If content is the first part of a hyphenated word, applies only for the last word of a line
-      * if it is hyphenated
+    /** If content is the first part of a hyphenated word, applies only for the last word of a line if it is hyphenated
       */
     case object HypPart1 extends SubsType
 
-    /** If content is the second part of a hyphenated word, applies only for the first word of a
-      * line if it is hyphenated
+    /** If content is the second part of a hyphenated word, applies only for the first word of a line if it is
+      * hyphenated
       */
     case object HypPart2 extends SubsType
   }

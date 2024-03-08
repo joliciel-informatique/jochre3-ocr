@@ -33,8 +33,7 @@ case class TextLine(
       }
       .getOrElse(words)
 
-  /** A sequence of words in which any words not separated by white space have been combined into a
-    * single word
+  /** A sequence of words in which any words not separated by white space have been combined into a single word
     */
   lazy val combinedWords: Seq[Word] = wordsAndSpaces
     .foldLeft(Seq.empty[Word] -> true) { case ((combinedWords, newWord), wordOrSpace) =>
@@ -110,8 +109,8 @@ case class TextLine(
       partialFunction(this).asInstanceOf[TextLine]
     } else { this }
     val newWordsAndSpaces =
-      transformed.wordsAndSpaces.map(_.transform(partialFunction)).collect {
-        case wordOrSpace: WordOrSpace => wordOrSpace
+      transformed.wordsAndSpaces.map(_.transform(partialFunction)).collect { case wordOrSpace: WordOrSpace =>
+        wordOrSpace
       }
     transformed.copy(wordsAndSpaces = newWordsAndSpaces)
   }

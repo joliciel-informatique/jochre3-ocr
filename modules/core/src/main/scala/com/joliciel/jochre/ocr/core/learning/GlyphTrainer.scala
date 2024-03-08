@@ -20,8 +20,7 @@ import scala.util.matching.Regex
 /** @param checkpoint
   *   save the model at the end of the epoch every checkpoint, default is 1
   * @param wordSelectionRegex
-  *   if provided, will limit this trainer to glyphs contained in words whose content matches the
-  *   regex
+  *   if provided, will limit this trainer to glyphs contained in words whose content matches the regex
   */
 case class GlyphTrainer(
     corpusDir: Path,

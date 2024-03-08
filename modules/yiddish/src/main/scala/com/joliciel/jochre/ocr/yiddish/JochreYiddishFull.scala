@@ -4,21 +4,14 @@ import com.joliciel.jochre.ocr.core.alto.AltoTransformer
 import com.joliciel.jochre.ocr.core.corpus.TextSimplifier
 import com.joliciel.jochre.ocr.core.learning.{GlyphGuesser, GlyphGuessersForOtherAlphabets}
 import com.joliciel.jochre.ocr.core.lexicon.Lexicon
-import com.joliciel.jochre.ocr.core.segmentation.{
-  FullYoloSegmenterService,
-  SegmenterService,
-  YoloPredictorService
-}
+import com.joliciel.jochre.ocr.core.segmentation.{FullYoloSegmenterService, SegmenterService, YoloPredictorService}
 import com.joliciel.jochre.ocr.core.text.{
   FullSegmentationGuesserConfig,
   FullSegmentationGuesserService,
   TextGuesserService
 }
 import com.joliciel.jochre.ocr.core.{AbstractJochre, Jochre, JochreAppBase, JochreCLI}
-import com.joliciel.jochre.ocr.yiddish.learning.{
-  YiddishGlyphGuesser,
-  YiddishGlyphGuessersForOtherAlphabets
-}
+import com.joliciel.jochre.ocr.yiddish.learning.{YiddishGlyphGuesser, YiddishGlyphGuessersForOtherAlphabets}
 import com.joliciel.jochre.ocr.yiddish.lexicon.{YivoLexicon, YivoLexiconService}
 import sttp.client3.httpclient.zio.{HttpClientZioBackend, SttpClient}
 import zio._
@@ -46,8 +39,7 @@ object JochreYiddishFull extends ZIOAppDefault with JochreAppBase {
     FullYoloSegmenterService.live
   private val glyphGuesserLayer: ZLayer[Any, Throwable, GlyphGuesser] =
     YiddishGlyphGuesser.live
-  private val glyphGuessersForOtherAlphabetsLayer
-      : ZLayer[Any, Throwable, GlyphGuessersForOtherAlphabets] =
+  private val glyphGuessersForOtherAlphabetsLayer: ZLayer[Any, Throwable, GlyphGuessersForOtherAlphabets] =
     YiddishGlyphGuessersForOtherAlphabets.live
   private val yivoLexiconService: ZLayer[YiddishConfig, Throwable, YivoLexiconService] =
     YivoLexiconService.live

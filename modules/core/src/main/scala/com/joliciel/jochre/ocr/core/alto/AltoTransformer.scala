@@ -17,8 +17,8 @@ import java.io.{File, Reader}
 import scala.xml.transform.{RewriteRule, RuleTransformer}
 import scala.xml.{Attribute, Elem, Node, Text, XML}
 
-/** Given Alto XML as input, transforms it to produce appropriate output, including in particular
-  * the possibility of adding String alternatives.
+/** Given Alto XML as input, transforms it to produce appropriate output, including in particular the possibility of
+  * adding String alternatives.
   */
 trait AltoTransformer extends XmlImplicits {
   def removeGlyphs: Boolean = false
