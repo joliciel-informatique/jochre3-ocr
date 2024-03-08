@@ -11,5 +11,25 @@ services:
       DOCUMENT_LAYOUT_ANALYSIS_URL: http://yolo-dla:8444
       JOCHRE3_OCR_VERSION: ${JOCHRE3_OCR_VERSION:-0.2.2-SNAPSHOT}
       JOCHRE3_OCR_DIRECTORY: /opt/docker
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "10"
+    restart_policy:
+      condition: on-failure
+      delay: 5s
+      max_attempts: 3
+      window: 120s
   yolo-dla:
     image: registry.gitlab.com/jochre/yolo-dla-server:1.0.0
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "10"
+    restart_policy:
+      condition: on-failure
+      delay: 5s
+      max_attempts: 3
+      window: 120s

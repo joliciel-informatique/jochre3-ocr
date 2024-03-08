@@ -2,4 +2,9 @@ version: '3.7'
 services:
   yolo-dla:
     image: registry.gitlab.com/jochre/yolo-dla-server:1.0.0
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "10"
     
