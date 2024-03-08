@@ -11,8 +11,8 @@ trait AltoFinder {
 
 object AltoFinder {
 
-  /** The default alto finder assumes if the image is called "blah/blah.jpg", then an alto file is
-    * located in the same directory called "blah/blah_alto4.xml"
+  /** The default alto finder assumes if the image is called "blah/blah.jpg", then an alto file is located in the same
+    * directory called "blah/blah_alto4.xml"
     */
   val default: AltoFinder = (imagePath: Path) => {
     val imagePathString = imagePath.toString

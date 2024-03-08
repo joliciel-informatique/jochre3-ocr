@@ -111,88 +111,86 @@ case class YoloAnnotator(
 
     // Non-blocks are based on the page cropped down to the print area
     val yoloNonBlocks = baseAlto.allTextBoxes.flatMap { textBlock =>
-      textBlock.textLinesWithRectangles.zipWithIndex.flatMap {
-        case ((textLine, textLineRectangle), i) =>
-          val baseLineType = if (i == textBlock.textLines.length - 1) {
-            YoloObjectType.FinalBaseLine
-          } else {
-            YoloObjectType.NonFinalBaseLine
-          }
+      textBlock.textLinesWithRectangles.zipWithIndex.flatMap { case ((textLine, textLineRectangle), i) =>
+        val baseLineType = if (i == textBlock.textLines.length - 1) {
+          YoloObjectType.FinalBaseLine
+        } else {
+          YoloObjectType.NonFinalBaseLine
+        }
 
-          val baseLineY =
-            (textLine.baseLine.y1 + textLine.baseLine.y2).toDouble / 2.0
-          val baseLineHeightInPixels = lineThickness * height
+        val baseLineY =
+          (textLine.baseLine.y1 + textLine.baseLine.y2).toDouble / 2.0
+        val baseLineHeightInPixels = lineThickness * height
 
-          val baseLineBox = YoloBox(
-            YoloObjectType.BaseLine,
-            xCenter = ((textLine.baseLine.x1 + textLine.baseLine.x2).toDouble / 2.0) / width,
-            yCenter = baseLineY / height,
-            width = textLine.baseLine.width.toDouble / width,
-            height = baseLineHeightInPixels / height
+        val baseLineBox = YoloBox(
+          YoloObjectType.BaseLine,
+          xCenter = ((textLine.baseLine.x1 + textLine.baseLine.x2).toDouble / 2.0) / width,
+          yCenter = baseLineY / height,
+          width = textLine.baseLine.width.toDouble / width,
+          height = baseLineHeightInPixels / height
+        )
+
+        val baseLineBoxTyped = baseLineBox.copy(yoloClass = baseLineType)
+
+        val wordBoxes = textLine.combinedWords.map { word =>
+          YoloBox(
+            YoloObjectType.Word,
+            xCenter = word.rectangle.xCenter.toDouble / width,
+            yCenter = word.rectangle.yCenter.toDouble / height,
+            width = word.rectangle.width.toDouble / width,
+            height = word.rectangle.height.toDouble / height
           )
+        }
 
-          val baseLineBoxTyped = baseLineBox.copy(yoloClass = baseLineType)
-
-          val wordBoxes = textLine.combinedWords.map { word =>
+        val glyphBoxes = textLine.combinedWords.flatMap { word =>
+          word.glyphs.map { glyph =>
             YoloBox(
-              YoloObjectType.Word,
-              xCenter = word.rectangle.xCenter.toDouble / width,
-              yCenter = word.rectangle.yCenter.toDouble / height,
-              width = word.rectangle.width.toDouble / width,
-              height = word.rectangle.height.toDouble / height
+              YoloObjectType.Glyph,
+              xCenter = glyph.rectangle.xCenter.toDouble / width,
+              yCenter = glyph.rectangle.yCenter.toDouble / height,
+              width = glyph.rectangle.width.toDouble / width,
+              height = glyph.rectangle.height.toDouble / height
             )
           }
+        }
 
-          val glyphBoxes = textLine.combinedWords.flatMap { word =>
-            word.glyphs.map { glyph =>
-              YoloBox(
-                YoloObjectType.Glyph,
-                xCenter = glyph.rectangle.xCenter.toDouble / width,
-                yCenter = glyph.rectangle.yCenter.toDouble / height,
-                width = glyph.rectangle.width.toDouble / width,
-                height = glyph.rectangle.height.toDouble / height
-              )
-            }
-          }
+        val wordSeparatorBoxes = textLine.spaces.map { space =>
+          YoloBox(
+            YoloObjectType.WordSeparator,
+            xCenter = (space.rectangle.left.toDouble + (space.rectangle.width.toDouble / 2.0)) / width,
+            yCenter = ((textLineRectangle.top.toDouble + baseLineY) / 2.0) / height,
+            width = space.rectangle.width.toDouble / width,
+            height = ((baseLineY - textLineRectangle.top.toDouble) * 0.85) / height
+          )
+        }
 
-          val wordSeparatorBoxes = textLine.spaces.map { space =>
-            YoloBox(
-              YoloObjectType.WordSeparator,
-              xCenter =
-                (space.rectangle.left.toDouble + (space.rectangle.width.toDouble / 2.0)) / width,
-              yCenter = ((textLineRectangle.top.toDouble + baseLineY) / 2.0) / height,
-              width = space.rectangle.width.toDouble / width,
-              height = ((baseLineY - textLineRectangle.top.toDouble) * 0.85) / height
-            )
-          }
-
-          val letterSeparatorBoxes = textLine.combinedWords.flatMap { word =>
-            word.glyphs
-              .sorted(WithRectangle.HorizontalOrdering(word.isLeftToRight))
-              .zipWithIndex
-              .flatMap { case (glyph, i) =>
-                Option.when(i > 0) {
-                  val xCenter = glyph.rectangle.left.toDouble
-                  val yCenter =
-                    (textLineRectangle.top.toDouble + baseLineY) / 2.0
-                  val separatorHeight =
-                    ((baseLineY - textLineRectangle.top.toDouble) * 0.85).toInt
-                  val separatorWidth = (lineThickness * width).toInt
-                  YoloBox(
-                    YoloObjectType.GlyphSeparator,
-                    xCenter,
-                    yCenter,
-                    separatorWidth,
-                    separatorHeight
-                  )
-                }
+        val letterSeparatorBoxes = textLine.combinedWords.flatMap { word =>
+          word.glyphs
+            .sorted(WithRectangle.HorizontalOrdering(word.isLeftToRight))
+            .zipWithIndex
+            .flatMap { case (glyph, i) =>
+              Option.when(i > 0) {
+                val xCenter = glyph.rectangle.left.toDouble
+                val yCenter =
+                  (textLineRectangle.top.toDouble + baseLineY) / 2.0
+                val separatorHeight =
+                  ((baseLineY - textLineRectangle.top.toDouble) * 0.85).toInt
+                val separatorWidth = (lineThickness * width).toInt
+                YoloBox(
+                  YoloObjectType.GlyphSeparator,
+                  xCenter,
+                  yCenter,
+                  separatorWidth,
+                  separatorHeight
+                )
               }
-          }
-          val allBoxes = Seq(
-            baseLineBox,
-            baseLineBoxTyped
-          ) ++ wordBoxes ++ glyphBoxes ++ wordSeparatorBoxes ++ letterSeparatorBoxes
-          allBoxes.filter(box => objectTypeSet.contains(box.yoloClass))
+            }
+        }
+        val allBoxes = Seq(
+          baseLineBox,
+          baseLineBoxTyped
+        ) ++ wordBoxes ++ glyphBoxes ++ wordSeparatorBoxes ++ letterSeparatorBoxes
+        allBoxes.filter(box => objectTypeSet.contains(box.yoloClass))
       }
     }
 
@@ -204,10 +202,8 @@ case class YoloAnnotator(
             YoloObjectType.TopLevelTextBlock,
             xCenter = composedBlock.rectangle.xCenter.toDouble / width,
             yCenter = composedBlock.rectangle.yCenter.toDouble / height,
-            width =
-              composedBlock.rectangle.width.toDouble / width + textBlockHorizontalMargin * 2.0,
-            height =
-              composedBlock.rectangle.height.toDouble / height + textBlockVerticalMargin * 2.0
+            width = composedBlock.rectangle.width.toDouble / width + textBlockHorizontalMargin * 2.0,
+            height = composedBlock.rectangle.height.toDouble / height + textBlockVerticalMargin * 2.0
           )
         case textBlock: TextBlock =>
           YoloBox(
@@ -293,44 +289,43 @@ case class YoloAnnotator(
         val originalImage = toBufferedImage(tileMat)
         graphics.drawImage(originalImage, 0, 0, null)
         graphics.setComposite(AlphaComposite.SrcOver.derive(0.5f))
-        tileBoxes.zipWithIndex.foreach {
-          case (YoloBox(yoloClass, xCenter, yCenter, boxWidth, boxHeight), i) =>
-            val colors = yoloClass match {
-              case YoloObjectType.TopLevelTextBlock =>
-                (Color.YELLOW, Color.YELLOW)
-              case YoloObjectType.Illustration     => (Color.BLUE, Color.BLUE)
-              case YoloObjectType.BaseLine         => (Color.BLUE, Color.GREEN)
-              case YoloObjectType.NonFinalBaseLine => (Color.BLUE, Color.GREEN)
-              case YoloObjectType.FinalBaseLine    => (Color.RED, Color.ORANGE)
-              case YoloObjectType.Word             => (Color.YELLOW, Color.ORANGE)
-              case YoloObjectType.WordSeparator    => (Color.YELLOW, Color.ORANGE)
-              case YoloObjectType.Glyph            => (Color.YELLOW, Color.ORANGE)
-              case YoloObjectType.GlyphSeparator   => (Color.BLUE, Color.GREEN)
-            }
-            val color = if (i % 2 == 0) {
-              colors._1
-            } else {
-              colors._2
-            }
-            graphics.setColor(color)
-            val xPoints = Array(
-              xCenter - boxWidth / 2.0,
-              xCenter - boxWidth / 2.0,
-              xCenter + boxWidth / 2.0,
-              xCenter + boxWidth / 2.0
-            ).map(_ * tile.width.toDouble).map(_.toInt)
-            val yPoints = Array(
-              yCenter - boxHeight / 2.0,
-              yCenter + boxHeight / 2.0,
-              yCenter + boxHeight / 2.0,
-              yCenter - boxHeight / 2.0
-            ).map(_ * tile.height.toDouble).map(_.toInt)
-            val polygon = new Polygon(xPoints, yPoints, xPoints.length)
-            log.debug(f"Color: $color. Polygon: ${polygon.xpoints
-              .zip(polygon.ypoints)
-              .map { case (x, y) => f"($x, $y)" }
-              .mkString(", ")}")
-            graphics.fillPolygon(polygon)
+        tileBoxes.zipWithIndex.foreach { case (YoloBox(yoloClass, xCenter, yCenter, boxWidth, boxHeight), i) =>
+          val colors = yoloClass match {
+            case YoloObjectType.TopLevelTextBlock =>
+              (Color.YELLOW, Color.YELLOW)
+            case YoloObjectType.Illustration     => (Color.BLUE, Color.BLUE)
+            case YoloObjectType.BaseLine         => (Color.BLUE, Color.GREEN)
+            case YoloObjectType.NonFinalBaseLine => (Color.BLUE, Color.GREEN)
+            case YoloObjectType.FinalBaseLine    => (Color.RED, Color.ORANGE)
+            case YoloObjectType.Word             => (Color.YELLOW, Color.ORANGE)
+            case YoloObjectType.WordSeparator    => (Color.YELLOW, Color.ORANGE)
+            case YoloObjectType.Glyph            => (Color.YELLOW, Color.ORANGE)
+            case YoloObjectType.GlyphSeparator   => (Color.BLUE, Color.GREEN)
+          }
+          val color = if (i % 2 == 0) {
+            colors._1
+          } else {
+            colors._2
+          }
+          graphics.setColor(color)
+          val xPoints = Array(
+            xCenter - boxWidth / 2.0,
+            xCenter - boxWidth / 2.0,
+            xCenter + boxWidth / 2.0,
+            xCenter + boxWidth / 2.0
+          ).map(_ * tile.width.toDouble).map(_.toInt)
+          val yPoints = Array(
+            yCenter - boxHeight / 2.0,
+            yCenter + boxHeight / 2.0,
+            yCenter + boxHeight / 2.0,
+            yCenter - boxHeight / 2.0
+          ).map(_ * tile.height.toDouble).map(_.toInt)
+          val polygon = new Polygon(xPoints, yPoints, xPoints.length)
+          log.debug(f"Color: $color. Polygon: ${polygon.xpoints
+            .zip(polygon.ypoints)
+            .map { case (x, y) => f"($x, $y)" }
+            .mkString(", ")}")
+          graphics.fillPolygon(polygon)
         }
         graphics.dispose()
 
@@ -427,8 +422,7 @@ object YoloAnnotator {
     case object ObjectDetection extends YoloTask
   }
 
-  private class YoloLineAnnotatorForSegmentationCLI(arguments: Seq[String])
-      extends ScallopConf(arguments) {
+  private class YoloLineAnnotatorForSegmentationCLI(arguments: Seq[String]) extends ScallopConf(arguments) {
     val task: ScallopOption[String] = opt[String](
       required = true,
       descr = s"The annotation task among: ${YoloTask.values.map(_.entryName).mkString(", ")}"
@@ -455,18 +449,15 @@ object YoloAnnotator {
     )
     val yamlFile: ScallopOption[String] = opt[String](
       required = false,
-      descr =
-        "If present, the file to which we write the YOLO YAML configuration, placed in the out-dir"
+      descr = "If present, the file to which we write the YOLO YAML configuration, placed in the out-dir"
     )
     val validationOneEvery: ScallopOption[Int] = opt[Int](
       required = false,
-      descr =
-        "If present, add train/val sub-directories and mark one out of every n files for validation"
+      descr = "If present, add train/val sub-directories and mark one out of every n files for validation"
     )
     val objectsToInclude: ScallopOption[List[String]] = opt[List[String]](
       required = true,
-      descr =
-        f"A comma-separated list from ${YoloObjectType.values.map(_.entryName).mkString(", ")}"
+      descr = f"A comma-separated list from ${YoloObjectType.values.map(_.entryName).mkString(", ")}"
     )
     val imageSize: ScallopOption[Int] = opt[Int](
       default = Some(1280),

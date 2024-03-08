@@ -18,9 +18,9 @@ case class Hyphen(content: String, rectangle: Rectangle) extends WordOrSpace {
     this.copy(rectangle = this.rectangle.rescale(scale))
 
   override def toXml: Elem =
-    <HYP HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} WIDTH={
-      rectangle.width.toString
-    } HEIGHT={rectangle.height.toString} CONTENT={content}></HYP>
+    <HYP HPOS={rectangle.left.toString} VPOS={rectangle.top.toString}
+         WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString}
+         CONTENT={content}></HYP>
 
   def toWord: Word =
     Word(

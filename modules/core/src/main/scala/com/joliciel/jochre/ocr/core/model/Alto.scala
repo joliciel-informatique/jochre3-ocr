@@ -28,9 +28,7 @@ case class Alto(
         <fileName>{fileName}</fileName>
       </sourceImageInformation>
       <Processing ID="OCR_1">
-        <processingDateTime>{
-    processingTime.format(dateTimeFormatter)
-  }</processingDateTime>
+        <processingDateTime>{processingTime.format(dateTimeFormatter)}</processingDateTime>
         <processingStepDescription>contentGeneration</processingStepDescription>
         <processingSoftware>
           <softwareCreator>Joliciel Informatique</softwareCreator>

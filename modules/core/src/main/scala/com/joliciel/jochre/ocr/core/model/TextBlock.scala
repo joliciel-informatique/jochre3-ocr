@@ -23,24 +23,23 @@ case class TextBlock(
     val optionalTextLinesAfter = textLines.drop(1).map(Some(_)) :+ None
 
     val surroundedTextLines = textLines.zip(optionalTextLinesAfter)
-    val rectangles = surroundedTextLines.foldLeft(Seq.empty[Rectangle]) {
-      case (rectangles, (current, after)) =>
-        val lastRectangle = rectangles.lastOption
-        val top = lastRectangle.map(_.bottom).getOrElse(rectangle.top)
-        val height = after
-          .map { after =>
-            val distanceToTop = current.baseLine.y1 - top
-            val distanceToNext = after.baseLine.y1 - current.baseLine.y1
-            distanceToTop + (distanceToNext * 0.25).toInt
-          }
-          .getOrElse(rectangle.bottom - top)
-        val myRectangle = Rectangle(
-          current.baseLine.x1,
-          top,
-          current.baseLine.x2 - current.baseLine.x1,
-          height
-        )
-        rectangles :+ myRectangle
+    val rectangles = surroundedTextLines.foldLeft(Seq.empty[Rectangle]) { case (rectangles, (current, after)) =>
+      val lastRectangle = rectangles.lastOption
+      val top = lastRectangle.map(_.bottom).getOrElse(rectangle.top)
+      val height = after
+        .map { after =>
+          val distanceToTop = current.baseLine.y1 - top
+          val distanceToNext = after.baseLine.y1 - current.baseLine.y1
+          distanceToTop + (distanceToNext * 0.25).toInt
+        }
+        .getOrElse(rectangle.bottom - top)
+      val myRectangle = Rectangle(
+        current.baseLine.x1,
+        top,
+        current.baseLine.x2 - current.baseLine.x1,
+        height
+      )
+      rectangles :+ myRectangle
     }
     textLines.zip(rectangles)
   }
@@ -65,12 +64,12 @@ case class TextBlock(
   )
 
   override def toXml: Elem =
-    <TextBlock ID={id} HPOS={rectangle.left.toString} VPOS={
-      rectangle.top.toString
-    } WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString}
-               STYLEREFS={styleRefs.orNull} TAGREFS={tagRefs.orNull} IDNEXT={
-      idNext.orNull
-    }>{textLines.map(_.toXml)}</TextBlock>
+    <TextBlock ID={id}
+               HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} 
+               WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString}
+               STYLEREFS={styleRefs.orNull} TAGREFS={tagRefs.orNull}
+               IDNEXT={idNext.orNull}
+    >{textLines.map(_.toXml)}</TextBlock>
 
   def allWords: Seq[Word] = textLines.flatMap(_.words)
 

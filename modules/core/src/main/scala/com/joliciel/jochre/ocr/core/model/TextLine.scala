@@ -33,8 +33,7 @@ case class TextLine(
       }
       .getOrElse(words)
 
-  /** A sequence of words in which any words not separated by white space have been combined into a
-    * single word
+  /** A sequence of words in which any words not separated by white space have been combined into a single word
     */
   lazy val combinedWords: Seq[Word] = wordsAndSpaces
     .foldLeft(Seq.empty[Word] -> true) { case ((combinedWords, newWord), wordOrSpace) =>
@@ -81,13 +80,11 @@ case class TextLine(
   )
 
   override def toXml: Elem =
-    <TextLine HPOS={baseLine.x1.toString} VPOS={baseLine.y1.toString} WIDTH={
-      baseLine.width.toString
-    } HEIGHT={baseLine.height.toString}
-              BASELINE={
-      f"${baseLine.x1},${baseLine.y1} ${baseLine.x2},${baseLine.y2}"
-    } STYLEREFS={styleRefs.orNull} TAGREFS={tagRefs.orNull}>
-      {wordsAndSpaces.map(_.toXml)}</TextLine>
+    <TextLine HPOS={baseLine.x1.toString} VPOS={baseLine.y1.toString}
+              WIDTH={baseLine.width.toString} HEIGHT={baseLine.height.toString}
+              BASELINE={f"${baseLine.x1},${baseLine.y1} ${baseLine.x2},${baseLine.y2}"}
+              STYLEREFS={styleRefs.orNull} TAGREFS={tagRefs.orNull}
+    >{wordsAndSpaces.map(_.toXml)}</TextLine>
 
   override def compare(that: TextLine): Int =
     this.baseLine.compare(that.baseLine)
@@ -112,8 +109,8 @@ case class TextLine(
       partialFunction(this).asInstanceOf[TextLine]
     } else { this }
     val newWordsAndSpaces =
-      transformed.wordsAndSpaces.map(_.transform(partialFunction)).collect {
-        case wordOrSpace: WordOrSpace => wordOrSpace
+      transformed.wordsAndSpaces.map(_.transform(partialFunction)).collect { case wordOrSpace: WordOrSpace =>
+        wordOrSpace
       }
     transformed.copy(wordsAndSpaces = newWordsAndSpaces)
   }

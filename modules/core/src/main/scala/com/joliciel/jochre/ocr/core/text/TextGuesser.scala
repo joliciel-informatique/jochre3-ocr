@@ -7,8 +7,8 @@ import zio.Task
 
 trait TextGuesser {
 
-  /** Given an image and a pre-segmented [[Page]] structure, attempt to guess the text within the
-    * page by assigning content to the resulting page.
+  /** Given an image and a pre-segmented [[Page]] structure, attempt to guess the text within the page by assigning
+    * content to the resulting page.
     */
   def guess(
       page: Page,

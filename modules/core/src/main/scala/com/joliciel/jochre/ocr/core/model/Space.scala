@@ -21,9 +21,9 @@ case class Space(rectangle: Rectangle) extends WordOrSpace {
   )
 
   override def toXml: Elem =
-    <SP HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} WIDTH={
-      rectangle.width.toString
-    } HEIGHT={rectangle.height.toString}></SP>
+    <SP HPOS={rectangle.left.toString} VPOS={rectangle.top.toString}
+        WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString}
+    ></SP>
 
   override def draw(mat: Mat): Unit = {
     opencv_imgproc.rectangle(

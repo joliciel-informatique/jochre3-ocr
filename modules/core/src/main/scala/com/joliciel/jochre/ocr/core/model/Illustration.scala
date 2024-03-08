@@ -24,11 +24,10 @@ case class Illustration(
   )
 
   override def toXml: Elem =
-    <Illustration ID={id} HPOS={rectangle.left.toString} VPOS={
-      rectangle.top.toString
-    } WIDTH={rectangle.width.toString} HEIGHT={
-      rectangle.height.toString
-    }></Illustration>
+    <Illustration ID={id}
+                  HPOS={rectangle.left.toString} VPOS={rectangle.top.toString}
+                  WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString}
+    ></Illustration>
 
   override def draw(mat: Mat): Unit = {
     opencv_imgproc.rectangle(

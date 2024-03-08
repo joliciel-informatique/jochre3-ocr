@@ -8,8 +8,8 @@ import zio.Task
 
 trait Segmenter {
 
-  /** Transform an image into a segmented [[Page]] structure. The page might only be segmented down
-    * to a given level (e.g. blocks, lines, strings, or glyphs)
+  /** Transform an image into a segmented [[Page]] structure. The page might only be segmented down to a given level
+    * (e.g. blocks, lines, strings, or glyphs)
     */
   def segment(
       mat: Mat,

@@ -10,11 +10,10 @@ case class TextStyle(
     fontSize: Option[Double] = None
 ) {
   def toXml: Elem =
-    <TextStyle ID={id} FONTFAMILY={fontFamily.orNull} FONTTYPE={
-      fontType.orNull
-    } FONTWIDTH={fontWidth.orNull} FONTSIZE={
-      fontSize.map(size => f"$size%.1f").orNull
-    }></TextStyle>
+    <TextStyle ID={id}
+               FONTFAMILY={fontFamily.orNull} FONTTYPE={fontType.orNull}
+               FONTWIDTH={fontWidth.orNull} FONTSIZE={fontSize.map(size => f"$size%.1f").orNull}
+    ></TextStyle>
 }
 
 object TextStyle {

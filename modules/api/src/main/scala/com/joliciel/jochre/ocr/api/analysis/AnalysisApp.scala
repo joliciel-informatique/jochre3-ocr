@@ -7,13 +7,7 @@ import sttp.capabilities.zio.ZioStreams
 import sttp.model.StatusCode
 import sttp.tapir.generic.auto._
 import sttp.tapir.json.zio.jsonBody
-import sttp.tapir.ztapir.{
-  ZServerEndpoint,
-  oneOfVariant,
-  streamTextBody,
-  endpoint => tapirEndpoint,
-  _
-}
+import sttp.tapir.ztapir.{ZServerEndpoint, oneOfVariant, streamTextBody, endpoint => tapirEndpoint, _}
 import sttp.tapir.{AnyEndpoint, CodecFormat, PublicEndpoint, multipartBody, oneOf}
 import zio.stream.ZStream
 

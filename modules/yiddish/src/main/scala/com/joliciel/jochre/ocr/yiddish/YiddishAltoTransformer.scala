@@ -4,14 +4,7 @@ import com.joliciel.jochre.ocr.core.alto.AltoTransformer
 import com.joliciel.jochre.ocr.core.corpus.TextSimplifier
 import com.joliciel.jochre.ocr.core.graphics.Rectangle
 import com.joliciel.jochre.ocr.core.model
-import com.joliciel.jochre.ocr.core.model.{
-  AltoElement,
-  Glyph,
-  Hyphen,
-  SpellingAlternative,
-  TextLine,
-  Word
-}
+import com.joliciel.jochre.ocr.core.model.{AltoElement, Glyph, Hyphen, SpellingAlternative, TextLine, Word}
 import com.joliciel.jochre.ocr.core.utils.{StringUtils, XmlImplicits}
 import com.joliciel.jochre.ocr.yiddish.YiddishAltoTransformer.{Purpose, punctuationAndNotRegex}
 import com.joliciel.jochre.ocr.yiddish.lexicon.YivoLexicon
@@ -31,7 +24,17 @@ case class YiddishAltoTransformer(
   private val shtumerAlef = raw"^א(?![יוײ ַָ])|(?<!^)א(?![ַָ])".r
 
   private val nonAbbreviationApostropheRegex = raw"""(?U)['‛’](\w\w+)""".r
-  override def getAlternatives(content: String): Set[SpellingAlternative] = {
+  override def getAlternatives(word: Word): Set[SpellingAlternative] = {
+    val content = word.content
+    val contentAlternatives = getAlternatives(content)
+    val hyphenatedAlternatives = word.subsContent.map(getAlternatives(_, true)).getOrElse(Set.empty)
+    contentAlternatives ++ hyphenatedAlternatives
+  }
+
+  private def getAlternatives(
+      content: String,
+      hyphenated: Boolean = false
+  ): Set[SpellingAlternative] = {
     val contentWithoutNonAbbreviationApostrophes =
       if (punctuationAndNotRegex.findFirstIn(content).isDefined) {
         nonAbbreviationApostropheRegex.pattern.matcher(content).replaceAll("$1")
@@ -70,14 +73,24 @@ case class YiddishAltoTransformer(
         realWord.getOrElse(newAlternatives.head)
       }
     }
-    val yivoAlternative = Option.when(fixedYivo != content)(
-      SpellingAlternative(Purpose.YIVO.entryName, fixedYivo)
-    )
+    val yivoAlternative = Option.when(fixedYivo != content) {
+      val purpose = if (hyphenated) {
+        Purpose.YIVOHyphenated
+      } else {
+        Purpose.YIVO
+      }
+      SpellingAlternative(purpose.entryName, fixedYivo)
+    }
     val romanized = YivoTransliterator.transliterate(fixedYivo)
 
-    val romanizedAlternative = Option.when(romanized != content)(
-      SpellingAlternative(Purpose.Roman.entryName, romanized)
-    )
+    val romanizedAlternative = Option.when(romanized != content) {
+      val purpose = if (hyphenated) {
+        Purpose.RomanHyphenated
+      } else {
+        Purpose.Roman
+      }
+      SpellingAlternative(purpose.entryName, romanized)
+    }
     Set(yivoAlternative, romanizedAlternative).flatten
   }
 
@@ -99,8 +112,9 @@ object YiddishAltoTransformer extends XmlImplicits with StringUtils {
     override val values: IndexedSeq[Purpose] = findValues
 
     case object YIVO extends Purpose
-
     case object Roman extends Purpose
+    case object YIVOHyphenated extends Purpose
+    case object RomanHyphenated extends Purpose
   }
 
   private val punctuationAndNotRegex =
@@ -144,16 +158,15 @@ object YiddishAltoTransformer extends XmlImplicits with StringUtils {
             .lazyZip("" +: "" +: contentSeq)
             .toSeq
 
-          val abbreviationIndexes = contentTriplets.zipWithIndex.flatMap {
-            case ((next, current, prev), i) =>
-              Option.when(
-                (quoteRegex.matches(current) && abbreviationRegex.matches(
+          val abbreviationIndexes = contentTriplets.zipWithIndex.flatMap { case ((next, current, prev), i) =>
+            Option.when(
+              (quoteRegex.matches(current) && abbreviationRegex.matches(
+                f"$prev$current$next"
+              )) ||
+                (dotRegex.matches(current) && decimalNumberRegex.matches(
                   f"$prev$current$next"
-                )) ||
-                  (dotRegex.matches(current) && decimalNumberRegex.matches(
-                    f"$prev$current$next"
-                  ))
-              )(i - 1)
+                ))
+            )(i - 1)
           }.toSet
 
           val correctedGlyphSequences = glyphSequences.zipWithIndex.flatMap { case (nodes, i) =>
@@ -169,7 +182,7 @@ object YiddishAltoTransformer extends XmlImplicits with StringUtils {
           }
 
           val correctedWords = correctedGlyphSequences.map { glyphSeq =>
-            glyphsToWord(glyphSeq, confidence, textSimplifier)
+            glyphsToWord(word, glyphSeq, confidence, textSimplifier)
           }
           correctedWords
         } else {
@@ -184,6 +197,7 @@ object YiddishAltoTransformer extends XmlImplicits with StringUtils {
     if (seq.isEmpty) 0 else seq.sum / seq.size
 
   private def glyphsToWord(
+      initialWord: Word,
       glyphs: Seq[Glyph],
       confidence: Double,
       textSimplifier: Option[TextSimplifier]
@@ -213,12 +227,11 @@ object YiddishAltoTransformer extends XmlImplicits with StringUtils {
       confidence
     }
 
-    Word(
-      simplifiedContent,
-      Rectangle(left, top, width, height),
-      glyphs,
-      Seq.empty,
-      myConfidence
+    initialWord.copy(
+      content = simplifiedContent,
+      rectangle = Rectangle(left, top, width, height),
+      glyphs = glyphs,
+      confidence = myConfidence
     )
   }
 
@@ -291,7 +304,7 @@ object YiddishAltoTransformer extends XmlImplicits with StringUtils {
                   Seq.empty
                 } else {
                   val stringElemWithoutHyphen =
-                    glyphsToWord(newStringGlyphs, confidence, textSimplifier)
+                    glyphsToWord(word, newStringGlyphs, confidence, textSimplifier)
                   val hyphen =
                     Hyphen(hyphenGlyph.content, hyphenGlyph.rectangle)
                   Seq(stringElemWithoutHyphen, hyphen)

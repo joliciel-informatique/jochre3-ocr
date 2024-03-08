@@ -46,8 +46,7 @@ object WithRectangle {
     def compare(a: T, b: T): Int = a.rectangle.verticalCompare(b.rectangle)
   }
 
-  case class SimplePageLayoutOrdering[T <: WithRectangle](leftToRight: Boolean)
-      extends Ordering[T] {
+  case class SimplePageLayoutOrdering[T <: WithRectangle](leftToRight: Boolean) extends Ordering[T] {
     def compare(a: T, b: T): Int =
       a.rectangle.simplePageLayoutCompare(b.rectangle, leftToRight)
   }

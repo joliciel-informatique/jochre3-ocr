@@ -22,21 +22,18 @@ private[text] case class BlockTextGuesserServiceImpl(
   }
 }
 
-/** A text guesser which applies guessing to a entire pre-segmented blocks, with no additional
-  * segmentation inside them.
+/** A text guesser which applies guessing to a entire pre-segmented blocks, with no additional segmentation inside them.
   */
-private[text] class BlockTextGuesser(imageToAltoConverter: ImageToAltoConverter)
-    extends TextGuesser
-    with ImageUtils {
+private[text] class BlockTextGuesser(imageToAltoConverter: ImageToAltoConverter) extends TextGuesser with ImageUtils {
   private val log = LoggerFactory.getLogger(getClass)
 
   private val language =
     ConfigFactory.load().getConfig("jochre.ocr").getString("language")
   private val leftToRight = StringUtils.isLeftToRight(language)
 
-  /** Given an image and a pre-segmented [[Page]] structure, attempt to guess the text within the
-    * page by assigning content to the resulting page. Assumes the page and image are unrotated and
-    * have the same scale, which is the desired scale for analysis.
+  /** Given an image and a pre-segmented [[Page]] structure, attempt to guess the text within the page by assigning
+    * content to the resulting page. Assumes the page and image are unrotated and have the same scale, which is the
+    * desired scale for analysis.
     */
   override def guess(
       page: Page,
