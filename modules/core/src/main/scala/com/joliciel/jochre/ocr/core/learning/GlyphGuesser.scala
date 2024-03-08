@@ -17,15 +17,24 @@ import java.nio.file.Path
 import scala.io.Source
 import scala.jdk.CollectionConverters._
 
-case class GlyphGuesser(modelDir: Path,
-  modelName: String,
-  modelType: ModelBuilder.ModelType,
-  imageSize: Int = 28,
-) extends FileUtils with ImageUtils {
+case class GlyphGuesser(
+    modelDir: Path,
+    modelName: String,
+    modelType: ModelBuilder.ModelType,
+    imageSize: Int = 28
+) extends FileUtils
+    with ImageUtils {
   private val log = LoggerFactory.getLogger(getClass)
 
   private val classesPath = modelDir.resolve(f"${modelName}_classes.txt")
-  private val alphabet = Source.fromFile(classesPath.toFile).getLines().toSeq
+  private val alphabet = {
+    val source = Source.fromFile(classesPath.toFile)
+    try {
+      source.getLines().toSeq
+    } finally {
+      source.close()
+    }
+  }
   private val model = Model.newInstance(modelName)
   model.setBlock(modelType.getModel(alphabet.size, imageSize))
   model.load(modelDir, modelName)
@@ -43,17 +52,26 @@ case class GlyphGuesser(modelDir: Path,
     val height = (glyph.rectangle.height * 1.1).toInt
     val leftMargin = (height - glyph.rectangle.width) / 2
     val topMargin = (height - glyph.rectangle.height) / 2
-    val rectangle = Rectangle(glyph.rectangle.left - leftMargin, glyph.rectangle.top - topMargin, height, height)
+    val rectangle = Rectangle(
+      glyph.rectangle.left - leftMargin,
+      glyph.rectangle.top - topMargin,
+      height,
+      height
+    )
 
     val image = crop(mat, rectangle)
     val bufferedImage = toBufferedImage(image)
     val classifications = this.predict(bufferedImage)
-    if (log.isDebugEnabled) { log.debug(f"expected: ${glyph.content}, $classifications") }
-    
+    if (log.isDebugEnabled) {
+      log.debug(f"expected: ${glyph.content}, $classifications")
+    }
+
     val seq = classifications.topK[Classification](k).asScala.toSeq
-    seq.map{ classification =>
-      Prediction(classification.getClassName, classification.getProbability)
-    }.sortBy(0 - _.confidence)
+    seq
+      .map { classification =>
+        Prediction(classification.getClassName, classification.getProbability)
+      }
+      .sortBy(0 - _.confidence)
   }
 
   private def predict(image: BufferedImage): Classifications = {

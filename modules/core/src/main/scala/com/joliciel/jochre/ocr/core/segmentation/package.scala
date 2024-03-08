@@ -23,7 +23,7 @@ package object segmentation {
     }
 
     def withYoloName(yoloName: String): Option[BlockType] =
-      values.find(_.yoloName==yoloName)
+      values.find(_.yoloName == yoloName)
   }
 
   private[segmentation] sealed trait YoloPredictionType extends EnumEntry {
@@ -38,7 +38,10 @@ package object segmentation {
     case object Blocks extends YoloPredictionType {
       val extension: String = "_block_prediction.png"
       val endpoint: String = "analyze-blocks"
-      override def getLabel(category: String): String = BlockType.withYoloName(category).map(_.entryName).getOrElse(throw new Exception(f"Unknown BlockType: $category"))
+      override def getLabel(category: String): String = BlockType
+        .withYoloName(category)
+        .map(_.entryName)
+        .getOrElse(throw new Exception(f"Unknown BlockType: $category"))
     }
     case object Lines extends YoloPredictionType {
       val extension: String = "_line_prediction.png"
@@ -54,8 +57,17 @@ package object segmentation {
     }
   }
 
-  private[segmentation] case class YoloResult(box: List[Int], category: String, confidence: Double) {
-    def toPredictedRectangle(label: String): PredictedRectangle = PredictedRectangle(label, Rectangle(box(0) - (box(2) / 2), box(1) - (box(3) / 2), box(2), box(3)), confidence)
+  private[segmentation] case class YoloResult(
+      box: List[Int],
+      category: String,
+      confidence: Double
+  ) {
+    def toPredictedRectangle(label: String): PredictedRectangle =
+      PredictedRectangle(
+        label,
+        Rectangle(box(0) - (box(2) / 2), box(1) - (box(3) / 2), box(2), box(3)),
+        confidence
+      )
   }
 
   private[segmentation] object YoloImplicits {

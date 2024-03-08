@@ -30,33 +30,63 @@ trait ImageUtils {
     val cx = mat.cols.toFloat / 2f
     val result = new Mat
     val matrix2D = getRotationMatrix2D(new Point2f(cx, cy), angle, 1)
-    warpAffine(mat, result, matrix2D, mat.size, INTER_LINEAR, opencv_core.BORDER_REFLECT, new Scalar(0.0))
+    warpAffine(
+      mat,
+      result,
+      matrix2D,
+      mat.size,
+      INTER_LINEAR,
+      opencv_core.BORDER_REFLECT,
+      new Scalar(0.0)
+    )
     result
   }
 
   def unrotate(angle: Double, mat: Mat): Mat =
     rotate(0 - angle, mat)
 
-  def drawRotatedRect(mat: Mat, rotatedRect: RotatedRect, color: Color = Color.BLACK, thickness: Int = 1): Unit = {
+  def drawRotatedRect(
+      mat: Mat,
+      rotatedRect: RotatedRect,
+      color: Color = Color.BLACK,
+      thickness: Int = 1
+  ): Unit = {
     val vertices = new Point2f(4)
     rotatedRect.points(vertices)
-    log.debug(f"rotatedRect: (${vertices.get(0)}, ${vertices.get(1)}), (${vertices.get(2)}, ${vertices.get(3)}), (${vertices.get(4)}, ${vertices.get(5)}), (${vertices.get(6)}, ${vertices.get(7)})")
+    log.debug(f"rotatedRect: (${vertices.get(0)}, ${vertices
+      .get(1)}), (${vertices.get(2)}, ${vertices.get(3)}), (${vertices
+      .get(4)}, ${vertices.get(5)}), (${vertices.get(6)}, ${vertices.get(7)})")
     this.drawPolygon(mat, vertices, color, thickness)
   }
 
-  def drawPolygon(mat: Mat, listOfPoints: Point2f, color: Color = Color.BLACK, thickness: Int = 1): Unit = {
+  private def drawPolygon(
+      mat: Mat,
+      listOfPoints: Point2f,
+      color: Color = Color.BLACK,
+      thickness: Int = 1
+  ): Unit = {
     val vertexVector = new MatVector(1)
     val matOfInt = new Mat()
     val numPoints = listOfPoints.capacity().toInt
-    (new Mat(listOfPoints)).reshape(1, numPoints).convertTo(matOfInt, opencv_core.CV_32S)
+    new Mat(listOfPoints)
+      .reshape(1, numPoints)
+      .convertTo(matOfInt, opencv_core.CV_32S)
     vertexVector.put(0, matOfInt)
     val openCvColor = RGB(color.getRed, color.getGreen, color.getBlue)
-    opencv_imgproc.polylines(mat, vertexVector, true, openCvColor, thickness, LINE_8, 0)
+    opencv_imgproc.polylines(
+      mat,
+      vertexVector,
+      true,
+      openCvColor,
+      thickness,
+      LINE_8,
+      0
+    )
   }
 
   def toRGB(src: Mat): Mat = {
     val dest = new Mat()
-    if (src.`type`()==opencv_core.CV_8UC1) {
+    if (src.`type`() == opencv_core.CV_8UC1) {
       cvtColor(src, dest, opencv_imgproc.CV_GRAY2RGB)
       dest
     } else {
@@ -80,25 +110,31 @@ trait ImageUtils {
 
   def fromBufferedImage(bufferedImage: BufferedImage): Mat = {
     // convert black-and-white to greyscale first
-    val imageToConvert = if (bufferedImage.getType==BufferedImage.TYPE_BYTE_BINARY) {
-      val greyImage = new BufferedImage(bufferedImage.getWidth, bufferedImage.getHeight, BufferedImage.TYPE_BYTE_GRAY);
-      val graphics = greyImage.getGraphics();
-      graphics.drawImage(bufferedImage, 0, 0, null);
-      graphics.dispose();
-      greyImage
-    } else {
-      bufferedImage
-    }
+    val imageToConvert =
+      if (bufferedImage.getType == BufferedImage.TYPE_BYTE_BINARY) {
+        val greyImage = new BufferedImage(
+          bufferedImage.getWidth,
+          bufferedImage.getHeight,
+          BufferedImage.TYPE_BYTE_GRAY
+        )
+        val graphics = greyImage.getGraphics
+        graphics.drawImage(bufferedImage, 0, 0, null)
+        graphics.dispose()
+        greyImage
+      } else {
+        bufferedImage
+      }
     Java2DFrameUtils.toMat(imageToConvert)
   }
 
   def toBufferedImage(mat: Mat): BufferedImage = {
-    //bufferedImageConverter.convert(cvConverter.convert(mat))
+    // bufferedImageConverter.convert(cvConverter.convert(mat))
     Java2DFrameUtils.toBufferedImage(mat)
   }
 
   def crop(src: Mat, rectangle: Rectangle): Mat = {
-    val rect: Rect = new Rect(rectangle.left, rectangle.top, rectangle.width, rectangle.height)
+    val rect: Rect =
+      new Rect(rectangle.left, rectangle.top, rectangle.width, rectangle.height)
     val cropped: Mat = new Mat(src, rect)
     cropped
   }
@@ -113,14 +149,20 @@ trait ImageUtils {
     }
   }
 
-  /**
-   *
-   * @param src The source image
-   * @param contrast Alpha value, > 1 to increase contrast, < 1 to decrease contrast
-   * @param brightness Beta value between -255 (to darken) to +255 (to lighten)
-   * @return The converted image
-   */
-  def changeContrastAndBrightness(src: Mat, contrast: Double, brightness: Int): Mat = {
+  /** @param src
+    *   The source image
+    * @param contrast
+    *   Alpha value, > 1 to increase contrast, < 1 to decrease contrast
+    * @param brightness
+    *   Beta value between -255 (to darken) to +255 (to lighten)
+    * @return
+    *   The converted image
+    */
+  def changeContrastAndBrightness(
+      src: Mat,
+      contrast: Double,
+      brightness: Int
+  ): Mat = {
     val dest = new Mat()
     src.convertTo(dest, -1, contrast, brightness.toDouble)
     dest

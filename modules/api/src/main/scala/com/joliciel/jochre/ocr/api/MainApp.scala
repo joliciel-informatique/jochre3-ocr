@@ -22,8 +22,7 @@ import zio.interop.catz._
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 
-object MainApp extends ZIOAppDefault
-{
+object MainApp extends ZIOAppDefault {
   private val log = LoggerFactory.getLogger(getClass)
   private val config = ConfigFactory.load().getConfig("jochre.ocr.api")
 
@@ -31,12 +30,20 @@ object MainApp extends ZIOAppDefault
     Runtime.setConfigProvider(TypesafeConfigProvider.fromTypesafeConfig(config))
 
   private def runServer(executor: Executor): Task[Unit] = {
-    val analysisDirectives: AnalysisApp = AnalysisApp(executor.asExecutionContext)
-    val analysisRoutes: HttpRoutes[AppTask] = ZHttp4sServerInterpreter().from(analysisDirectives.http).toRoutes
+    val analysisDirectives: AnalysisApp = AnalysisApp(
+      executor.asExecutionContext
+    )
+    val analysisRoutes: HttpRoutes[AppTask] =
+      ZHttp4sServerInterpreter().from(analysisDirectives.http).toRoutes
 
-    val version = sys.env.get("JOCHRE3_OCR_VERSION").getOrElse("0.1.0-SNAPSHOT")
-    val swaggerDirectives = SwaggerInterpreter().fromEndpoints[AppTask](analysisDirectives.endpoints, "Jochre OCR Server", version)
-    val swaggerRoutes: HttpRoutes[AppTask] = ZHttp4sServerInterpreter().from(swaggerDirectives).toRoutes
+    val version = sys.env.getOrElse("JOCHRE3_OCR_VERSION", "0.1.0-SNAPSHOT")
+    val swaggerDirectives = SwaggerInterpreter().fromEndpoints[AppTask](
+      analysisDirectives.endpoints,
+      "Jochre OCR Server",
+      version
+    )
+    val swaggerRoutes: HttpRoutes[AppTask] =
+      ZHttp4sServerInterpreter().from(swaggerDirectives).toRoutes
 
     val routes = analysisRoutes <+> swaggerRoutes
 
@@ -56,7 +63,10 @@ object MainApp extends ZIOAppDefault
       corsPolicy.withAllowOriginHost(
         hosts.flatMap { host =>
           Origin.parse(host) match {
-            case Left(parseFailure) => throw new Exception(f"Cannot parse $host as host: ${parseFailure.details}")
+            case Left(parseFailure) =>
+              throw new Exception(
+                f"Cannot parse $host as host: ${parseFailure.details}"
+              )
             case Right(Origin.HostList(hosts)) =>
               log.info(f"Allowing origins: $hosts")
               hosts.toList
@@ -84,7 +94,7 @@ object MainApp extends ZIOAppDefault
 
     server
       .provide(
-        jochreLayer,
+        jochreLayer
       )
   }
 
@@ -96,7 +106,5 @@ object MainApp extends ZIOAppDefault
   }.tapErrorCause(error => ZIO.logErrorCause(s"Unable to build server", error))
 
   override def run: URIO[Any, ExitCode] =
-    app
-      .exitCode
+    app.exitCode
 }
-

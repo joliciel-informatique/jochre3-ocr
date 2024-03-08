@@ -4,7 +4,8 @@ import com.joliciel.jochre.ocr.core.corpus.WordExtractor
 
 object YiddishWordExtractor {
   def main(args: Array[String]): Unit = {
-    WordExtractor.execute(args,
+    WordExtractor.execute(
+      args,
       textSimplifier = YiddishTextSimpifier(replaceNonHebrewAlphabets = true)
     )
   }

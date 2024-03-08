@@ -6,8 +6,12 @@ case class SpellingAlternative(purpose: String, content: String) extends AltoEle
   def toXml: Elem =
     <ALTERNATIVE PURPOSE={purpose}>{content}</ALTERNATIVE>
 
-  override def transform(partialFunction: PartialFunction[AltoElement, AltoElement]): SpellingAlternative = {
-    val transformed = if (partialFunction.isDefinedAt(this)) { partialFunction(this).asInstanceOf[SpellingAlternative] } else { this }
+  override def transform(
+      partialFunction: PartialFunction[AltoElement, AltoElement]
+  ): SpellingAlternative = {
+    val transformed = if (partialFunction.isDefinedAt(this)) {
+      partialFunction(this).asInstanceOf[SpellingAlternative]
+    } else { this }
     transformed
   }
 }

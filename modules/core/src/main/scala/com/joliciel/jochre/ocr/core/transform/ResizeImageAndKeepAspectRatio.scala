@@ -14,11 +14,20 @@ class ResizeImageAndKeepAspectRatio(val newLongestDimension: Int) extends ImageT
     val (dest, scale) = if (initialHeight > initialWidth) {
       if (newLongestDimension < initialHeight) {
         val newHeight = newLongestDimension
-        val newWidth = (newHeight.toDouble * (initialWidth.toDouble / initialHeight.toDouble)).round.toInt
+        val newWidth =
+          (newHeight.toDouble * (initialWidth.toDouble / initialHeight.toDouble)).round.toInt
         val scale = newHeight.toDouble / initialHeight.toDouble
-        if (log.isTraceEnabled) log.trace("newWidth: " + newWidth + ", newHeight: " + newHeight)
+        if (log.isTraceEnabled)
+          log.trace("newWidth: " + newWidth + ", newHeight: " + newHeight)
         val dest = new Mat
-        opencv_imgproc.resize(mat, dest, new Size(newWidth, newHeight), 0, 0, opencv_imgproc.INTER_AREA)
+        opencv_imgproc.resize(
+          mat,
+          dest,
+          new Size(newWidth, newHeight),
+          0,
+          0,
+          opencv_imgproc.INTER_AREA
+        )
         dest -> scale
       } else {
         mat -> 1.0
@@ -26,11 +35,20 @@ class ResizeImageAndKeepAspectRatio(val newLongestDimension: Int) extends ImageT
     } else {
       if (newLongestDimension < initialWidth) {
         val newWidth = newLongestDimension
-        val newHeight = (newWidth.toDouble * (initialHeight.toDouble / initialWidth.toDouble)).round.toInt
+        val newHeight =
+          (newWidth.toDouble * (initialHeight.toDouble / initialWidth.toDouble)).round.toInt
         val scale = newWidth.toDouble / initialWidth.toDouble
-        if (log.isTraceEnabled) log.trace("newWidth: " + newWidth + ", newHeight: " + newHeight)
+        if (log.isTraceEnabled)
+          log.trace("newWidth: " + newWidth + ", newHeight: " + newHeight)
         val dest = new Mat
-        opencv_imgproc.resize(mat, dest, new Size(newWidth, newHeight), 0, 0, opencv_imgproc.INTER_AREA)
+        opencv_imgproc.resize(
+          mat,
+          dest,
+          new Size(newWidth, newHeight),
+          0,
+          0,
+          opencv_imgproc.INTER_AREA
+        )
         dest -> scale
       } else {
         mat -> 1.0

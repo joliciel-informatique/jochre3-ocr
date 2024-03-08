@@ -9,7 +9,10 @@ import org.bytedeco.opencv.opencv_core.{AbstractScalar, Mat, Point}
 import java.util.UUID
 import scala.xml.{Elem, Node}
 
-case class Illustration(rectangle: Rectangle, id: String = UUID.randomUUID().toString) extends Block {
+case class Illustration(
+    rectangle: Rectangle,
+    id: String = UUID.randomUUID().toString
+) extends Block {
   override def translate(xDiff: Int, yDiff: Int): Illustration =
     Illustration(rectangle.translate(xDiff, yDiff))
 
@@ -21,17 +24,34 @@ case class Illustration(rectangle: Rectangle, id: String = UUID.randomUUID().toS
   )
 
   override def toXml: Elem =
-    <Illustration ID={id} HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString}></Illustration>
+    <Illustration ID={id}
+                  HPOS={rectangle.left.toString} VPOS={rectangle.top.toString}
+                  WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString}
+    ></Illustration>
 
   override def draw(mat: Mat): Unit = {
-    opencv_imgproc.rectangle(mat, new Point(rectangle.left - 2, rectangle.top - 2), new Point(rectangle.left + rectangle.width + 4, rectangle.top + rectangle.height + 4), AbstractScalar.MAGENTA,
-      2, LINE_8, 0)
+    opencv_imgproc.rectangle(
+      mat,
+      new Point(rectangle.left - 2, rectangle.top - 2),
+      new Point(
+        rectangle.left + rectangle.width + 4,
+        rectangle.top + rectangle.height + 4
+      ),
+      AbstractScalar.MAGENTA,
+      2,
+      LINE_8,
+      0
+    )
   }
 
   override def content: String = ""
 
-  override def transform(partialFunction: PartialFunction[AltoElement, AltoElement]): Illustration = {
-    val transformed = if (partialFunction.isDefinedAt(this)) { partialFunction(this).asInstanceOf[Illustration] } else { this }
+  override def transform(
+      partialFunction: PartialFunction[AltoElement, AltoElement]
+  ): Illustration = {
+    val transformed = if (partialFunction.isDefinedAt(this)) {
+      partialFunction(this).asInstanceOf[Illustration]
+    } else { this }
     transformed
   }
 }
@@ -39,7 +59,8 @@ case class Illustration(rectangle: Rectangle, id: String = UUID.randomUUID().toS
 object Illustration {
   def fromXML(node: Node): Illustration = {
     val id = node \@ "ID"
-    val idOption = Option.when(id.nonEmpty)(id).getOrElse(UUID.randomUUID().toString)
+    val idOption =
+      Option.when(id.nonEmpty)(id).getOrElse(UUID.randomUUID().toString)
 
     Illustration(Rectangle.fromXML(node), id = idOption)
   }

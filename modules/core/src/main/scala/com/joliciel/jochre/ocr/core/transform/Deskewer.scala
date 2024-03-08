@@ -15,7 +15,9 @@ import java.awt.Color
 import java.io.File
 import java.nio.file.{Path, Paths}
 
-case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) extends ImageTransformer[SkewAngle] with ImageUtils {
+case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None)
+    extends ImageTransformer[SkewAngle]
+    with ImageUtils {
   private val log = LoggerFactory.getLogger(getClass)
   private val config = ConfigFactory.load().getConfig("jochre.ocr.deskewer")
   private val maxContours = config.getInt("max-contours-for-calculation")
@@ -27,8 +29,7 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) 
   }
 
   def deskew(path: String, mat: Mat, angle: Option[Double]): Mat = {
-    val rotated = angle.map(
-      this.unrotate(_, mat)).getOrElse(mat)
+    val rotated = angle.map(this.unrotate(_, mat)).getOrElse(mat)
 
     val baseName = FileUtils.removeFileExtension(new File(path).getName)
     outDir.foreach(outDir => saveImage(rotated, outDir.resolve(f"${baseName}_deskewered.jpg")))
@@ -38,7 +39,9 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) 
   def getSkewAngle(mat: Mat, path: Option[String] = None): Option[Double] = {
     log.debug(f"Deskewing $path")
 
-    val baseName = path.map(path => FileUtils.removeFileExtension(new File(path).getName)).getOrElse("test")
+    val baseName = path
+      .map(path => FileUtils.removeFileExtension(new File(path).getName))
+      .getOrElse("test")
 
     val resizer = new ResizeImageAndKeepAspectRatio(1000)
     val (resized, _) = resizer.transform(baseName, mat)
@@ -54,7 +57,12 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) 
     val thresh = new Mat()
     threshold(blur, thresh, 0, 255, THRESH_BINARY_INV + THRESH_OTSU)
 
-    debugDir.foreach(debugDir => saveImage(thresh, debugDir.resolve(f"${baseName}__deskewer2_threshold.jpg")))
+    debugDir.foreach(debugDir =>
+      saveImage(
+        thresh,
+        debugDir.resolve(f"${baseName}__deskewer2_threshold.jpg")
+      )
+    )
 
     // thresh = cv2.threshold (blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
 
@@ -63,9 +71,22 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) 
     // But use smaller kernel on Y axis to separate between different blocks of text
     val kernel = getStructuringElement(MORPH_RECT, new Size(10, 3))
     val dilated = new Mat()
-    dilate(thresh, dilated, kernel, new Point(-1, -1), 3, BORDER_CONSTANT, new Scalar(morphologyDefaultBorderValue))
+    dilate(
+      thresh,
+      dilated,
+      kernel,
+      new Point(-1, -1),
+      3,
+      BORDER_CONSTANT,
+      new Scalar(morphologyDefaultBorderValue)
+    )
 
-    debugDir.foreach(debugDir => saveImage(dilated, Paths.get(debugDir.toString, baseName + "_deskewer3_dilated.jpg")))
+    debugDir.foreach(debugDir =>
+      saveImage(
+        dilated,
+        Paths.get(debugDir.toString, baseName + "_deskewer3_dilated.jpg")
+      )
+    )
 
     // Find all contours
     val mode = opencv_imgproc.RETR_LIST
@@ -74,53 +95,69 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) 
 
     findContours(dilated, contours, mode, method)
 
-    val contoursByDecreasingArea = (0 until contours.size().toInt).map { i =>
-      val contour: Mat = contours.get(i)
-      val area = contourArea(contour)
-      (contour, area)
-    }.sortBy(0 - _._2)
+    val contoursByDecreasingArea = (0 until contours.size().toInt)
+      .map { i =>
+        val contour: Mat = contours.get(i)
+        val area = contourArea(contour)
+        (contour, area)
+      }
+      .sortBy(0 - _._2)
 
-    val effectiveMaxContours = math.min(maxContours, math.ceil(contoursByDecreasingArea.size.toDouble / 2).toInt)
-    log.debug(f"Calculating based on $effectiveMaxContours contours (found ${contoursByDecreasingArea.size} contours)")
+    val effectiveMaxContours = math.min(
+      maxContours,
+      math.ceil(contoursByDecreasingArea.size.toDouble / 2).toInt
+    )
+    log.debug(
+      f"Calculating based on $effectiveMaxContours contours (found ${contoursByDecreasingArea.size} contours)"
+    )
 
     // in case the max contour is an outlier (e.g. an image without borders), we take the top n contours
-    val contoursForCalculation = contoursByDecreasingArea.take(effectiveMaxContours)
+    val contoursForCalculation =
+      contoursByDecreasingArea.take(effectiveMaxContours)
 
-    val contoursWithRectangles = contoursForCalculation.map {
-      case (contour, area) =>
-        val rotatedRect: RotatedRect = minAreaRect(contour)
+    val contoursWithRectangles = contoursForCalculation.map { case (contour, area) =>
+      val rotatedRect: RotatedRect = minAreaRect(contour)
 
-        drawRotatedRect(colored, rotatedRect, Color.green, thickness = 5)
+      drawRotatedRect(colored, rotatedRect, Color.green, thickness = 5)
 
-        (contour, area, rotatedRect, Rectangle(rotatedRect))
+      (contour, area, rotatedRect, Rectangle(rotatedRect))
     }
 
-    val noContains = contoursWithRectangles
-      .zipWithIndex
-      .filterNot {
-        case ((_, _, _, smallerRect), i) =>
-          contoursWithRectangles.slice(0, i)
-            .exists {
-              case (_, _, _, biggerRect) =>
-                val overlap = biggerRect.intersection(smallerRect)
-                val overlapPercentage = overlap.map(_.area.toDouble / smallerRect.area.toDouble).getOrElse(0.0)
-                val contains = overlapPercentage > 0.5
+    val noContains = contoursWithRectangles.zipWithIndex
+      .filterNot { case ((_, _, _, smallerRect), i) =>
+        contoursWithRectangles
+          .slice(0, i)
+          .exists { case (_, _, _, biggerRect) =>
+            val overlap = biggerRect.intersection(smallerRect)
+            val overlapPercentage = overlap
+              .map(_.area.toDouble / smallerRect.area.toDouble)
+              .getOrElse(0.0)
+            val contains = overlapPercentage > 0.5
 
-                if (contains) {
-                  log.debug(f"Found $biggerRect containing $smallerRect")
-                  log.debug(f"Overlap: $overlap")
-                  log.debug(f"Overlap %%: $overlapPercentage")
-                }
-                contains
+            if (contains) {
+              log.debug(f"Found $biggerRect containing $smallerRect")
+              log.debug(f"Overlap: $overlap")
+              log.debug(f"Overlap %%: $overlapPercentage")
             }
-      }.map(_._1)
+            contains
+          }
+      }
+      .map(_._1)
 
-    case class ContourWithAngle(contour: Mat, area: Double, rotatedRect: RotatedRect, container: Rectangle, correctedAngle: Double)
-    val contoursWithAngles = noContains.zipWithIndex.map {
-      case ((contour, area, rotatedRect, container), i) =>
+    case class ContourWithAngle(
+        contour: Mat,
+        area: Double,
+        rotatedRect: RotatedRect,
+        container: Rectangle,
+        correctedAngle: Double
+    )
+    val contoursWithAngles = noContains.zipWithIndex
+      .map { case ((contour, area, rotatedRect, container), i) =>
         log.debug(f"Contour $i with area $area")
 
-        val angle = -1.0 * BigDecimal(rotatedRect.angle()).setScale(2, BigDecimal.RoundingMode.HALF_UP).toDouble
+        val angle = -1.0 * BigDecimal(rotatedRect.angle())
+          .setScale(2, BigDecimal.RoundingMode.HALF_UP)
+          .toDouble
 
         // Convert the angle to a value usable for image skewing
         val correctedAngle = if (angle < -45) {
@@ -133,30 +170,41 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None) 
 
         log.debug(f"angle: $correctedAngle")
         ContourWithAngle(contour, area, rotatedRect, container, correctedAngle)
-    }.sortBy(_.correctedAngle)
+      }
+      .sortBy(_.correctedAngle)
 
     Option.when(contoursWithAngles.nonEmpty) {
       // remove outliers
-      val medianAngle = contoursWithAngles(contoursWithAngles.size / 2).correctedAngle
+      val medianAngle =
+        contoursWithAngles(contoursWithAngles.size / 2).correctedAngle
       log.debug(f"medianAngle: $medianAngle")
 
-      val inliers = contoursWithAngles.filter {
-        case ContourWithAngle(_, _, rotatedRect, container, angle) =>
-          val isInlier = medianAngle - 1.0 <= angle && angle <= medianAngle + 1.0
-          if (isInlier) {
-            log.debug(f"Found inlier with angle $angle (median angle: $medianAngle): $container")
-            drawRotatedRect(colored, rotatedRect, Color.red, thickness = 5)
-          } else {
-            log.debug(f"Found outlier with angle $angle (median angle: $medianAngle): $container")
-            drawRotatedRect(colored, rotatedRect, Color.blue, thickness = 5)
-          }
-          isInlier
+      val inliers = contoursWithAngles.filter { case ContourWithAngle(_, _, rotatedRect, container, angle) =>
+        val isInlier =
+          medianAngle - 1.0 <= angle && angle <= medianAngle + 1.0
+        if (isInlier) {
+          log.debug(
+            f"Found inlier with angle $angle (median angle: $medianAngle): $container"
+          )
+          drawRotatedRect(colored, rotatedRect, Color.red, thickness = 5)
+        } else {
+          log.debug(
+            f"Found outlier with angle $angle (median angle: $medianAngle): $container"
+          )
+          drawRotatedRect(colored, rotatedRect, Color.blue, thickness = 5)
+        }
+        isInlier
       }
 
-      debugDir.foreach(debugDir => saveImage(colored, debugDir.resolve(f"${baseName}__deskewer4_rectangle.jpg")))
+      debugDir.foreach(debugDir =>
+        saveImage(
+          colored,
+          debugDir.resolve(f"${baseName}__deskewer4_rectangle.jpg")
+        )
+      )
 
       val meanAngle = inliers.map(_.correctedAngle).sum / inliers.size
-      log.info(f"Deskewed $path, meanAngle: $meanAngle")
+      log.info(f"Deskewed $path, meanAngle: $meanAngle%.3f")
       meanAngle
     }
   }
@@ -187,15 +235,15 @@ object Deskewer extends ImageUtils {
     val deskewer = Deskewer(Some(outDir), debugDir)
 
     val transforms = List[ImageTransformer[_]](
-      new ResizeImageAndKeepAspectRatio(options.longSide()))
+      new ResizeImageAndKeepAspectRatio(options.longSide())
+    )
 
     files.map { file =>
       log.debug(f"Processing ${file.getPath}")
       val mat = loadImage(file.toPath)
 
-      val transformed: Mat = transforms.foldLeft(mat) {
-        case (mat, transformer) =>
-          transformer.transform(file.getPath, mat)._1
+      val transformed: Mat = transforms.foldLeft(mat) { case (mat, transformer) =>
+        transformer.transform(file.getPath, mat)._1
       }
 
       val calculated = deskewer.getSkewAngle(transformed, Some(file.getPath))

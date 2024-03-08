@@ -18,10 +18,20 @@ case class Line(x1: Int, y1: Int, x2: Int, y2: Int) extends Ordered[Line] {
 
   import scala.math.Ordered.orderingToOrdered
 
-  def compare(that: Line): Int = (this.y1, this.x1, this.y2, this.x2) compare(that.y1, that.x1, that.y2, that.x2)
+  def compare(that: Line): Int = (
+    this.y1,
+    this.x1,
+    this.y2,
+    this.x2
+  ) compare (that.y1, that.x1, that.y2, that.x2)
 
   def rescale(scale: Double): Line =
-    Line((x1.toDouble * scale).toInt, (y1.toDouble * scale).toInt, (x2.toDouble * scale).toInt, (y2.toDouble * scale).toInt)
+    Line(
+      (x1.toDouble * scale).toInt,
+      (y1.toDouble * scale).toInt,
+      (x2.toDouble * scale).toInt,
+      (y2.toDouble * scale).toInt
+    )
 
   def rotate(imageInfo: ImageInfo): Line = {
     val (x1r, y1r) = imageInfo.rotate(x1, y1)

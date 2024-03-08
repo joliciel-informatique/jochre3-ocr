@@ -1,64 +1,81 @@
 package com.joliciel.jochre.ocr.yiddish
 
-import com.joliciel.jochre.ocr.core.graphics.ImageInfo
-import com.joliciel.jochre.ocr.core.model.{Page, SpellingAlternative, TextLine}
+import com.joliciel.jochre.ocr.core.graphics.{ImageInfo, Rectangle}
+import com.joliciel.jochre.ocr.core.model.{Page, SpellingAlternative, SubsType, TextLine, Word}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
   private val yiddishConfig: YiddishConfig = YiddishConfig.fromConfig
-  val yiddishAltoProcessor = YiddishAltoTransformer(yiddishConfig)
+  private val yiddishAltoProcessor = YiddishAltoTransformer(yiddishConfig)
 
+  private def toWord(content: String) = Word(
+    content = content,
+    rectangle = Rectangle(0, 0, 10, 10),
+    glyphs = Seq.empty,
+    alternatives = Seq.empty,
+    confidence = 1.0
+  )
   "getAlternatives" should "correctly add alternatives" in {
 
-    yiddishAltoProcessor.getAlternatives("מעהר") shouldEqual Set(
+    yiddishAltoProcessor.getAlternatives(toWord("מעהר")) shouldEqual Set(
       SpellingAlternative(YiddishAltoTransformer.Purpose.YIVO.entryName, "מער"),
       SpellingAlternative(YiddishAltoTransformer.Purpose.Roman.entryName, "mer")
     )
 
-    yiddishAltoProcessor.getAlternatives("בלײ") shouldEqual Set(
+    yiddishAltoProcessor.getAlternatives(toWord("בלײ")) shouldEqual Set(
       SpellingAlternative(YiddishAltoTransformer.Purpose.YIVO.entryName, "בלײַ"),
       SpellingAlternative(YiddishAltoTransformer.Purpose.Roman.entryName, "blay")
     )
   }
 
   it should "only add a YIVO alternative if it's different from the original" in {
-    yiddishAltoProcessor.getAlternatives("מער") shouldEqual Set(
+    yiddishAltoProcessor.getAlternatives(toWord("מער")) shouldEqual Set(
       SpellingAlternative(YiddishAltoTransformer.Purpose.Roman.entryName, "mer")
     )
   }
 
   it should "find first real word if impossible shtumer alef" in {
-    yiddishAltoProcessor.getAlternatives("אָװנט") shouldEqual Set(
+    yiddishAltoProcessor.getAlternatives(toWord("אָװנט")) shouldEqual Set(
       SpellingAlternative(YiddishAltoTransformer.Purpose.Roman.entryName, "ovnt")
     )
 
-    yiddishAltoProcessor.getAlternatives("אַבי") shouldEqual Set(
+    yiddishAltoProcessor.getAlternatives(toWord("אַבי")) shouldEqual Set(
       SpellingAlternative(YiddishAltoTransformer.Purpose.Roman.entryName, "abi")
     )
 
-    yiddishAltoProcessor.getAlternatives("אײראָפּע") shouldEqual Set(
+    yiddishAltoProcessor.getAlternatives(toWord("אײראָפּע")) shouldEqual Set(
       SpellingAlternative(YiddishAltoTransformer.Purpose.Roman.entryName, "eyrope")
     )
 
-    yiddishAltoProcessor.getAlternatives("א") shouldEqual Set(
+    yiddishAltoProcessor.getAlternatives(toWord("א")) shouldEqual Set(
       SpellingAlternative(YiddishAltoTransformer.Purpose.YIVO.entryName, "אַ"),
       SpellingAlternative(YiddishAltoTransformer.Purpose.Roman.entryName, "a")
     )
 
-    yiddishAltoProcessor.getAlternatives("װאסער") shouldEqual Set(
+    yiddishAltoProcessor.getAlternatives(toWord("װאסער")) shouldEqual Set(
       SpellingAlternative(YiddishAltoTransformer.Purpose.YIVO.entryName, "װאַסער"),
       SpellingAlternative(YiddishAltoTransformer.Purpose.Roman.entryName, "vaser")
     )
 
-    yiddishAltoProcessor.getAlternatives("איבערמאכן") shouldEqual Set(
+    yiddishAltoProcessor.getAlternatives(toWord("איבערמאכן")) shouldEqual Set(
       SpellingAlternative(YiddishAltoTransformer.Purpose.YIVO.entryName, "איבערמאַכן"),
       SpellingAlternative(YiddishAltoTransformer.Purpose.Roman.entryName, "ibermakhn")
     )
 
-    yiddishAltoProcessor.getAlternatives("אטאם") shouldEqual Set(
+    yiddishAltoProcessor.getAlternatives(toWord("אטאם")) shouldEqual Set(
       SpellingAlternative(YiddishAltoTransformer.Purpose.YIVO.entryName, "אַטאָם"),
       SpellingAlternative(YiddishAltoTransformer.Purpose.Roman.entryName, "atom")
+    )
+  }
+
+  it should "add hyphenated equivalents if it's a hyphenated word" in {
+    val word = toWord("פלי").copy(subsType = Some(SubsType.HypPart1), subsContent = Some("פליגעל"))
+    yiddishAltoProcessor.getAlternatives(word) shouldEqual Set(
+      SpellingAlternative(YiddishAltoTransformer.Purpose.YIVO.entryName, "פֿלי"),
+      SpellingAlternative(YiddishAltoTransformer.Purpose.Roman.entryName, "fli"),
+      SpellingAlternative(YiddishAltoTransformer.Purpose.YIVOHyphenated.entryName, "פֿליגל"),
+      SpellingAlternative(YiddishAltoTransformer.Purpose.RomanHyphenated.entryName, "fligl")
     )
   }
 
@@ -429,7 +446,7 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
 
   "addHyphenRule" should "split off hyphens at the end of a text line" in {
     val alto =
-        <TextLine HPOS="0" VPOS="10" WIDTH="90" HEIGHT="100">
+      <TextLine HPOS="0" VPOS="10" WIDTH="90" HEIGHT="100">
           <String HPOS="0" VPOS="10" WIDTH="40" HEIGHT="100" CONTENT="Jimi" WC="0.5">
             <Glyph HPOS="0" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="J" GC="0.5"></Glyph>
             <Glyph HPOS="10" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="i" GC="0.5"></Glyph>
@@ -453,7 +470,7 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
     val actualTextLine = transform(textLine).asInstanceOf[TextLine]
 
     val expected =
-        <TextLine HPOS="0" VPOS="10" WIDTH="90" HEIGHT="100">
+      <TextLine HPOS="0" VPOS="10" WIDTH="90" HEIGHT="100">
           <String HPOS="0" VPOS="10" WIDTH="40" HEIGHT="100" CONTENT="Jimi" WC="0.5">
             <Glyph HPOS="0" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="J" GC="0.5"></Glyph>
             <Glyph HPOS="10" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="i" GC="0.5"></Glyph>
@@ -477,7 +494,7 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
   it should "correctly handle strange glyphs with two letters" in {
     // Note we write HPOS elements as if the text was right-to-left
     val alto =
-        <TextLine HPOS="10" VPOS="10" WIDTH="90" HEIGHT="100">
+      <TextLine HPOS="10" VPOS="10" WIDTH="90" HEIGHT="100">
           <String HPOS="70" VPOS="10" WIDTH="40" HEIGHT="100" CONTENT="Jimi" WC="0.5">
             <Glyph HPOS="100" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="J" GC="0.5"></Glyph>
             <Glyph HPOS="90" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="i" GC="0.5"></Glyph>
@@ -499,7 +516,7 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
 
     val actualTextLine = transform(textLine).asInstanceOf[TextLine]
     val expected =
-        <TextLine HPOS="10" VPOS="10" WIDTH="90" HEIGHT="100">
+      <TextLine HPOS="10" VPOS="10" WIDTH="90" HEIGHT="100">
           <String HPOS="70" VPOS="10" WIDTH="40" HEIGHT="100" CONTENT="Jimi" WC="0.5">
             <Glyph HPOS="100" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="J" GC="0.5"></Glyph>
             <Glyph HPOS="90" VPOS="10" WIDTH="10" HEIGHT="100" CONTENT="i" GC="0.5"></Glyph>

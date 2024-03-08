@@ -8,14 +8,12 @@ package object corpus {
   object YoloObjectType extends Enum[YoloObjectType] {
     val values = findValues
 
-    /**
-     * A top-level block: either a composed block, or a text block not contained by a composed block.
-     */
+    /** A top-level block: either a composed block, or a text block not contained by a composed block.
+      */
     case object TopLevelTextBlock extends YoloObjectType
 
-    /**
-     * An illustration.
-     */
+    /** An illustration.
+      */
     case object Illustration extends YoloObjectType
 
     /** A baseline */
@@ -30,9 +28,8 @@ package object corpus {
     /** A single word */
     case object Word extends YoloObjectType
 
-    /**
-     * A single glyph
-     */
+    /** A single glyph
+      */
     case object Glyph extends YoloObjectType
 
     /** A separator between two words */
@@ -42,5 +39,11 @@ package object corpus {
     case object GlyphSeparator extends YoloObjectType
   }
 
-  case class YoloBox(yoloClass: YoloObjectType, xCenter: Double, yCenter: Double, width: Double, height: Double)
+  case class YoloBox(
+      yoloClass: YoloObjectType,
+      xCenter: Double,
+      yCenter: Double,
+      width: Double,
+      height: Double
+  )
 }

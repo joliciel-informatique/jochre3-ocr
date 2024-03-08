@@ -29,7 +29,7 @@ object JochreYiddishFullTest extends JUnitRunnableSpec with XmlImplicits {
         }
         val testRectangle = Rectangle(732, 1638, 2319, 240)
         val page = alto.pages.head
-        val myTextBlock = page.textBlocks.filter(_.rectangle.percentageIntersection(testRectangle) > 0.75).headOption
+        val myTextBlock = page.textBlocks.find(_.rectangle.percentageIntersection(testRectangle) > 0.75)
 
         assertTrue(myTextBlock.isDefined)
 
@@ -37,6 +37,5 @@ object JochreYiddishFullTest extends JUnitRunnableSpec with XmlImplicits {
         assertTrue(content == "הײנט איז יום־טוב — מע טאָר נישט װײנען !")
       }
     }
-  ).provide(
-      JochreYiddishFull.jochreYiddishLayer) @@ TestAspect.sequential
+  ).provide(JochreYiddishFull.jochreYiddishLayer) @@ TestAspect.sequential
 }

@@ -11,7 +11,10 @@ import scala.util.{Try, Using}
 import scala.util.matching.Regex
 
 trait FileUtils {
-  def removeFileExtension(filename: String, removeAllExtensions: Boolean = true): String = {
+  def removeFileExtension(
+      filename: String,
+      removeAllExtensions: Boolean = true
+  ): String = {
     if (filename == null || filename.isEmpty) return filename
     val extPattern = "(?<!^)[.]" + (if (removeAllExtensions) ".*" else "[^.]*$")
     filename.replaceAll(extPattern, "")
@@ -39,23 +42,33 @@ trait FileUtils {
     (for (line <- source.getLines()) yield line).toSeq
   }
 
-  def writeFile(path: Path, text: String) = {
+  def writeFile(path: Path, text: String): Path = {
     Files.write(path, text.getBytes(StandardCharsets.UTF_8))
   }
 
   def recursiveListFiles(dir: File, regex: Regex): Seq[File] =
     recursiveListFilesInternal(dir, regex).sortBy(_.getPath).toSeq
 
-  private def recursiveListFilesInternal(dir: File, regex: Regex): Array[File] = {
+  private def recursiveListFilesInternal(
+      dir: File,
+      regex: Regex
+  ): Array[File] = {
     val these = Option(dir.listFiles).getOrElse(Array.empty[File])
     val good = these.filter(file => regex.findFirstIn(file.getName).isDefined)
-    good ++ these.filter(_.isDirectory).flatMap(recursiveListFilesInternal(_, regex))
+    good ++ these
+      .filter(_.isDirectory)
+      .flatMap(recursiveListFilesInternal(_, regex))
   }
 
   def recursiveListImages(dir: File): Seq[File] =
-    recursiveListFilesInternal(dir, ".*\\.jpg|.*\\.png|.*\\.jpeg".r).sortBy(_.getPath).toSeq
+    recursiveListFilesInternal(dir, ".*\\.jpg|.*\\.png|.*\\.jpeg".r)
+      .sortBy(_.getPath)
+      .toSeq
 
-  def getImageFilesFromDir(inputDir: Path, maxImages: Option[Int]): Seq[(File, Mat)] = {
+  def getImageFilesFromDir(
+      inputDir: Path,
+      maxImages: Option[Int]
+  ): Seq[(File, Mat)] = {
     val allFiles = FileUtils.recursiveListImages(inputDir.toFile)
 
     allFiles
@@ -76,8 +89,10 @@ trait FileUtils {
 
       val lastDot = fileName.lastIndexOf('.')
 
-      val fileNameBase =  if (lastDot>0) { fileName.substring(0, lastDot) } else { fileName }
-      val extension = if (lastDot > 0) { fileName.substring(lastDot) } else { "" }
+      val fileNameBase = if (lastDot > 0) { fileName.substring(0, lastDot) }
+      else { fileName }
+      val extension = if (lastDot > 0) { fileName.substring(lastDot) }
+      else { "" }
       val file = File.createTempFile(fileNameBase, extension)
       Files.copy(stream, file.toPath, StandardCopyOption.REPLACE_EXISTING)
       file

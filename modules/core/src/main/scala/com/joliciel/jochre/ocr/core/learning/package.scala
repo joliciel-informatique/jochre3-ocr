@@ -8,13 +8,18 @@ package object learning {
   case class Prediction(outcome: String, confidence: Double)
 
   private val config = ConfigFactory.load().getConfig("jochre.ocr.transforms")
-  private val applyContrastAndBrightness = config.getBoolean("apply-contrast-and-brightness")
+  private val applyContrastAndBrightness =
+    config.getBoolean("apply-contrast-and-brightness")
   private val contrast = config.getDouble("contrast")
   private val brightness = config.getInt("brightness")
 
-  val transforms = Seq[Option[AnnotatedImageTransformer[_]]](
+  val transforms: Seq[AnnotatedImageTransformer[_]] = Seq[Option[AnnotatedImageTransformer[_]]](
     // Increase contrast and brightness
-    Option.when(applyContrastAndBrightness)(AnnotatedImageTransformer(new BrightnessAndContrastTransform(contrast, brightness))),
-    Some(RotationTransformer),
+    Option.when(applyContrastAndBrightness)(
+      AnnotatedImageTransformer(
+        new BrightnessAndContrastTransform(contrast, brightness)
+      )
+    ),
+    Some(RotationTransformer)
   ).flatten
 }

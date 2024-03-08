@@ -1,17 +1,35 @@
 package com.joliciel.jochre.ocr.core
 
-import com.joliciel.jochre.ocr.core.graphics.{ImageInfo, Rectangle, WithRectangle}
+import com.joliciel.jochre.ocr.core.graphics.{ImageInfo, WithRectangle}
 import com.joliciel.jochre.ocr.core.utils.StringUtils
 import com.typesafe.config.ConfigFactory
 import org.bytedeco.opencv.opencv_core.Mat
+import enumeratum._
 
 import scala.xml.Elem
 
 package object model {
+  sealed trait SubsType extends EnumEntry
+
+  object SubsType extends Enum[SubsType] {
+    val values: IndexedSeq[SubsType] = findValues
+
+    /** If content is the first part of a hyphenated word, applies only for the last word of a line if it is hyphenated
+      */
+    case object HypPart1 extends SubsType
+
+    /** If content is the second part of a hyphenated word, applies only for the first word of a line if it is
+      * hyphenated
+      */
+    case object HypPart2 extends SubsType
+  }
+
   trait AltoElement {
     def toXml: Elem
 
-    def transform(partialFunction: PartialFunction[AltoElement, AltoElement]): AltoElement
+    def transform(
+        partialFunction: PartialFunction[AltoElement, AltoElement]
+    ): AltoElement
   }
 
   trait PageElement extends AltoElement {
@@ -43,7 +61,10 @@ package object model {
       StringUtils.isLeftToRight(this.languageOrDefault)
     }
 
-    def getEffectiveLanguage(language: Option[String], defaultLanguage: Option[String]): String = {
+    def getEffectiveLanguage(
+        language: Option[String],
+        defaultLanguage: Option[String]
+    ): String = {
       language.getOrElse(
         defaultLanguage.getOrElse {
           ConfigFactory.load().getConfig("jochre.ocr").getString("language")

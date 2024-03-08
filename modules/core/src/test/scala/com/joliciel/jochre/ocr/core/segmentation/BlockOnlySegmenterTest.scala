@@ -14,20 +14,37 @@ import javax.imageio.ImageIO
 
 object BlockOnlySegmenterTest extends JUnitRunnableSpec with ImageUtils {
   object MockYoloPredictorService extends YoloPredictorService {
-    override def getYoloPredictor(predictionType: YoloPredictionType, mat: Mat, fileName: String, outputLocation: Option[OutputLocation], minConfidence: Option[Double]): Task[SegmentationPredictor] = ZIO.attempt {
+    override def getYoloPredictor(
+        predictionType: YoloPredictionType,
+        mat: Mat,
+        fileName: String,
+        outputLocation: Option[OutputLocation],
+        minConfidence: Option[Double]
+    ): Task[SegmentationPredictor] = ZIO.attempt {
       new SegmentationPredictor {
-        override def predict(): Task[Seq[PredictedRectangle]] = ZIO.attempt(Seq(
-          PredictedRectangle(BlockType.TopLevelTextBlock.entryName, Rectangle(10, 10, 50, 50), 0.9),
-          PredictedRectangle(BlockType.TopLevelTextBlock.entryName, Rectangle(60, 10, 100, 100), 0.8),
-          PredictedRectangle(BlockType.Illustration.entryName, Rectangle(20, 120, 50, 50), 0.9),
-        ))
+        override def predict(): Task[Seq[PredictedRectangle]] = ZIO.attempt(
+          Seq(
+            PredictedRectangle(
+              BlockType.TopLevelTextBlock.entryName,
+              Rectangle(10, 10, 50, 50),
+              0.9
+            ),
+            PredictedRectangle(
+              BlockType.TopLevelTextBlock.entryName,
+              Rectangle(60, 10, 100, 100),
+              0.8
+            ),
+            PredictedRectangle(BlockType.Illustration.entryName, Rectangle(20, 120, 50, 50), 0.9)
+          )
+        )
       }
     }
   }
 
   override def spec: Spec[TestEnvironment with Scope, Any] = suite("BlockPredictor")(
     test("transform blocks into page") {
-      val image = ImageIO.read(getClass.getResourceAsStream("/images/nybc200089_0011_deskewered.jpg"))
+      val image =
+        ImageIO.read(getClass.getResourceAsStream("/images/nybc200089_0011_deskewered.jpg"))
       val mat = fromBufferedImage(image)
       val fileName = "nybc200089_0011_deskewered.jpg"
       val config = ConfigFactory.load()
@@ -41,15 +58,15 @@ object BlockOnlySegmenterTest extends JUnitRunnableSpec with ImageUtils {
         result <- blockOnlySegmenter.segment(mat, fileName, outputLocation)
       } yield {
         val blocks = result.blocks.map {
-          case textBlock: TextBlock => textBlock.copy(id = "")
+          case textBlock: TextBlock       => textBlock.copy(id = "")
           case illustration: Illustration => illustration.copy(id = "")
         }
         val expected = Seq(
           TextBlock(Rectangle(60, 10, 100, 100), Seq.empty, id = "", defaultLanguage = Some("yi")),
           TextBlock(Rectangle(10, 10, 50, 50), Seq.empty, id = "", defaultLanguage = Some("yi")),
-          Illustration(Rectangle(20, 120, 50, 50), id = ""),
+          Illustration(Rectangle(20, 120, 50, 50), id = "")
         )
-        assertTrue(blocks==expected)
+        assertTrue(blocks == expected)
       }
     }
   )

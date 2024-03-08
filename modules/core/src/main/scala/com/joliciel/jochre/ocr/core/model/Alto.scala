@@ -5,17 +5,18 @@ import java.time.{LocalDateTime, ZoneOffset, ZonedDateTime}
 import scala.xml.{Elem, Node}
 
 case class Alto(
-  fileName: String,
-  pages: Seq[Page],
-  textStyles: Seq[TextStyle] = Seq.empty,
-  tags: Seq[Tag] = Seq.empty,
-  processingTime: ZonedDateTime = LocalDateTime.now().atZone(ZoneOffset.UTC),
+    fileName: String,
+    pages: Seq[Page],
+    textStyles: Seq[TextStyle] = Seq.empty,
+    tags: Seq[Tag] = Seq.empty,
+    processingTime: ZonedDateTime = LocalDateTime.now().atZone(ZoneOffset.UTC)
 ) {
   import com.joliciel.jochre.ocr.core.model.Alto._
 
   lazy val content: String = pages.map(_.content).mkString("\n")
 
-  private val ocrVersion = sys.env.getOrElse("JOCHRE3_OCR_VERSION", "0.0.1-SNAPSHOT")
+  private val ocrVersion =
+    sys.env.getOrElse("JOCHRE3_OCR_VERSION", "0.0.1-SNAPSHOT")
 
   def toXml: Elem = <alto xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                           xmlns="http://www.loc.gov/standards/alto/ns-v4#"
@@ -42,8 +43,12 @@ case class Alto(
     <Tags>{tags.map(_.toXml)}</Tags>
   </alto>
 
-  def transform(partialFunction: PartialFunction[AltoElement, AltoElement]): Alto = {
-    val newPages = pages.map(_.transform(partialFunction)).collect{ case page: Page => page }
+  def transform(
+      partialFunction: PartialFunction[AltoElement, AltoElement]
+  ): Alto = {
+    val newPages = pages.map(_.transform(partialFunction)).collect { case page: Page =>
+      page
+    }
     this.copy(pages = newPages)
   }
 }
@@ -71,14 +76,23 @@ object Alto {
     val fileName = fileNameNode.map(_.textContent).getOrElse("")
 
     val processingTimeNode = (node \\ "processingDateTime").headOption
-    val processingTime = processingTimeNode.map{ node =>
-      try {
-        ZonedDateTime.parse(node.textContent, dateTimeFormatter)
-      } catch {
-        case _: DateTimeParseException => LocalDateTime.now().atZone(ZoneOffset.UTC)
+    val processingTime = processingTimeNode
+      .map { node =>
+        try {
+          ZonedDateTime.parse(node.textContent, dateTimeFormatter)
+        } catch {
+          case _: DateTimeParseException =>
+            LocalDateTime.now().atZone(ZoneOffset.UTC)
+        }
       }
-    }.getOrElse(LocalDateTime.now().atZone(ZoneOffset.UTC))
+      .getOrElse(LocalDateTime.now().atZone(ZoneOffset.UTC))
 
-    Alto(fileName = fileName, pages = pages, textStyles = textStyles, tags = tags, processingTime=processingTime)
+    Alto(
+      fileName = fileName,
+      pages = pages,
+      textStyles = textStyles,
+      tags = tags,
+      processingTime = processingTime
+    )
   }
 }
