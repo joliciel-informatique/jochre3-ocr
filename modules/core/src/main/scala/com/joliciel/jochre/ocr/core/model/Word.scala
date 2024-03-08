@@ -17,6 +17,8 @@ case class Word(
     language: Option[String] = None,
     styleRefs: Option[String] = None,
     tagRefs: Option[String] = None,
+    subsType: Option[SubsType] = None,
+    subsContent: Option[String] = None,
     defaultLanguage: Option[String] = None
 ) extends WordOrSpace
     with WithLanguage {
@@ -38,13 +40,12 @@ case class Word(
   )
 
   override def toXml: Elem =
-    <String HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} WIDTH={
-      rectangle.width.toString
-    } HEIGHT={rectangle.height.toString}
-            CONTENT={content} WC={confidence.roundTo(2).toString} LANG={
-      language.orNull
-    } STYLEREFS={styleRefs.orNull} TAGREFS={tagRefs.orNull}>
-      {alternatives.map(_.toXml)}
+    <String HPOS={rectangle.left.toString} VPOS={rectangle.top.toString}
+            WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString}
+            CONTENT={content} WC={confidence.roundTo(2).toString} LANG={language.orNull}
+            SUBS_TYPE={subsType.map(_.entryName).orNull} SUBS_CONTENT={subsContent.orNull}
+            STYLEREFS={styleRefs.orNull} TAGREFS={tagRefs.orNull}
+    >{alternatives.map(_.toXml)}
       {glyphs.map(_.toXml)}</String>
 
   def combineWith(that: Word): Word = Word(
@@ -143,6 +144,11 @@ object Word {
     val languageAttribute = node \@ "LANG"
     val languageOption =
       Option.when(languageAttribute.nonEmpty)(languageAttribute)
+    val subsType = node \@ "SUBS_TYPE"
+    val subsTypeOption = Option.when(subsType.nonEmpty)(SubsType.withName(subsType))
+    val subsContent = node \@ "SUBS_CONTENT"
+    val subsContentOption = Option.when(subsContent.nonEmpty)(subsContent)
+
     Word(
       content = content,
       rectangle = Rectangle.fromXML(node),
@@ -151,7 +157,9 @@ object Word {
       confidence,
       language = languageOption,
       styleRefs = styleRefsOption,
-      tagRefs = tagRefsOption
+      tagRefs = tagRefsOption,
+      subsType = subsTypeOption,
+      subsContent = subsContentOption
     )
   }
 }

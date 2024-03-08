@@ -1,23 +1,21 @@
 package com.joliciel.jochre.ocr.core.alto
 
-import com.joliciel.jochre.ocr.core.model.{Page, SpellingAlternative}
+import com.joliciel.jochre.ocr.core.model.{Page, SpellingAlternative, Word}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-
-import scala.xml.PrettyPrinter
 
 class AltoTransformerTest extends AnyFlatSpec with Matchers {
   "addAlternativesToFile" should "add alternatives to an alto file" in {
     val sillyAltoProcessor = new AltoTransformer {
       override val removeGlyphs: Boolean = true
-      override def getAlternatives(content: String): Set[SpellingAlternative] = Set(
-        SpellingAlternative("X", f"X_$content"),
-        SpellingAlternative("Y", f"Y_$content")
+      override def getAlternatives(word: Word): Set[SpellingAlternative] = Set(
+        SpellingAlternative("X", f"X_${word.content}"),
+        SpellingAlternative("Y", f"Y_${word.content}")
       )
     }
 
     val altoFile = {
-      <Page>
+        <Page>
           <Paragraph>
             <String CONTENT="Jimi"><Glyph CONTENT="J" /></String><String CONTENT="Hendrix"/>
           </Paragraph>

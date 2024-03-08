@@ -139,15 +139,13 @@ case class Page(
   }
 
   override def toXml: Elem =
-    <Page ID={id} HEIGHT={height.toString} WIDTH={
-      width.toString
-    } PHYSICAL_IMG_NR={physicalPageNumber.toString} ROTATION={
-      rotation.roundTo(2).toString
-    }
-          LANG={language} PC={confidence.roundTo(2).toString}>
-      <PrintSpace HEIGHT={height.toString} WIDTH={
-      width.toString
-    } HPOS="0" VPOS="0">{blocks.map(_.toXml)}</PrintSpace></Page>
+    <Page ID={id}
+          HEIGHT={height.toString} WIDTH={width.toString}
+          PHYSICAL_IMG_NR={physicalPageNumber.toString} ROTATION={rotation.roundTo(2).toString}
+          LANG={language} PC={confidence.roundTo(2).toString}
+    ><PrintSpace HEIGHT={height.toString} WIDTH={width.toString} 
+                 HPOS="0" VPOS="0"
+    >{blocks.map(_.toXml)}</PrintSpace></Page>
 
   override def draw(mat: Mat): Unit = {
     this.blocks.foreach(_.draw(mat))

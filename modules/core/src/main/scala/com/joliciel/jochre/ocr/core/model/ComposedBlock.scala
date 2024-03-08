@@ -36,14 +36,12 @@ case class ComposedBlock(
   )
 
   override def toXml: Elem =
-    <ComposedBlock ID={id} HPOS={rectangle.left.toString} VPOS={
-      rectangle.top.toString
-    } WIDTH={rectangle.width.toString} HEIGHT={
-      rectangle.height.toString
-    } STYLEREFS={styleRefs.orNull} TAGREFS={tagRefs.orNull} IDNEXT={
-      idNext.orNull
-    }>
-      {textBlocks.map(_.toXml)}</ComposedBlock>
+    <ComposedBlock ID={id}
+                   HPOS={rectangle.left.toString} VPOS={rectangle.top.toString}
+                   WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString}
+                   STYLEREFS={styleRefs.orNull} TAGREFS={tagRefs.orNull}
+                   IDNEXT={idNext.orNull}
+    >{textBlocks.map(_.toXml)}</ComposedBlock>
 
   lazy val allWords: Seq[Word] = textBlocks.flatMap(_.allWords)
   lazy val combinedWords: Seq[Word] = textBlocks.flatMap(_.combinedWords)

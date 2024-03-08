@@ -12,6 +12,7 @@ import com.joliciel.jochre.ocr.core.lexicon.Lexicon
 import com.joliciel.jochre.ocr.core.model.{
   AltoElement,
   Page,
+  SubsType,
   TextBlock,
   TextLine,
   Word,
@@ -107,6 +108,14 @@ case class FullSegmentationGuesser(
 
   private val beamWidth = config.beamWidth
   private val unknownWordFactor = config.unknownWordFactor
+
+  private sealed trait HyphenationStatus
+
+  private object NonHyphenated extends HyphenationStatus
+  private case class HyphenatedWithHyphen(hyphenatedWord: String) extends HyphenationStatus
+  private case class HyphenatedWithoutHyphen(hyphenatedWord: String) extends HyphenationStatus
+  private case class HyphenatedPart2WithHyphen(hyphenatedWord: String) extends HyphenationStatus
+  private case class HyphenatedPart2WithoutHyphen(hyphenatedWord: String) extends HyphenationStatus
 
   /** Given an image and a pre-segmented [[Page]] structure, attempt to guess the text within the
     * page by assigning content to the resulting page.
@@ -294,6 +303,15 @@ case class FullSegmentationGuesser(
                           combinedGuessWithoutHyphenFrequency
                         )
 
+                        val hyphenationStatus =
+                          if (
+                            combinedGuessWithHyphenFrequency > combinedGuessWithoutHyphenFrequency
+                          ) {
+                            HyphenatedWithHyphen(combinedGuessWithHyphen.word)
+                          } else {
+                            HyphenatedWithoutHyphen(combinedGuessWithoutHyphen.word)
+                          }
+
                         val initialCombinedScore = Math.sqrt(
                           guessWithScore.score * nextWordGuessWithScore.score
                         )
@@ -312,7 +330,7 @@ case class FullSegmentationGuesser(
                         val rescoredGuess2 = nextWordGuessWithScore
                           .copy(score = nextWordGuessWithScore.score * factor)
                         val combinedScore = initialCombinedScore * factor
-                        (rescoredGuess1, rescoredGuess2, combinedScore)
+                        (rescoredGuess1, rescoredGuess2, combinedScore, hyphenationStatus)
                       }
                     } else {
                       val rescoredGuess1 = rescoreGuess(guessWithScore)
@@ -320,7 +338,7 @@ case class FullSegmentationGuesser(
                       rescoredBeam2.map { rescoredGuess2 =>
                         val combinedScore =
                           Math.sqrt(rescoredGuess2.score * rescoredGuess2.score)
-                        (rescoredGuess1, rescoredGuess2, combinedScore)
+                        (rescoredGuess1, rescoredGuess2, combinedScore, NonHyphenated)
                       }
                     }
                   }
@@ -329,17 +347,22 @@ case class FullSegmentationGuesser(
                 if (log.isDebugEnabled) {
                   log.debug("Guesses for hyphenated pair")
                   scoredPairs.zipWithIndex.foreach {
-                    case ((guessWithScore1, guessWithScore2, score), i) =>
+                    case ((guessWithScore1, guessWithScore2, score, hyphenationStatus), i) =>
                       log.debug(
                         f"Guess $i: Word 1: ${guessWithScore1.guess.word}. Word 2: ${guessWithScore2.guess.word}. Score 1: ${guessWithScore1.guess.score}%.3f. Score 2: ${guessWithScore2.guess.score}%.3f. Combined score: $score%.3f"
                       )
                   }
                 }
 
-                val (bestGuessWord1, bestGuessWord2, _) = scoredPairs.head
+                val (bestGuessWord1, bestGuessWord2, _, hyphenationStatus) = scoredPairs.head
 
-                val newWord1 = guessToWord(mat, word1, bestGuessWord1)
-                val newWord2 = guessToWord(mat, word2, bestGuessWord2)
+                val word2HyphenationStatus = hyphenationStatus match {
+                  case HyphenatedWithHyphen(word)    => HyphenatedPart2WithHyphen(word)
+                  case HyphenatedWithoutHyphen(word) => HyphenatedPart2WithoutHyphen(word)
+                  case _                             => NonHyphenated
+                }
+                val newWord1 = guessToWord(mat, word1, bestGuessWord1, hyphenationStatus)
+                val newWord2 = guessToWord(mat, word2, bestGuessWord2, word2HyphenationStatus)
 
                 val newWordsAndSpaces = (guesses.init match {
                   case Nil => Seq.empty
@@ -373,16 +396,32 @@ case class FullSegmentationGuesser(
   private def guessToWord(
       mat: Mat,
       word: Word,
-      topGuess: GuessWithScore
+      topGuess: GuessWithScore,
+      hyphenationStatus: HyphenationStatus = NonHyphenated
   ): Word = {
     val glyphsWithContent =
       word.glyphs.zip(topGuess.guess.glyphPredictions).map { case (glyph, guess) =>
         glyph.copy(content = guess.outcome, confidence = guess.confidence)
       }
+
     val guessedWord = word.copy(
       content = topGuess.guess.word,
       glyphs = glyphsWithContent,
-      confidence = topGuess.score
+      confidence = topGuess.score,
+      subsType = hyphenationStatus match {
+        case NonHyphenated                   => None
+        case HyphenatedWithHyphen(_)         => Some(SubsType.HypPart1)
+        case HyphenatedWithoutHyphen(_)      => Some(SubsType.HypPart1)
+        case HyphenatedPart2WithHyphen(_)    => Some(SubsType.HypPart2)
+        case HyphenatedPart2WithoutHyphen(_) => Some(SubsType.HypPart2)
+      },
+      subsContent = hyphenationStatus match {
+        case NonHyphenated                      => None
+        case HyphenatedWithHyphen(word)         => Some(word)
+        case HyphenatedWithoutHyphen(word)      => Some(word)
+        case HyphenatedPart2WithHyphen(word)    => Some(word)
+        case HyphenatedPart2WithoutHyphen(word) => Some(word)
+      }
     )
     val otherAlphabetWord =
       guessWithOtherAlphabets(mat, guessedWord).getOrElse(guessedWord)

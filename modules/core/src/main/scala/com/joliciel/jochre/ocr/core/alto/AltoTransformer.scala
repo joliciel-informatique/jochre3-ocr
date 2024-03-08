@@ -62,7 +62,7 @@ trait AltoTransformer extends XmlImplicits {
     Seq.empty
 
   val addStringAlternatives: PartialFunction[AltoElement, AltoElement] = { case word: Word =>
-    val newAlternatives = getAlternatives(word.content)
+    val newAlternatives = getAlternatives(word)
     val allAlternatives =
       (newAlternatives ++ word.alternatives).toSeq.sortBy(a => (a.purpose, a.content))
     word.copy(alternatives = allAlternatives)
@@ -83,5 +83,5 @@ trait AltoTransformer extends XmlImplicits {
     word.copy(glyphs = Seq.empty)
   }
 
-  def getAlternatives(content: String): Set[SpellingAlternative]
+  def getAlternatives(word: Word): Set[SpellingAlternative]
 }

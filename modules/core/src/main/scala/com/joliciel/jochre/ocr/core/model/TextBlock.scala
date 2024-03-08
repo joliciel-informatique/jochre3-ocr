@@ -65,12 +65,12 @@ case class TextBlock(
   )
 
   override def toXml: Elem =
-    <TextBlock ID={id} HPOS={rectangle.left.toString} VPOS={
-      rectangle.top.toString
-    } WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString}
-               STYLEREFS={styleRefs.orNull} TAGREFS={tagRefs.orNull} IDNEXT={
-      idNext.orNull
-    }>{textLines.map(_.toXml)}</TextBlock>
+    <TextBlock ID={id}
+               HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} 
+               WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString}
+               STYLEREFS={styleRefs.orNull} TAGREFS={tagRefs.orNull}
+               IDNEXT={idNext.orNull}
+    >{textLines.map(_.toXml)}</TextBlock>
 
   def allWords: Seq[Word] = textLines.flatMap(_.words)
 

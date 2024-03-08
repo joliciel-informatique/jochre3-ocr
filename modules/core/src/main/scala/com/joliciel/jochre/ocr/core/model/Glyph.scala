@@ -19,9 +19,8 @@ case class Glyph(content: String, rectangle: Rectangle, confidence: Double)
     this.copy(rectangle = this.rectangle.rescale(scale))
 
   override def toXml: Elem =
-    <Glyph HPOS={rectangle.left.toString} VPOS={rectangle.top.toString} WIDTH={
-      rectangle.width.toString
-    } HEIGHT={rectangle.height.toString}
+    <Glyph HPOS={rectangle.left.toString} VPOS={rectangle.top.toString}
+           WIDTH={rectangle.width.toString} HEIGHT={rectangle.height.toString}
            CONTENT={content} GC={confidence.roundTo(2).toString}></Glyph>
 
   override def draw(mat: Mat): Unit = {}
