@@ -103,7 +103,9 @@ val learningDeps = Seq(
 
 val jpegDeps = Seq(
   "com.twelvemonkeys.imageio" % "imageio-jpeg" % twelveMonkeysVersion,
-  "com.twelvemonkeys.imageio" % "imageio-tiff" % twelveMonkeysVersion
+  "com.twelvemonkeys.imageio" % "imageio-tiff" % twelveMonkeysVersion,
+  "com.github.jai-imageio" % "jai-imageio-jpeg2000" % "1.4.0",
+  "org.apache.pdfbox" % "jbig2-imageio" % apachePdfBoxVersion
 )
 
 lazy val core = project
@@ -118,8 +120,7 @@ lazy val core = project
       "org.apache.commons" % "commons-text" % apacheCommonsTextVersion,
       "org.apache.commons" % "commons-math3" % apacheCommonsMathVersion,
       "org.apache.pdfbox" % "pdfbox" % apachePdfBoxVersion,
-      "org.apache.pdfbox" % "pdfbox-io" % apachePdfBoxVersion,
-      "org.apache.pdfbox" % "jbig2-imageio" % apachePdfBoxVersion
+      "org.apache.pdfbox" % "pdfbox-io" % apachePdfBoxVersion
     ) ++ learningDeps,
     // Compile / packageDoc / mappings := Seq(),
     Compile / packageDoc / publishArtifact := true,
