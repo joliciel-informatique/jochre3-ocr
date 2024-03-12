@@ -9,7 +9,7 @@ case class Rectangle(
     override val left: Int,
     override val top: Int,
     override val width: Int,
-    height: Int
+    override val height: Int
 ) extends WithRectangle {
   val rectangle: Rectangle = this
   val area: Int = width * height
