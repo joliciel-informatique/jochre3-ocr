@@ -5,9 +5,9 @@ import com.joliciel.jochre.ocr.core.graphics.{Rectangle, WithRectangle}
 import com.joliciel.jochre.ocr.core.model.{Alto, ComposedBlock, Illustration, TextBlock}
 import com.joliciel.jochre.ocr.core.utils.{FileUtils, ImageUtils}
 import com.typesafe.config.ConfigFactory
-import enumeratum.*
+import enumeratum._
 import org.bytedeco.opencv.opencv_core.Mat
-import org.rogach.scallop.*
+import org.rogach.scallop._
 import org.slf4j.LoggerFactory
 
 import java.awt.image.BufferedImage
@@ -488,7 +488,7 @@ object YoloAnnotator {
     val yamlFile = options.yamlFile.toOption
 
     val validationOneEvery = options.validationOneEvery.toOption
-    val segmentCount = options.tileCount.toOption
+    val tileCount = options.tileCount.toOption
     val imageSize = options.imageSize()
 
     val objectsToInclude = options.objectsToInclude.toOption
@@ -507,7 +507,7 @@ object YoloAnnotator {
       objectsToInclude,
       yamlFile,
       validationOneEvery,
-      segmentCount,
+      tileCount,
       imageSize,
       altoFinder
     )

@@ -115,12 +115,19 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None)
     val contoursForCalculation =
       contoursByDecreasingArea.take(effectiveMaxContours)
 
-    val contoursWithRectangles = contoursForCalculation.map { case (contour, area) =>
-      val rotatedRect: RotatedRect = minAreaRect(contour)
+    val contoursWithRectangles = contoursForCalculation.flatMap { case (contour, area) =>
+      try {
+        val rotatedRect: RotatedRect = minAreaRect(contour)
 
-      drawRotatedRect(colored, rotatedRect, Color.green, thickness = 5)
+        drawRotatedRect(colored, rotatedRect, Color.green, thickness = 5)
 
-      (contour, area, rotatedRect, Rectangle(rotatedRect))
+        Some(contour, area, rotatedRect, Rectangle(rotatedRect))
+      } catch {
+        case e: Throwable =>
+          // Avoid rare RuntimeException on minAreaRect
+          log.error("Unable to find minAreaRect for contour", e)
+          None
+      }
     }
 
     val noContains = contoursWithRectangles.zipWithIndex

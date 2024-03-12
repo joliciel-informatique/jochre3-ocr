@@ -11,7 +11,9 @@ trait WithRectangle {
 
   def bottom: Int = rectangle.bottom
 
-  def width: Int = right - left
+  def height: Int = rectangle.height
+
+  def width: Int = rectangle.width
 
   def verticalOverlap(that: WithRectangle): Int = {
     val maxTop = Math.max(this.top, that.top)

@@ -55,7 +55,7 @@ case class PDFToImageConverter(
           .fromIterable(start to end)
           .mapZIO { i =>
             ZIO.attempt {
-              log.info(f"Extracting image $i")
+              log.info(f"Extracting image $i of $pageCount")
               val image = pdfRenderer.renderImageWithDPI(
                 i - 1,
                 dpi.getOrElse(300).toFloat,
@@ -65,7 +65,7 @@ case class PDFToImageConverter(
             }
           }
           .mapZIO { case (image, i) =>
-            log.info(f"Converting image $i")
+            log.info(f"Converting image $i of $pageCount")
             convert(image, i)
           }
       }
