@@ -15,7 +15,7 @@ case class TextEvaluator(
   private val log = LoggerFactory.getLogger(getClass)
 
   def evaluate(inputDir: Path, goldDir: Path): Seq[EvaluationResult] = {
-    val files = recursiveListFiles(inputDir.toFile, raw".*\.txt".r)
+    val files = listFiles(inputDir, raw".*\.txt".r)
     val results = files.zipWithIndex.map { case (file, i) =>
       log.info(f"Evaluating file $i: ${file.getPath}")
       val predictedText = readFile(file).mkString("\n")

@@ -24,7 +24,7 @@ case class GlyphDataset(builder: GlyphDatasetBuilder)
 
   private val textSimplifier = builder.textSimplifier
 
-  private val images = recursiveListImages(builder.corpusDir.toFile)
+  private val images = listImages(builder.corpusDir)
   private val altoDocuments =
     images.map(image => builder.altoFinder.getAlto(image.toPath))
 

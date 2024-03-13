@@ -28,14 +28,14 @@ object YoloPredictorTest extends JUnitRunnableSpec with ImageUtils {
       val outputLocation = Some(OutputLocation(outputPath, "nybc200089_0011"))
       for {
         yoloPredictorService <- ZIO.service[YoloPredictorService]
-        blockPredictor <- yoloPredictorService.getYoloPredictor(
+        blockPredictor <- yoloPredictorService.getYoloPredictor
+        result <- blockPredictor.predict(
           YoloPredictionType.Blocks,
           mat,
           fileName,
           outputLocation,
           minConfidence = Some(0.7)
         )
-        result <- blockPredictor.predict()
       } yield {
         log.info(f"Result: ${result.map(_.rectangle).mkString(", ")}")
         val expected = Seq(
