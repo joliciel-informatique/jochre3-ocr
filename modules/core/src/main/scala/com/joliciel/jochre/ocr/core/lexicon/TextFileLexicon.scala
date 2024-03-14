@@ -1,7 +1,7 @@
 package com.joliciel.jochre.ocr.core.lexicon
 
 import com.joliciel.jochre.ocr.core.corpus.TextSimplifier
-import org.rogach.scallop.*
+import org.rogach.scallop._
 import org.slf4j.LoggerFactory
 
 import java.io.{File, FileInputStream, FileOutputStream, ObjectInputStream, ObjectOutputStream}

@@ -19,7 +19,7 @@ case class GlyphEvaluator(
     with ImageUtils {
   private val log = LoggerFactory.getLogger(getClass)
 
-  private val images = recursiveListImages(corpusDir.toFile)
+  private val images = listImages(corpusDir)
   private val altoDocuments =
     images.map(image => altoFinder.getAlto(image.toPath))
 

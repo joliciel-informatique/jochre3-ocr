@@ -1,7 +1,7 @@
 package com.joliciel.jochre.ocr.yiddish
 
 import com.joliciel.jochre.ocr.core.evaluation.{CharacterCount, CharacterErrorRate, TextEvaluator}
-import org.rogach.scallop.*
+import org.rogach.scallop._
 
 import java.io.{File, FileWriter}
 import java.nio.charset.StandardCharsets

@@ -46,30 +46,37 @@ trait FileUtils {
     Files.write(path, text.getBytes(StandardCharsets.UTF_8))
   }
 
-  def recursiveListFiles(dir: File, regex: Regex): Seq[File] =
-    recursiveListFilesInternal(dir, regex).sortBy(_.getPath).toSeq
+  def listFiles(dir: Path, regex: Regex, recursive: Boolean = true): Seq[File] =
+    listFilesInternal(dir, regex, recursive).sortBy(_.getPath).toSeq
 
-  private def recursiveListFilesInternal(
-      dir: File,
-      regex: Regex
+  private def listFilesInternal(
+      dir: Path,
+      regex: Regex,
+      recursive: Boolean = true
   ): Array[File] = {
-    val these = Option(dir.listFiles).getOrElse(Array.empty[File])
-    val good = these.filter(file => regex.findFirstIn(file.getName).isDefined)
-    good ++ these
-      .filter(_.isDirectory)
-      .flatMap(recursiveListFilesInternal(_, regex))
+    val these = Option(dir.toFile.listFiles).getOrElse(Array.empty[File])
+    val good = these.filter(file => file.isFile && regex.findFirstIn(file.getName).isDefined)
+    if (recursive) {
+      good ++ these
+        .filter(_.isDirectory)
+        .flatMap(f => listFilesInternal(f.toPath, regex))
+    } else {
+      good
+    }
+
   }
 
-  def recursiveListImages(dir: File): Seq[File] =
-    recursiveListFilesInternal(dir, ".*\\.jpg|.*\\.png|.*\\.jpeg".r)
+  def listImages(dir: Path, recursive: Boolean = true): Seq[File] =
+    listFilesInternal(dir, ".*\\.jpg|.*\\.png|.*\\.jpeg".r, recursive)
       .sortBy(_.getPath)
       .toSeq
 
   def getImageFilesFromDir(
       inputDir: Path,
-      maxImages: Option[Int]
+      maxImages: Option[Int],
+      recursive: Boolean = true
   ): Seq[(File, Mat)] = {
-    val allFiles = FileUtils.recursiveListImages(inputDir.toFile)
+    val allFiles = FileUtils.listImages(inputDir, recursive)
 
     allFiles
       .take(maxImages.getOrElse(allFiles.size))

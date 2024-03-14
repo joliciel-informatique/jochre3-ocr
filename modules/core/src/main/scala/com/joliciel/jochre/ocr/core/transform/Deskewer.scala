@@ -43,7 +43,7 @@ case class Deskewer(outDir: Option[Path] = None, debugDir: Option[Path] = None)
       .map(path => FileUtils.removeFileExtension(new File(path).getName))
       .getOrElse("test")
 
-    val resizer = new ResizeImageAndKeepAspectRatio(1000)
+    val resizer = new ResizeImageAndKeepAspectRatio(1000, 1000)
     val (resized, _) = resizer.transform(baseName, mat)
 
     val colored = toRGB(resized)
@@ -237,12 +237,12 @@ object Deskewer extends ImageUtils {
     val debugDir = options.debugDir.toOption.map(Path.of(_))
     debugDir.foreach(_.toFile.mkdirs())
 
-    val files = FileUtils.recursiveListImages(inputDir.toFile)
+    val files = FileUtils.listImages(inputDir)
 
     val deskewer = Deskewer(Some(outDir), debugDir)
 
     val transforms = List[ImageTransformer[_]](
-      new ResizeImageAndKeepAspectRatio(options.longSide())
+      new ResizeImageAndKeepAspectRatio(options.longSide(), options.longSide())
     )
 
     files.map { file =>

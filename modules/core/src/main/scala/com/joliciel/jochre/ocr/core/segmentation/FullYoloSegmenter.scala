@@ -56,14 +56,8 @@ private[segmentation] class FullYoloSegmenter(
   ): Task[Page] = {
     val startTime = Instant.now
     for {
-      blockPredictor <- yoloPredictorService.getYoloPredictor(
-        YoloPredictionType.Blocks,
-        mat,
-        fileName,
-        debugLocation,
-        Some(0.20)
-      )
-      blockPredictions <- blockPredictor.predict()
+      yoloPredictor <- yoloPredictorService.getYoloPredictor
+      blockPredictions <- yoloPredictor.predict(YoloPredictionType.Blocks, mat, fileName, debugLocation)
       pageWithBlocks <- ZIO.attempt {
         val textBlockPredictions =
           blockPredictions.filter(p => BlockType.withName(p.label).isText)
@@ -123,22 +117,18 @@ private[segmentation] class FullYoloSegmenter(
         printAreaMat.cols(),
         printAreaMat.rows()
       )
-      linePredictor <- yoloPredictorService.getYoloPredictor(
+      linePredictions <- yoloPredictor.predict(
         YoloPredictionType.Lines,
         printAreaMat,
         fileName,
-        debugLocation,
-        Some(0.05)
+        debugLocation
       )
-      linePredictions <- linePredictor.predict()
-      wordPredictor <- yoloPredictorService.getYoloPredictor(
+      wordPredictions <- yoloPredictor.predict(
         YoloPredictionType.Words,
         printAreaMat,
         fileName,
-        debugLocation,
-        Some(0.05)
+        debugLocation
       )
-      wordPredictions <- wordPredictor.predict()
       glyphPredictions <- {
         log.info(f"Predicted ${linePredictions.size} lines for $fileName")
         log.info(f"Predicted ${wordPredictions.size} words for $fileName")
@@ -154,14 +144,12 @@ private[segmentation] class FullYoloSegmenter(
           .foreach(tiles) { tile =>
             val tileMat = crop(printAreaMat, tile)
             for {
-              glyphPredictor <- yoloPredictorService.getYoloPredictor(
+              glyphPredictions <- yoloPredictor.predict(
                 YoloPredictionType.Glyphs,
                 tileMat,
                 fileName,
-                debugLocation,
-                Some(0.10)
+                debugLocation
               )
-              glyphPredictions <- glyphPredictor.predict()
             } yield {
               log.info(
                 f"Predicted ${glyphPredictions.size} glyphs for $fileName, tile ${tile.coordinates}"

@@ -32,7 +32,7 @@ case class YoloWordToGlyphAnnotator(
 ) extends CorpusAnnotator
     with ImageUtils {
 
-  import YoloAnnotator.*
+  import YoloAnnotator._
 
   private val config = ConfigFactory.load().getConfig("jochre.ocr.yolo")
   private val log = LoggerFactory.getLogger(getClass)

@@ -3,8 +3,8 @@ package com.joliciel.jochre.ocr.yiddish.learning
 import com.joliciel.jochre.ocr.core.corpus.TextSimplifier
 import com.joliciel.jochre.ocr.core.learning.{GlyphTrainer, ModelBuilder}
 import com.joliciel.jochre.ocr.yiddish.YiddishTextSimpifier
-import enumeratum.*
-import org.rogach.scallop.*
+import enumeratum._
+import org.rogach.scallop._
 
 import java.nio.file.Path
 import scala.collection.compat.immutable.ArraySeq

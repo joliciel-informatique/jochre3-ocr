@@ -29,7 +29,7 @@ trait CorpusAnnotator extends FileUtils with ImageUtils {
 
   def annotate(): Unit = {
     try {
-      val corpusFiles = recursiveListImages(corpusDir.toFile)
+      val corpusFiles = listImages(corpusDir)
 
       val locations = corpusFiles
         .filter(location => fileList.map(_.contains(location.getName)).getOrElse(true))

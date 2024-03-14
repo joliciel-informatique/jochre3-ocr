@@ -36,13 +36,8 @@ private[segmentation] class BlockOnlySegmenter(
       testRectangle: Option[Rectangle] = None
   ): Task[Page] = {
     for {
-      blockPredictor <- yoloPredictorService.getYoloPredictor(
-        YoloPredictionType.Blocks,
-        mat,
-        fileName,
-        debugLocation
-      )
-      blockPredictions <- blockPredictor.predict()
+      blockPredictor <- yoloPredictorService.getYoloPredictor
+      blockPredictions <- blockPredictor.predict(YoloPredictionType.Blocks, mat, fileName, debugLocation)
       page <- ZIO.attempt {
         val sortedBlockPredictions = BlockSorter
           .sort(blockPredictions, leftToRight)

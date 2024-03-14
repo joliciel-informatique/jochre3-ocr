@@ -24,6 +24,7 @@ import zio.{Task, ZIO}
 import java.awt.image.BufferedImage
 import java.io.File
 import java.nio.file.{Files, Path}
+import java.time.Instant
 import scala.xml.PrettyPrinter
 
 trait Jochre {
@@ -102,8 +103,8 @@ trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImpli
       inputDir: Path,
       maxImages: Option[Int]
   ): Seq[File] = {
-    val allFiles = FileUtils.recursiveListFiles(
-      inputDir.toFile,
+    val allFiles = FileUtils.listFiles(
+      inputDir,
       ".*\\.pdf|.*\\.jpg|.*\\.png|.*\\.jpeg".r
     )
     allFiles
@@ -282,7 +283,8 @@ trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImpli
       debugDir: Option[Path] = None,
       testRectangle: Option[Rectangle] = None
   ): Task[Page] = {
-    log.info(f"Processing image $fileName of size ${mat.cols()}X${mat.rows()}")
+    val startTime = Instant.now
+    log.info(f"## Processing image $fileName of size ${mat.cols()}X${mat.rows()}")
 
     val baseName = FileUtils.removeFileExtension(fileName)
     val debugLocation = debugDir.map(OutputLocation(_, baseName))
@@ -383,6 +385,9 @@ trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImpli
           rotatedPage.draw(labelled)
           saveImage(labelled, debugLocation.resolve("_seg.png"))
         }
+
+        val duration = (Instant.now.toEpochMilli - startTime.toEpochMilli).toDouble / 1000.0
+        log.info(f"## Finished processing image $fileName in $duration%.2f seconds")
 
         fixedPage
       }
