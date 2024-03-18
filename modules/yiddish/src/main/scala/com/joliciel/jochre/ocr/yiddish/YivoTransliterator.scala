@@ -1,6 +1,11 @@
 package com.joliciel.jochre.ocr.yiddish
 
+import org.rogach.scallop._
+
+import java.nio.charset.StandardCharsets
+import java.nio.file.{Files, Path}
 import scala.collection.SeqMap
+import scala.collection.compat.immutable.ArraySeq
 import scala.io.Source
 import scala.util.matching.Regex
 
@@ -479,5 +484,36 @@ object YivoTransliterator {
       string4
     }
     string5
+  }
+
+  private class CLI(arguments: Seq[String]) extends ScallopConf(arguments) {
+    val input: ScallopOption[String] = opt[String](required = true)
+    val output: ScallopOption[String] = opt[String](required = true)
+
+    verify()
+  }
+
+  val textSimplifier: YiddishTextSimpifier = YiddishTextSimpifier(true)
+
+  def main(args: Array[String]): Unit = {
+    val cli = new CLI(ArraySeq.unsafeWrapArray(args))
+    val inputPath = Path.of(cli.input())
+    val outputPath = Path.of(cli.output())
+    outputPath.toFile.getParentFile.mkdirs()
+
+    val withDelimiter = "(?U)((?<=%1$s)|(?=%1$s))"
+    val whiteSpaceAndPunct = String.format(withDelimiter, raw"(\s+)|(\p{Punct})")
+
+    val lines = Source.fromFile(inputPath.toFile).getLines()
+    val transliterated = lines.map { line =>
+      val words = line.split(whiteSpaceAndPunct)
+      val transliterated = words.map(transliterate(_))
+      transliterated.mkString
+    }
+
+    Files.write(
+      outputPath,
+      transliterated.mkString("\n").getBytes(StandardCharsets.UTF_8)
+    )
   }
 }

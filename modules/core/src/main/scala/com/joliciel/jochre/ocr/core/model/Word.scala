@@ -1,7 +1,7 @@
 package com.joliciel.jochre.ocr.core.model
 
 import com.joliciel.jochre.ocr.core.graphics.{ImageInfo, Rectangle, WithRectangle}
-import com.joliciel.jochre.ocr.core.utils.MathUtils.MathImplicits.*
+import com.joliciel.jochre.ocr.core.utils.MathUtils.MathImplicits._
 import org.bytedeco.opencv.global.opencv_imgproc
 import org.bytedeco.opencv.global.opencv_imgproc.LINE_8
 import org.bytedeco.opencv.opencv_core.{AbstractScalar, Mat, Point}
