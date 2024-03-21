@@ -48,18 +48,24 @@ case class Word(
     >{alternatives.map(_.toXml)}
       {glyphs.map(_.toXml)}</String>
 
-  def combineWith(that: Word): Word = Word(
-    f"${this.content}${that.content}",
-    this.rectangle.union(that.rectangle),
-    this.glyphs ++ that.glyphs,
-    this.alternatives ++ that.alternatives,
-    Math.sqrt(this.confidence * that.confidence)
+  def combineWith(that: Word): Word = this.copy(
+    content = f"${this.content}${that.content}",
+    rectangle = this.rectangle.union(that.rectangle),
+    glyphs = this.glyphs ++ that.glyphs,
+    alternatives = this.alternatives ++ that.alternatives,
+    confidence = Math.sqrt(this.confidence * that.confidence),
+    language = this.language.getOrElse(that.language),
+    styleRefs = this.styleRefs.getOrElse(that.styleRefs),
+    tagRefs = this.tagRefs.getOrElse(that.tagRefs),
+    subsType = this.subsType.getOrElse(that.subsType),
+    subsContent = this.subsContent.getOrElse(that.subsContent),
+    defaultLanguage = this.defaultLanguage.getOrElse(that.defaultLanguage)
   )
 
   def combineWith(hyphen: Hyphen): Word = {
     val newRectangle = this.rectangle.union(hyphen.rectangle)
     val newGlyphs = this.glyphs :+ Glyph(hyphen.content, hyphen.rectangle, 0.5)
-    this.copy(rectangle = newRectangle, glyphs = newGlyphs)
+    this.copy(rectangle = newRectangle, glyphs = newGlyphs, content = this.content + hyphen.content)
   }
 
   override def draw(mat: Mat): Unit = {
