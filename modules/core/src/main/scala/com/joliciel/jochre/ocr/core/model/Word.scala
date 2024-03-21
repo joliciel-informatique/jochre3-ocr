@@ -53,13 +53,7 @@ case class Word(
     rectangle = this.rectangle.union(that.rectangle),
     glyphs = this.glyphs ++ that.glyphs,
     alternatives = this.alternatives ++ that.alternatives,
-    confidence = Math.sqrt(this.confidence * that.confidence),
-    language = this.language.getOrElse(that.language),
-    styleRefs = this.styleRefs.getOrElse(that.styleRefs),
-    tagRefs = this.tagRefs.getOrElse(that.tagRefs),
-    subsType = this.subsType.getOrElse(that.subsType),
-    subsContent = this.subsContent.getOrElse(that.subsContent),
-    defaultLanguage = this.defaultLanguage.getOrElse(that.defaultLanguage)
+    confidence = Math.sqrt(this.confidence * that.confidence)
   )
 
   def combineWith(hyphen: Hyphen): Word = {
