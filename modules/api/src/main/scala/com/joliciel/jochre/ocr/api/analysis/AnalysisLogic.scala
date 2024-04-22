@@ -36,13 +36,20 @@ trait AnalysisLogic extends HttpErrorMapper with ImageUtils with FileUtils {
           endPage = fileForm.end,
           dpi = fileForm.dpi
         )
+        _ <- ZIO.attempt {
+          pdfFile.delete()
+        }
       } yield alto
     } else {
       for {
         image <- ZIO.attempt {
           fileForm match {
             case FileForm(Part(_, body, _, _), _, _, _) =>
-              ImageIO.read(body)
+              try {
+                ImageIO.read(body)
+              } finally {
+                body.delete()
+              }
           }
         }
         jochre <- ZIO.service[Jochre]
@@ -79,6 +86,7 @@ trait AnalysisLogic extends HttpErrorMapper with ImageUtils with FileUtils {
           endPage = body.end,
           dpi = body.dpi
         )
+        _ <- ZIO.attempt(pdfFile.delete())
       } yield alto
     } else {
       for {
