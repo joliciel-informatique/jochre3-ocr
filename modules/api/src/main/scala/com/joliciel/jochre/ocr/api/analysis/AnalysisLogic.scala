@@ -5,22 +5,35 @@ import com.joliciel.jochre.ocr.api.{HttpError, HttpErrorMapper}
 import com.joliciel.jochre.ocr.core.Jochre
 import com.joliciel.jochre.ocr.core.output.OutputFormat
 import com.joliciel.jochre.ocr.core.utils.{FileUtils, ImageUtils}
+import com.typesafe.config.ConfigFactory
 import org.apache.commons.io.FilenameUtils
 import org.slf4j.LoggerFactory
 import sttp.model.Part
 import zio._
 import zio.stream.{ZPipeline, ZStream}
 
+import java.nio.file.Path
 import javax.imageio.ImageIO
 
 trait AnalysisLogic extends HttpErrorMapper with ImageUtils with FileUtils {
   private val log = LoggerFactory.getLogger(getClass)
+  private val config = ConfigFactory.load().getConfig("jochre.ocr.api")
+  private val savePdfImages = config.getBoolean("save-pdf-images")
 
   def postAnalyzeFileLogic(
       fileForm: FileForm
   ): ZIO[Requirements, HttpError, ZStream[Any, Throwable, Byte]] = {
     val fileName = fileForm.image.fileName.getOrElse("Unknown")
     val getAlto = if (fileName.endsWith(".pdf")) {
+      val outputDir = Option.when(savePdfImages) {
+        val imageParentDirectory = Path.of(config.getString("image-parent-directory"))
+        imageParentDirectory.toFile.mkdirs()
+        val baseName = FileUtils.removeFileExtension(fileName)
+        val pdfImageDirectory = imageParentDirectory.resolve(baseName)
+        pdfImageDirectory.toFile.mkdirs()
+        pdfImageDirectory
+      }
+
       for {
         pdfFile <- ZIO.attempt {
           fileForm match {
@@ -34,7 +47,9 @@ trait AnalysisLogic extends HttpErrorMapper with ImageUtils with FileUtils {
           fileName = Some(fileName),
           startPage = fileForm.start,
           endPage = fileForm.end,
-          dpi = fileForm.dpi
+          dpi = fileForm.dpi,
+          outputDir = outputDir,
+          writeImages = savePdfImages
         )
         _ <- ZIO.attempt {
           pdfFile.delete()
@@ -74,6 +89,15 @@ trait AnalysisLogic extends HttpErrorMapper with ImageUtils with FileUtils {
   ): ZIO[Requirements, HttpError, ZStream[Any, Throwable, Byte]] = {
     val fileName = body.fileName.getOrElse(FilenameUtils.getName(body.url))
     val getAlto = if (fileName.endsWith(".pdf")) {
+      val outputDir = Option.when(savePdfImages) {
+        val imageParentDirectory = Path.of(config.getString("image-parent-directory"))
+        imageParentDirectory.toFile.mkdirs()
+        val baseName = FileUtils.removeFileExtension(fileName)
+        val pdfImageDirectory = imageParentDirectory.resolve(baseName)
+        pdfImageDirectory.toFile.mkdirs()
+        pdfImageDirectory
+      }
+
       for {
         pdfFile <- ZIO.fromTry {
           getFileFromUrl(body.url)
@@ -84,7 +108,9 @@ trait AnalysisLogic extends HttpErrorMapper with ImageUtils with FileUtils {
           fileName = Some(fileName),
           startPage = body.start,
           endPage = body.end,
-          dpi = body.dpi
+          dpi = body.dpi,
+          outputDir = outputDir,
+          writeImages = savePdfImages
         )
         _ <- ZIO.attempt(pdfFile.delete())
       } yield alto
