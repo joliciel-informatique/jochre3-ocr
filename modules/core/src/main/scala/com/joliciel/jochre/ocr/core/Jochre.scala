@@ -7,13 +7,7 @@ import com.joliciel.jochre.ocr.core.output.OutputFormat
 import com.joliciel.jochre.ocr.core.pdf.PDFToImageConverter
 import com.joliciel.jochre.ocr.core.segmentation.SegmenterService
 import com.joliciel.jochre.ocr.core.text.TextGuesserService
-import com.joliciel.jochre.ocr.core.transform.{
-  BrightnessAndContrastTransform,
-  Deskewer,
-  GrayscaleTransform,
-  Scale,
-  SkewAngle
-}
+import com.joliciel.jochre.ocr.core.transform.{BrightnessAndContrastTransform, Deskewer, GrayscaleTransform, Scale, SkewAngle}
 import com.joliciel.jochre.ocr.core.utils.{FileUtils, ImageUtils, OutputLocation, XmlImplicits}
 import com.typesafe.config.ConfigFactory
 import org.bytedeco.opencv.opencv_core.Mat
@@ -25,6 +19,7 @@ import java.awt.image.BufferedImage
 import java.io.File
 import java.nio.file.{Files, Path}
 import java.time.Instant
+import javax.imageio.ImageIO
 import scala.xml.PrettyPrinter
 
 trait Jochre {
@@ -37,7 +32,8 @@ trait Jochre {
       startPage: Option[Int] = None,
       endPage: Option[Int] = None,
       dpi: Option[Int] = None,
-      testRectangle: Option[Rectangle] = None
+      testRectangle: Option[Rectangle] = None,
+      writeImages: Boolean = true
   ): Task[Alto]
   def processDirectory(
       inputDir: Path,
@@ -120,7 +116,8 @@ trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImpli
       startPage: Option[Int] = None,
       endPage: Option[Int] = None,
       dpi: Option[Int] = None,
-      testRectangle: Option[Rectangle]
+      testRectangle: Option[Rectangle],
+      writeImages: Boolean
   ): Task[Alto] = {
     val pdfFileName = fileName.getOrElse(pdfFile.toFile.getName)
     log.debug(f"Processing file: $pdfFileName")
@@ -135,6 +132,12 @@ trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImpli
       pages <- converter
         .process((image: BufferedImage, i: Int) => {
           val imageFileName = f"${baseName}_$i%04d.png"
+          if (writeImages) {
+            outputDir.map{ outputDir =>
+              val imageFile = outputDir.resolve(imageFileName).toFile
+              ImageIO.write(image, "png", imageFile)
+            }
+          }
           processImageInternal(image, imageFileName, i, debugDir, testRectangle)
         })
         .run {

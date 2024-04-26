@@ -22,8 +22,11 @@ trait JochreAppBase {
     val startPage = options.startPage.toOption
     val endPage = options.endPage.toOption
     val dpi = options.dpi.toOption
-    val outputFormats =
+    val outputFormats = {
       options.outputFormats().split(",").map(OutputFormat.withName).toSeq
+    }
+    val writeImages = options.writeImages()
+
     for {
       testRectangle <- ZIO.attempt {
         options.testRectangle.toOption.map { rectString =>
@@ -90,7 +93,8 @@ trait JochreAppBase {
                 startPage,
                 endPage,
                 dpi,
-                testRectangle
+                testRectangle,
+                writeImages
               )
             } else {
               // Assume image file
