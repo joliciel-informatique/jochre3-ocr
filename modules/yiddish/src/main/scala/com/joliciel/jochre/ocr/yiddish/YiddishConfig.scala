@@ -30,8 +30,9 @@ object YiddishConfig {
           new JochreCLI(args)
         }
       } yield {
+        val configLexiconPath = fromConfig.lexiconPath
         fromConfig.copy(
-          lexiconPath = jochreCLI.lexiconDir.toOption
+          lexiconPath = jochreCLI.lexiconDir.toOption.orElse(configLexiconPath)
         )
       }
     }

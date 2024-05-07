@@ -6,7 +6,6 @@ RUN add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/$(lsb
 RUN apt update
 RUN apt install -y docker-ce-cli
 COPY . /jochre
-RUN mkdir -p /jochre/modules/yiddish/resources/lexicons
 RUN mkdir -p /jochre/modules/yiddish/resources/models
 RUN mv /jochre/docker-compose/sbt_entry_point.sh /bin/
 WORKDIR /jochre

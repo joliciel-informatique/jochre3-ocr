@@ -1,14 +1,17 @@
 package com.joliciel.jochre.ocr.core.lexicon
 
 import com.joliciel.jochre.ocr.core.corpus.TextSimplifier
+import io.github.classgraph.{ClassGraph, Resource}
 import org.rogach.scallop._
 import org.slf4j.LoggerFactory
 
-import java.io.{File, FileInputStream, FileOutputStream, ObjectInputStream, ObjectOutputStream}
+import java.io.{File, FileInputStream, FileOutputStream, InputStream, ObjectInputStream, ObjectOutputStream}
+import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
 import scala.collection.immutable.ArraySeq
 import scala.io.Source
+import scala.util.Using
 
 case class TextFileLexicon(
     entries: Set[String],
@@ -90,22 +93,46 @@ object TextFileLexicon {
           log.info(
             f"Loaded ${entries.size} entries before file ${file.getPath}"
           )
-          val newEntries = loadFile(file, textSimplifier)
-          entries ++ newEntries
+          Using(new FileInputStream(file)) { input =>
+            val newEntries = loadFile(input, textSimplifier)
+            entries ++ newEntries
+          }.get
         }
       log.info(f"Loaded ${entries.size} entries")
       constructor(entries, textSimplifier)
     } else {
-      val entries = loadFile(input, textSimplifier).toSet
-      constructor(entries, textSimplifier)
+      Using(new FileInputStream(input)) { input =>
+        val entries = loadFile(input, textSimplifier).toSet
+        constructor(entries, textSimplifier)
+      }.get
     }
   }
 
+  def loadFromResource[T <: TextFileLexicon](
+      resourcePath: String,
+      textSimplifier: Option[TextSimplifier] = None,
+      constructor: (Set[String], Option[TextSimplifier]) => T
+  ): T = {
+    var entries = Set.empty[String]
+    val scanResult = new ClassGraph().acceptPaths(resourcePath).scan
+    try {
+      scanResult
+        .getResourcesWithExtension("txt")
+        .forEachInputStreamThrowingIOException((res: Resource, input: InputStream) => {
+          log.info(f"Loading entries from ${res.getPath}")
+          val newEntries = loadFile(input, textSimplifier)
+          entries = entries ++ newEntries
+        })
+
+    } finally { if (scanResult != null) scanResult.close() }
+    constructor(entries, textSimplifier)
+  }
+
   private def loadFile(
-      input: File,
+      input: InputStream,
       textSimplifier: Option[TextSimplifier] = None
   ): Iterator[String] = {
-    val fileEntries = Source.fromFile(input).getLines()
+    val fileEntries = Source.fromInputStream(input, "UTF-8").getLines()
     val simplifiedEntries = textSimplifier
       .map { textSimplifier => fileEntries.map(textSimplifier.simplify) }
       .getOrElse(fileEntries)

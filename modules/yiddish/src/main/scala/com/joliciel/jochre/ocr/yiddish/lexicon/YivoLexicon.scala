@@ -22,7 +22,7 @@ trait YivoLexiconService {
 private case class YivoLexiconServiceImpl(yiddishConfig: YiddishConfig) extends YivoLexiconService {
   override def getYivoLexicon: Task[YivoLexicon] = ZIO.attempt {
     yiddishConfig.lexiconPath
-      .map { path => YivoLexicon.load(new File(path)) }
+      .map { path => YivoLexicon.load(path) }
       .getOrElse(new YivoLexiconImpl(Set.empty))
   }
 }
@@ -176,15 +176,15 @@ private class YivoLexiconImpl(entries: Set[String]) extends TextFileLexicon(entr
 
 object YivoLexicon {
   val textSimplifier: YiddishTextSimpifier = YiddishTextSimpifier()
-  def load(input: File): YivoLexicon =
-    TextFileLexicon.load(
-      input,
+  def load(resourcePath: String): YivoLexicon =
+    TextFileLexicon.loadFromResource(
+      resourcePath,
       Some(textSimplifier),
       (entries, _) => new YivoLexiconImpl(entries)
     )
 
   def fromYiddishConfig(yiddishConfig: YiddishConfig): YivoLexicon =
     yiddishConfig.lexiconPath
-      .map { path => load(new File(path)) }
+      .map { path => load(path) }
       .getOrElse(new YivoLexiconImpl(Set.empty))
 }

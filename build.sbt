@@ -25,6 +25,7 @@ val apachePdfBoxVersion = "3.0.1"
 val twelveMonkeysVersion = "3.10.1"
 val djlVersion = "0.26.0"
 val pytorchVersion = "2.1.1"
+val classGraphVersion = "4.8.172"
 
 lazy val jochre3OCRVersion = sys.env
   .get("JOCHRE3_OCR_VERSION")
@@ -121,7 +122,8 @@ lazy val core = project
       "org.apache.commons" % "commons-text" % apacheCommonsTextVersion,
       "org.apache.commons" % "commons-math3" % apacheCommonsMathVersion,
       "org.apache.pdfbox" % "pdfbox" % apachePdfBoxVersion,
-      "org.apache.pdfbox" % "pdfbox-io" % apachePdfBoxVersion
+      "org.apache.pdfbox" % "pdfbox-io" % apachePdfBoxVersion,
+      "io.github.classgraph" % "classgraph" % classGraphVersion
     ) ++ learningDeps,
     // Compile / packageDoc / mappings := Seq(),
     Compile / packageDoc / publishArtifact := true,
@@ -165,8 +167,7 @@ lazy val api = project
     Docker / version := version.value,
     dockerExposedPorts := Seq(3434),
     dockerExposedVolumes := Seq("/opt/docker/index"),
-    // These next lines result in directories /opt/docker/lexicons and /opt/docker/models
-    Universal / mappings ++= directory("modules/yiddish/resources/lexicons"),
+    // These next line results in directory /opt/docker/models
     Universal / mappings ++= directory("modules/yiddish/resources/models"),
     // Add docker commands before changing user
     Docker / dockerCommands := dockerCommands.value.flatMap {
