@@ -1,7 +1,7 @@
 version: '3.7'
 services:
   yolo-dla:
-    image: registry.gitlab.com/jochre/yolo-dla-server:1.0.0
+    image: registry.gitlab.com/jochre/yolo-dla-server:1.0.2
     logging:
       driver: "json-file"
       options:
