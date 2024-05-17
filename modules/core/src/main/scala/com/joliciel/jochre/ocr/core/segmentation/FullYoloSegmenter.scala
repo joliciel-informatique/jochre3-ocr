@@ -212,6 +212,12 @@ private[segmentation] class FullYoloSegmenter(
           val myLineRects = textBlockToLineMap
             .getOrElse(textBlock, Seq.empty)
             .sorted(WithRectangle.VerticalOrdering())
+            .map(lineRect =>
+              lineRect.copy(rectangle =
+                lineRect.rectangle.copy(left = textBlock.rectangle.left, width = textBlock.rectangle.width)
+              )
+            )
+
           val myLineRectsWithoutOverlaps = removeOverlaps(myLineRects)
           val myLines = myLineRectsWithoutOverlaps.map(lineRect =>
             TextLine(
@@ -892,9 +898,9 @@ private[segmentation] class FullYoloSegmenter(
         val myOverlaps = candidates.filter { candidate =>
           val candidateIntersection =
             candidate.rectangle.percentageIntersection(rect.rectangle)
-          val rectangleIntesection =
+          val rectangleIntersection =
             rect.rectangle.percentageIntersection(candidate.rectangle)
-          candidateIntersection > 0.2 || rectangleIntesection > 0.2
+          candidateIntersection > 0.2 || rectangleIntersection > 0.2
         }
 
         if (log.isTraceEnabled) {
