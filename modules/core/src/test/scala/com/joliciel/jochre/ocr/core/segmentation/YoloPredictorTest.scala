@@ -37,12 +37,13 @@ object YoloPredictorTest extends JUnitRunnableSpec with ImageUtils {
           minConfidence = Some(0.7)
         )
       } yield {
-        log.info(f"Result: ${result.map(_.rectangle).mkString(", ")}")
+        log.info(f"Result: ${result.map(_.rectangle).sortBy(_.top).mkString(", ")}")
         val expected = Seq(
-          Rectangle(632, 2286, 2413, 1856),
-          Rectangle(1780, 2058, 118, 84),
-          Rectangle(1797, 1468, 92, 101),
-          Rectangle(700, 1653, 2303, 135)
+          Rectangle(1780, 1468, 126, 109),
+          Rectangle(675, 1653, 2269, 126),
+          Rectangle(1771, 2058, 135, 84),
+          Rectangle(615, 2295, 2438, 1839),
+          Rectangle(1797, 4185, 101, 75)
         )
         assertTrue(
           result.forall(rect => expected.exists(other => rect.rectangle.iou(other) > 0.8))

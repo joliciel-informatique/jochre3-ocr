@@ -18,7 +18,7 @@ services:
         max-file: "10"
     restart: on-failure
   yolo-dla:
-    image: registry.gitlab.com/jochre/yolo-dla-server:1.0.2
+    image: registry.gitlab.com/jochre/yolo-dla-server:1.0.3
     logging:
       driver: "json-file"
       options:

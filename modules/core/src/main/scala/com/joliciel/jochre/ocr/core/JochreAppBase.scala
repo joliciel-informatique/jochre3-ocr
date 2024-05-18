@@ -26,6 +26,7 @@ trait JochreAppBase {
       options.outputFormats().split(",").map(OutputFormat.withName).toSeq
     }
     val writeImages = options.writeImages()
+    val ignoreParagraphs = options.evalIgnoreParagraphs()
 
     for {
       testRectangle <- ZIO.attempt {
@@ -51,7 +52,8 @@ trait JochreAppBase {
               jochre,
               Seq(CharacterErrorRate, CharacterCount),
               evalDir,
-              textSimplifier
+              textSimplifier,
+              ignoreParagraphs = ignoreParagraphs
             )
             val evalWriter = new FileWriter(
               new File(evalDir.toFile, "eval.tsv"),

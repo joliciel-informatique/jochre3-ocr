@@ -1,7 +1,17 @@
 package com.joliciel.jochre.ocr.core.segmentation
 
 import com.joliciel.jochre.ocr.core.graphics.{BlockSorter, Line, PredictedRectangle, Rectangle, WithRectangle}
-import com.joliciel.jochre.ocr.core.model.{Block, Glyph, Illustration, Page, Space, TextBlock, TextLine, Word}
+import com.joliciel.jochre.ocr.core.model.{
+  Block,
+  ComposedBlock,
+  Glyph,
+  Illustration,
+  Page,
+  Space,
+  TextBlock,
+  TextLine,
+  Word
+}
 import com.joliciel.jochre.ocr.core.utils.{ImageUtils, MathUtils, OutputLocation, StringUtils}
 import com.typesafe.config.ConfigFactory
 import org.bytedeco.opencv.opencv_core.Mat
@@ -117,6 +127,12 @@ private[segmentation] class FullYoloSegmenter(
         printAreaMat.cols(),
         printAreaMat.rows()
       )
+      paragraphPredictions <- yoloPredictor.predict(
+        YoloPredictionType.TextBlocks,
+        printAreaMat,
+        fileName,
+        debugLocation
+      )
       linePredictions <- yoloPredictor.predict(
         YoloPredictionType.Lines,
         printAreaMat,
@@ -130,6 +146,7 @@ private[segmentation] class FullYoloSegmenter(
         debugLocation
       )
       glyphPredictions <- {
+        log.info(f"Predicted ${paragraphPredictions.size} paragraphs for $fileName")
         log.info(f"Predicted ${linePredictions.size} lines for $fileName")
         log.info(f"Predicted ${wordPredictions.size} words for $fileName")
 
@@ -385,8 +402,115 @@ private[segmentation] class FullYoloSegmenter(
           }
           .filter(_.textLines.nonEmpty)
 
+        // Place individual paragraphs inside top-level text-blocks
+        val translatedParagraphs = paragraphPredictions.map(p =>
+          p.copy(rectangle = p.rectangle.translate(croppedPrintArea.left, croppedPrintArea.top))
+        )
+
+        val paragraphsToPlace = testRectangle
+          .map(testRect =>
+            translatedParagraphs.filter(paragraph =>
+              paragraph.rectangle
+                .areaOfIntersection(testRect) / paragraph.rectangle.area.toDouble > 0
+            )
+          )
+          .getOrElse(translatedParagraphs)
+
+        val sortedParagraphs = BlockSorter
+          .sort(paragraphsToPlace, leftToRight)
+          .collect { case p: PredictedRectangle =>
+            p
+          }
+
+        val paragraphsWithoutOverlaps = removeOverlapsUnordered(sortedParagraphs)
+
+        val textBlockToParagraphMap = placeRectanglesInTextBlocks(
+          textBlocksWithGlyphs,
+          paragraphsWithoutOverlaps,
+          "Paragraph"
+        )
+
+        // If any text block contains more than one paragraph, we split its lines among the paragraphs.
+        val correctedTextBlocks = textBlocksWithGlyphs.map { textBlock =>
+          val paragraphs = textBlockToParagraphMap
+            .getOrElse(textBlock, Seq.empty)
+            .sorted(WithRectangle.VerticalOrdering())
+
+          if (log.isDebugEnabled && paragraphs.nonEmpty) {
+            log.debug(f"Paragraphs for text block ${textBlock.rectangle.coordinates}:")
+            paragraphs.zipWithIndex.foreach { case (paragraph, i) =>
+              log.debug(f"Paragraph $i: ${paragraph.rectangle.coordinates}")
+            }
+          }
+          if (paragraphs.size > 1 && textBlock.textLines.nonEmpty) {
+            val (textLineGroups, _, _) = textBlock.textLinesWithRectangles.foldLeft(
+              Vector(Vector.empty[(TextLine, Rectangle)]),
+              0,
+              Some(paragraphs.head): Option[PredictedRectangle]
+            ) {
+              case ((textLineGroups, paragraphIndex, Some(paragraph)), (textLine, rectangle)) =>
+                if (textLine.baseLine.y1 > paragraph.rectangle.bottom) {
+                  if (log.isDebugEnabled) {
+                    log.debug(
+                      f"Found new paragraph, textLine baseline ${textLine.baseLine.y1}, paragraph bottom ${paragraph.rectangle.bottom}"
+                    )
+                  }
+                  if (paragraphIndex + 1 == paragraphs.size) {
+                    (textLineGroups :+ Vector(textLine -> rectangle), paragraphIndex + 1, None)
+                  } else {
+                    (
+                      textLineGroups :+ Vector(textLine -> rectangle),
+                      paragraphIndex + 1,
+                      Some(paragraphs(paragraphIndex + 1))
+                    )
+                  }
+                } else {
+                  if (log.isDebugEnabled) {
+                    log.debug(
+                      f"Extending existing paragraph, textLine baseline ${textLine.baseLine.y1}, paragraph bottom ${paragraph.rectangle.bottom}"
+                    )
+                  }
+                  (
+                    textLineGroups.init :+ (textLineGroups.last :+ (textLine -> rectangle)),
+                    paragraphIndex,
+                    Some(paragraph)
+                  )
+                }
+              case ((textLineGroups, paragraphIndex, None), (textLine, rectangle)) =>
+                if (log.isDebugEnabled) {
+                  log.debug(
+                    f"Extending existing paragraph, textLine baseline ${textLine.baseLine.y1}, no paragraphs left"
+                  )
+                }
+                (textLineGroups.init :+ (textLineGroups.last :+ (textLine -> rectangle)), paragraphIndex, None)
+            }
+
+            if (textLineGroups.size <= 1) {
+              textBlock
+            } else {
+              val (childTextBlocks, _) = textLineGroups.foldLeft(Seq.empty[TextBlock], textBlock.rectangle.top) {
+                case ((childBlocks, top), textLineGroup) =>
+                  val bottom = textLineGroup.last._2.bottom
+                  val textLines = textLineGroup.map(_._1)
+                  val childBlock = TextBlock(
+                    rectangle = textBlock.rectangle.copy(top = top, height = bottom - top),
+                    textLines = textLines
+                  )
+                  (childBlocks :+ childBlock, bottom)
+              }
+              val lastChild = childTextBlocks.last
+              val fixedChildren = childTextBlocks.init :+ lastChild.copy(rectangle =
+                lastChild.rectangle.copy(height = textBlock.bottom - lastChild.top)
+              )
+              ComposedBlock(rectangle = textBlock.rectangle, textBlocks = fixedChildren)
+            }
+          } else {
+            textBlock
+          }
+        }
+
         val newBlocks = BlockSorter
-          .sort(textBlocksWithGlyphs ++ illustrations, leftToRight)
+          .sort(correctedTextBlocks ++ illustrations, leftToRight)
           .collect { case b: Block =>
             b
           }
