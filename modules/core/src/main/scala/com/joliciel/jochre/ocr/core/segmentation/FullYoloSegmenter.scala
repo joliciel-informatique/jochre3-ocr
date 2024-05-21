@@ -200,6 +200,44 @@ private[segmentation] class FullYoloSegmenter(
 
         val illustrations = pageWithBlocks.illustrations
 
+        // Place individual paragraphs inside top-level text-blocks
+        val translatedParagraphs = paragraphPredictions.map(p =>
+          p.copy(rectangle = p.rectangle.translate(croppedPrintArea.left, croppedPrintArea.top))
+        )
+
+        val paragraphsToPlace = testRectangle
+          .map(testRect =>
+            translatedParagraphs.filter(paragraph =>
+              paragraph.rectangle
+                .areaOfIntersection(testRect) / paragraph.rectangle.area.toDouble > 0
+            )
+          )
+          .getOrElse(translatedParagraphs)
+
+        val sortedParagraphs = BlockSorter
+          .sort(paragraphsToPlace, leftToRight)
+          .collect { case p: PredictedRectangle =>
+            p
+          }
+
+        val paragraphsWithoutOverlaps = removeOverlapsUnordered(sortedParagraphs)
+
+        val textBlockToParagraphMap = placeRectanglesInTextBlocks(
+          textBlocksToConsider,
+          paragraphsWithoutOverlaps,
+          "Paragraph"
+        )
+
+        val nonOrphanParagraphs = textBlockToParagraphMap.values.flatten.toSet
+        val orphanParagraphs = paragraphsWithoutOverlaps
+          .filterNot(p => p.confidence > alwaysRetainBlockThreshold && nonOrphanParagraphs.contains(p))
+          .map { p =>
+            log.debug(f"Adding orphan paragraph ${p.rectangle.coordinates}")
+            TextBlock(rectangle = p.rectangle, textLines = Seq.empty)
+          }
+
+        val textBlocksWithOrphans = textBlocksToConsider ++ orphanParagraphs
+
         // Place lines inside blocks
         val translatedLinePredictions = linePredictions.map(p =>
           p.copy(rectangle = p.rectangle.translate(croppedPrintArea.left, croppedPrintArea.top))
@@ -218,14 +256,14 @@ private[segmentation] class FullYoloSegmenter(
           .getOrElse(linesBumpedUp)
 
         val textBlockToLineMap = placeRectanglesInTextBlocks(
-          textBlocksToConsider,
+          textBlocksWithOrphans,
           linesToPlace,
           "TextLine",
           minIntersection = 0.01,
           splitHorizontally = true
         )
 
-        val textBlocksWithLines = textBlocksToConsider.map { textBlock =>
+        val textBlocksWithLines = textBlocksWithOrphans.map { textBlock =>
           val myLineRects = textBlockToLineMap
             .getOrElse(textBlock, Seq.empty)
             .sorted(WithRectangle.VerticalOrdering())
@@ -402,37 +440,16 @@ private[segmentation] class FullYoloSegmenter(
           }
           .filter(_.textLines.nonEmpty)
 
-        // Place individual paragraphs inside top-level text-blocks
-        val translatedParagraphs = paragraphPredictions.map(p =>
-          p.copy(rectangle = p.rectangle.translate(croppedPrintArea.left, croppedPrintArea.top))
-        )
-
-        val paragraphsToPlace = testRectangle
-          .map(testRect =>
-            translatedParagraphs.filter(paragraph =>
-              paragraph.rectangle
-                .areaOfIntersection(testRect) / paragraph.rectangle.area.toDouble > 0
-            )
-          )
-          .getOrElse(translatedParagraphs)
-
-        val sortedParagraphs = BlockSorter
-          .sort(paragraphsToPlace, leftToRight)
-          .collect { case p: PredictedRectangle =>
-            p
-          }
-
-        val paragraphsWithoutOverlaps = removeOverlapsUnordered(sortedParagraphs)
-
-        val textBlockToParagraphMap = placeRectanglesInTextBlocks(
-          textBlocksWithGlyphs,
-          paragraphsWithoutOverlaps,
-          "Paragraph"
-        )
-
         // If any text block contains more than one paragraph, we split its lines among the paragraphs.
+        val updatedTextBlockToParagraphMap = textBlockToParagraphMap.view.map { case (textBlock, paragraphs) =>
+          val newTextBlock = textBlocksWithGlyphs
+            .find(t => t.rectangle == textBlock.rectangle)
+            .getOrElse(throw new Exception(f"Cannot find textbox ${textBlock.rectangle.coordinates}"))
+          newTextBlock -> paragraphs
+        }.toMap
+
         val correctedTextBlocks = textBlocksWithGlyphs.map { textBlock =>
-          val paragraphs = textBlockToParagraphMap
+          val paragraphs = updatedTextBlockToParagraphMap
             .getOrElse(textBlock, Seq.empty)
             .sorted(WithRectangle.VerticalOrdering())
 
