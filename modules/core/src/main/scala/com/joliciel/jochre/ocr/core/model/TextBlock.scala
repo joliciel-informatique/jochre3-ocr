@@ -76,13 +76,13 @@ case class TextBlock(
   override def draw(mat: Mat): Unit = {
     opencv_imgproc.rectangle(
       mat,
-      new Point(rectangle.left - 2, rectangle.top - 2),
+      new Point(rectangle.left - 4, rectangle.top - 4),
       new Point(
-        rectangle.left + rectangle.width + 4,
-        rectangle.top + rectangle.height + 4
+        rectangle.left + rectangle.width + 8,
+        rectangle.top + rectangle.height + 8
       ),
       AbstractScalar.BLACK,
-      2,
+      4,
       LINE_8,
       0
     )

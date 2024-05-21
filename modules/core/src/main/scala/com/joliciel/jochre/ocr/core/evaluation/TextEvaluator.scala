@@ -9,7 +9,8 @@ import java.nio.file.Path
 case class TextEvaluator(
     metrics: Seq[TextEvaluationMetric],
     evalDir: Path,
-    textSimplifier: Option[TextSimplifier] = None
+    textSimplifier: Option[TextSimplifier] = None,
+    ignoreParagraphs: Boolean = false
 ) extends EvaluatorBase
     with FileUtils {
   private val log = LoggerFactory.getLogger(getClass)
@@ -24,10 +25,21 @@ case class TextEvaluator(
       val expectedText = readFile(expectedFile.toFile).mkString("\n")
       val expected =
         textSimplifier.map(_.simplify(expectedText)).getOrElse(expectedText)
+      val expectedForEvaluation = if (ignoreParagraphs) {
+        expected.replaceAll("\n\n+", "\n")
+      } else {
+        expected
+      }
       val predicted =
         textSimplifier.map(_.simplify(predictedText)).getOrElse(predictedText)
+
+      val predictedForEvaluation = if (ignoreParagraphs) {
+        predicted.replaceAll("\n\n+", "\n")
+      } else {
+        predicted
+      }
       val results = metrics.map { metric =>
-        metric.name -> metric.evaluate(predicted, expected)
+        metric.name -> metric.evaluate(predictedForEvaluation, expectedForEvaluation)
       }.toMap
       EvaluationResult(file, results)
     }

@@ -155,7 +155,7 @@ case class Page(
     .collect { case textContainer: TextContainer =>
       textContainer.content
     }
-    .mkString("\n")
+    .mkString("\n\n")
 
   override def transform(
       partialFunction: PartialFunction[AltoElement, AltoElement]

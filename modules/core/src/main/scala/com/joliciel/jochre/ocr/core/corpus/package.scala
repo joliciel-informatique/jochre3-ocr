@@ -16,6 +16,10 @@ package object corpus {
       */
     case object Illustration extends YoloObjectType
 
+    /** Text blocks allow the detection of paragraphs within larger blocks.
+      */
+    case object TextBlock extends YoloObjectType
+
     /** A baseline */
     case object BaseLine extends YoloObjectType
 

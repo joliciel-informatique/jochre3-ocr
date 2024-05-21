@@ -3,7 +3,7 @@ package com.joliciel.jochre.ocr.core.model
 import com.joliciel.jochre.ocr.core.graphics.{ImageInfo, Rectangle}
 import org.bytedeco.opencv.global.opencv_imgproc
 import org.bytedeco.opencv.global.opencv_imgproc.LINE_8
-import org.bytedeco.opencv.opencv_core.{AbstractScalar, Mat, Point}
+import org.bytedeco.opencv.opencv_core.{AbstractScalar, Mat, Point, Scalar}
 
 import java.util.UUID
 import scala.xml.{Elem, Node}
@@ -48,23 +48,24 @@ case class ComposedBlock(
   lazy val textLinesWithRectangles: Seq[(TextLine, Rectangle)] =
     textBlocks.flatMap(_.textLinesWithRectangles)
 
+  private val ORANGE = new Scalar(0.0, 128.0, 255.0, 0.0)
   override def draw(mat: Mat): Unit = {
     opencv_imgproc.rectangle(
       mat,
-      new Point(rectangle.left - 4, rectangle.top - 4),
+      new Point(rectangle.left - 8, rectangle.top - 8),
       new Point(
-        rectangle.left + rectangle.width + 8,
-        rectangle.top + rectangle.height + 8
+        rectangle.left + rectangle.width + 12,
+        rectangle.top + rectangle.height + 12
       ),
-      AbstractScalar.YELLOW,
-      2,
+      ORANGE,
+      4,
       LINE_8,
       0
     )
     this.textBlocks.foreach(_.draw(mat))
   }
 
-  override lazy val content: String = textBlocks.map(_.content).mkString("\n")
+  override lazy val content: String = textBlocks.map(_.content).mkString("\n\n")
 
   override def transform(
       partialFunction: PartialFunction[AltoElement, AltoElement]

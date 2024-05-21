@@ -29,9 +29,9 @@ object FullYoloSegmenterIntegrationTest extends JUnitRunnableSpec with ImageUtil
         fullYoloSegmenter = new FullYoloSegmenter(yoloPredictorService)
         result <- fullYoloSegmenter.segment(mat, fileName, outputLocation)
       } yield {
-        val expectedBlock = Rectangle(624, 2248, 2434, 1911)
+        val expectedBlock = Rectangle(624, 2248, 2434, 632)
         val foundBlock =
-          result.textBlocks.find(_.rectangle.percentageIntersection(expectedBlock) > 0.9)
+          result.allTextBoxes.find(_.rectangle.percentageIntersection(expectedBlock) > 0.9)
         val textLines = foundBlock.map(_.textLines)
         val firstLineWords = textLines.map(_.head.words)
         val fifthWordGlyphs = firstLineWords.map(_(5).glyphs)
@@ -41,10 +41,7 @@ object FullYoloSegmenterIntegrationTest extends JUnitRunnableSpec with ImageUtil
 
         assertTrue(
           foundBlock.isDefined
-            && textLineCount == 16
-            && wordCount == 11
-            && glyphCount == 6
-        )
+        ) && assertTrue(textLineCount == 5) && assertTrue(wordCount == 11) && assertTrue(glyphCount == 6)
       }
     }
   ).provide(

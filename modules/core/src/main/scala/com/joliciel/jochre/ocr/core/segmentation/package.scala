@@ -53,6 +53,13 @@ package object segmentation {
       val maxHeight: Int = config.getInt("image-size-for-blocks")
       val defaultMinConfidence: Double = config.getDouble("default-min-confidence.blocks")
     }
+    case object TextBlocks extends YoloPredictionType {
+      val extension: String = "_textblock_prediction.png"
+      val endpoint: String = "analyze-text-blocks"
+      val maxWidth: Int = config.getInt("image-size-for-text-blocks")
+      val maxHeight: Int = config.getInt("image-size-for-text-blocks")
+      val defaultMinConfidence: Double = config.getDouble("default-min-confidence.text-blocks")
+    }
     case object Lines extends YoloPredictionType {
       val extension: String = "_line_prediction.png"
       val endpoint: String = "analyze-lines"
@@ -75,7 +82,7 @@ package object segmentation {
       val defaultMinConfidence: Double = config.getDouble("default-min-confidence.glyphs")
     }
     case object WordToGlyphs extends YoloPredictionType {
-      val extension: String = "_word_to_glyph_predition.png"
+      val extension: String = "_word_to_glyph_prediction.png"
       val endpoint: String = "word-to-glyph"
       val maxWidth: Int = config.getInt("word-width-for-glyphs")
       val maxHeight: Int = config.getInt("word-height-for-glyphs")
