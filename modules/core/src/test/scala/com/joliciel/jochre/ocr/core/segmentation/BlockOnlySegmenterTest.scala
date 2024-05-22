@@ -21,7 +21,8 @@ object BlockOnlySegmenterTest extends JUnitRunnableSpec with ImageUtils {
             mat: Mat,
             fileName: String,
             outputLocation: Option[OutputLocation],
-            minConfidence: Option[Double]
+            minConfidence: Option[Double],
+            tileNumber: Option[Int]
         ): Task[Seq[PredictedRectangle]] = ZIO.attempt(
           Seq(
             PredictedRectangle(

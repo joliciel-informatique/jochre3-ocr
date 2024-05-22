@@ -40,7 +40,8 @@ trait YoloPredictor {
       mat: Mat,
       fileName: String,
       outputLocation: Option[OutputLocation] = None,
-      minConfidence: Option[Double] = None
+      minConfidence: Option[Double] = None,
+      tileNumber: Option[Int] = None
   ): Task[Seq[PredictedRectangle]]
 }
 
@@ -59,7 +60,8 @@ private[segmentation] class YoloPredictorImpl(
       mat: Mat,
       fileName: String,
       outputLocation: Option[OutputLocation] = None,
-      minConfidence: Option[Double] = None
+      minConfidence: Option[Double] = None,
+      tileNumber: Option[Int] = None
   ): Task[Seq[PredictedRectangle]] = {
     import YoloImplicits._
     val resizer = new ResizeImageAndKeepAspectRatio(predictionType.maxWidth, predictionType.maxHeight)
@@ -152,7 +154,10 @@ private[segmentation] class YoloPredictorImpl(
               )
           }
 
-          saveImage(labelled, outputLocation.resolve(predictionType.extension))
+          saveImage(
+            labelled,
+            outputLocation.resolve(f"${predictionType.extension}${tileNumber.map(t => f"_$t").getOrElse("")}.png")
+          )
         }
       }
     } yield predictions
