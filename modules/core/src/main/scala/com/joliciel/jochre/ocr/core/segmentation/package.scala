@@ -42,7 +42,7 @@ package object segmentation {
     val values: IndexedSeq[YoloPredictionType] = findValues
 
     case object Blocks extends YoloPredictionType {
-      val extension: String = "_block_prediction.png"
+      val extension: String = "_block_prediction"
       val endpoint: String = "analyze-blocks"
       override def getLabel(category: String): String = BlockType
         .withYoloName(category)
@@ -54,35 +54,35 @@ package object segmentation {
       val defaultMinConfidence: Double = config.getDouble("default-min-confidence.blocks")
     }
     case object TextBlocks extends YoloPredictionType {
-      val extension: String = "_textblock_prediction.png"
+      val extension: String = "_textblock_prediction"
       val endpoint: String = "analyze-text-blocks"
       val maxWidth: Int = config.getInt("image-size-for-text-blocks")
       val maxHeight: Int = config.getInt("image-size-for-text-blocks")
       val defaultMinConfidence: Double = config.getDouble("default-min-confidence.text-blocks")
     }
     case object Lines extends YoloPredictionType {
-      val extension: String = "_line_prediction.png"
+      val extension: String = "_line_prediction"
       val endpoint: String = "analyze-lines"
       val maxWidth: Int = config.getInt("image-size-for-lines")
       val maxHeight: Int = config.getInt("image-size-for-lines")
       val defaultMinConfidence: Double = config.getDouble("default-min-confidence.lines")
     }
     case object Words extends YoloPredictionType {
-      val extension: String = "_word_prediction.png"
+      val extension: String = "_word_prediction"
       val endpoint: String = "analyze-words"
       val maxWidth: Int = config.getInt("image-size-for-words")
       val maxHeight: Int = config.getInt("image-size-for-words")
       val defaultMinConfidence: Double = config.getDouble("default-min-confidence.words")
     }
     case object Glyphs extends YoloPredictionType {
-      val extension: String = "_glyph_prediction.png"
+      val extension: String = "_glyph_prediction"
       val endpoint: String = "analyze-glyphs"
       val maxWidth: Int = config.getInt("image-size-for-glyphs")
       val maxHeight: Int = config.getInt("image-size-for-glyphs")
       val defaultMinConfidence: Double = config.getDouble("default-min-confidence.glyphs")
     }
     case object WordToGlyphs extends YoloPredictionType {
-      val extension: String = "_word_to_glyph_prediction.png"
+      val extension: String = "_word_to_glyph_prediction"
       val endpoint: String = "word-to-glyph"
       val maxWidth: Int = config.getInt("word-width-for-glyphs")
       val maxHeight: Int = config.getInt("word-height-for-glyphs")

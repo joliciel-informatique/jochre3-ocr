@@ -146,6 +146,7 @@ private[segmentation] class FullYoloSegmenter(
         debugLocation
       )
       glyphPredictions <- {
+        log.info(f"Cropped print area: ${croppedPrintArea.coordinates}")
         log.info(f"Predicted ${paragraphPredictions.size} paragraphs for $fileName")
         log.info(f"Predicted ${linePredictions.size} lines for $fileName")
         log.info(f"Predicted ${wordPredictions.size} words for $fileName")
@@ -158,14 +159,15 @@ private[segmentation] class FullYoloSegmenter(
           tileMargin
         )
         ZIO
-          .foreach(tiles) { tile =>
+          .foreach(tiles.zipWithIndex) { case (tile, tileNumber) =>
             val tileMat = crop(printAreaMat, tile)
             for {
               glyphPredictions <- yoloPredictor.predict(
                 YoloPredictionType.Glyphs,
                 tileMat,
                 fileName,
-                debugLocation
+                debugLocation,
+                tileNumber = Some(tileNumber)
               )
             } yield {
               log.info(
@@ -200,6 +202,50 @@ private[segmentation] class FullYoloSegmenter(
 
         val illustrations = pageWithBlocks.illustrations
 
+        // Place individual paragraphs inside top-level text-blocks
+        val translatedParagraphs = paragraphPredictions.map(p =>
+          p.copy(rectangle = p.rectangle.translate(croppedPrintArea.left, croppedPrintArea.top))
+        )
+
+        val paragraphsToPlace = testRectangle
+          .map(testRect =>
+            translatedParagraphs.filter(paragraph =>
+              paragraph.rectangle
+                .areaOfIntersection(testRect) / paragraph.rectangle.area.toDouble > 0
+            )
+          )
+          .getOrElse(translatedParagraphs)
+
+        val sortedParagraphs = BlockSorter
+          .sort(paragraphsToPlace, leftToRight)
+          .collect { case p: PredictedRectangle =>
+            p
+          }
+
+        val paragraphsWithoutOverlaps = removeOverlapsUnordered(sortedParagraphs)
+
+        val textBlockToParagraphMap = placeRectanglesInTextBlocks(
+          textBlocksToConsider,
+          paragraphsWithoutOverlaps,
+          "Paragraph"
+        )
+
+        val nonOrphanParagraphs = textBlockToParagraphMap.values.flatten.toSet
+        val orphanParagraphs = paragraphsWithoutOverlaps
+          .filter(p => p.confidence > alwaysRetainBlockThreshold && !nonOrphanParagraphs.contains(p))
+          .map { p =>
+            if (log.isDebugEnabled) {
+              log.debug(f"Adding orphan paragraph ${p.rectangle.coordinates} with confidence ${p.confidence}")
+            }
+            TextBlock(rectangle = p.rectangle, textLines = Seq.empty)
+          }
+
+        if (log.isDebugEnabled) {
+          log.debug(s"Added ${orphanParagraphs.size} orphan paragraphs to top-level text blocks")
+        }
+
+        val textBlocksWithOrphans = textBlocksToConsider ++ orphanParagraphs
+
         // Place lines inside blocks
         val translatedLinePredictions = linePredictions.map(p =>
           p.copy(rectangle = p.rectangle.translate(croppedPrintArea.left, croppedPrintArea.top))
@@ -218,14 +264,14 @@ private[segmentation] class FullYoloSegmenter(
           .getOrElse(linesBumpedUp)
 
         val textBlockToLineMap = placeRectanglesInTextBlocks(
-          textBlocksToConsider,
+          textBlocksWithOrphans,
           linesToPlace,
           "TextLine",
           minIntersection = 0.01,
           splitHorizontally = true
         )
 
-        val textBlocksWithLines = textBlocksToConsider.map { textBlock =>
+        val textBlocksWithLines = textBlocksWithOrphans.map { textBlock =>
           val myLineRects = textBlockToLineMap
             .getOrElse(textBlock, Seq.empty)
             .sorted(WithRectangle.VerticalOrdering())
@@ -235,7 +281,15 @@ private[segmentation] class FullYoloSegmenter(
               )
             )
 
+          if (log.isDebugEnabled) {
+            log.debug(
+              f"Removing textline overlaps for textblock ${textBlock.rectangle.coordinates} with ${myLineRects.size} line candidates"
+            )
+          }
           val myLineRectsWithoutOverlaps = removeOverlaps(myLineRects)
+          if (log.isDebugEnabled) {
+            log.debug(f"After removing overlaps, ${myLineRectsWithoutOverlaps.size} lines remaining")
+          }
           val myLines = myLineRectsWithoutOverlaps.map(lineRect =>
             TextLine(
               Line(
@@ -400,114 +454,105 @@ private[segmentation] class FullYoloSegmenter(
             val nonEmptyLines = textLinesWithGlyphs.filter(_.words.nonEmpty)
             textBlock.copy(textLines = nonEmptyLines)
           }
-          .filter(_.textLines.nonEmpty)
-
-        // Place individual paragraphs inside top-level text-blocks
-        val translatedParagraphs = paragraphPredictions.map(p =>
-          p.copy(rectangle = p.rectangle.translate(croppedPrintArea.left, croppedPrintArea.top))
-        )
-
-        val paragraphsToPlace = testRectangle
-          .map(testRect =>
-            translatedParagraphs.filter(paragraph =>
-              paragraph.rectangle
-                .areaOfIntersection(testRect) / paragraph.rectangle.area.toDouble > 0
-            )
-          )
-          .getOrElse(translatedParagraphs)
-
-        val sortedParagraphs = BlockSorter
-          .sort(paragraphsToPlace, leftToRight)
-          .collect { case p: PredictedRectangle =>
-            p
-          }
-
-        val paragraphsWithoutOverlaps = removeOverlapsUnordered(sortedParagraphs)
-
-        val textBlockToParagraphMap = placeRectanglesInTextBlocks(
-          textBlocksWithGlyphs,
-          paragraphsWithoutOverlaps,
-          "Paragraph"
-        )
 
         // If any text block contains more than one paragraph, we split its lines among the paragraphs.
-        val correctedTextBlocks = textBlocksWithGlyphs.map { textBlock =>
-          val paragraphs = textBlockToParagraphMap
-            .getOrElse(textBlock, Seq.empty)
-            .sorted(WithRectangle.VerticalOrdering())
+        val updatedTextBlockToParagraphMap = textBlockToParagraphMap.view.map { case (textBlock, paragraphs) =>
+          val newTextBlock = textBlocksWithGlyphs
+            .find(t => t.rectangle == textBlock.rectangle)
+            .getOrElse(throw new Exception(f"Cannot find textbox ${textBlock.rectangle.coordinates}"))
+          newTextBlock -> paragraphs
+        }.toMap
 
-          if (log.isDebugEnabled && paragraphs.nonEmpty) {
-            log.debug(f"Paragraphs for text block ${textBlock.rectangle.coordinates}:")
-            paragraphs.zipWithIndex.foreach { case (paragraph, i) =>
-              log.debug(f"Paragraph $i: ${paragraph.rectangle.coordinates}")
-            }
-          }
-          if (paragraphs.size > 1 && textBlock.textLines.nonEmpty) {
-            val (textLineGroups, _, _) = textBlock.textLinesWithRectangles.foldLeft(
-              Vector(Vector.empty[(TextLine, Rectangle)]),
-              0,
-              Some(paragraphs.head): Option[PredictedRectangle]
-            ) {
-              case ((textLineGroups, paragraphIndex, Some(paragraph)), (textLine, rectangle)) =>
-                if (textLine.baseLine.y1 > paragraph.rectangle.bottom) {
-                  if (log.isDebugEnabled) {
-                    log.debug(
-                      f"Found new paragraph, textLine baseline ${textLine.baseLine.y1}, paragraph bottom ${paragraph.rectangle.bottom}"
-                    )
-                  }
-                  if (paragraphIndex + 1 == paragraphs.size) {
-                    (textLineGroups :+ Vector(textLine -> rectangle), paragraphIndex + 1, None)
-                  } else {
-                    (
-                      textLineGroups :+ Vector(textLine -> rectangle),
-                      paragraphIndex + 1,
-                      Some(paragraphs(paragraphIndex + 1))
-                    )
-                  }
-                } else {
-                  if (log.isDebugEnabled) {
-                    log.debug(
-                      f"Extending existing paragraph, textLine baseline ${textLine.baseLine.y1}, paragraph bottom ${paragraph.rectangle.bottom}"
-                    )
-                  }
-                  (
-                    textLineGroups.init :+ (textLineGroups.last :+ (textLine -> rectangle)),
-                    paragraphIndex,
-                    Some(paragraph)
-                  )
-                }
-              case ((textLineGroups, paragraphIndex, None), (textLine, rectangle)) =>
-                if (log.isDebugEnabled) {
-                  log.debug(
-                    f"Extending existing paragraph, textLine baseline ${textLine.baseLine.y1}, no paragraphs left"
-                  )
-                }
-                (textLineGroups.init :+ (textLineGroups.last :+ (textLine -> rectangle)), paragraphIndex, None)
-            }
+        val correctedTextBlocks = textBlocksWithGlyphs
+          .map { textBlock =>
+            val paragraphs = updatedTextBlockToParagraphMap
+              .getOrElse(textBlock, Seq.empty)
+              .sorted(WithRectangle.VerticalOrdering())
 
-            if (textLineGroups.size <= 1) {
-              textBlock
-            } else {
-              val (childTextBlocks, _) = textLineGroups.foldLeft(Seq.empty[TextBlock], textBlock.rectangle.top) {
-                case ((childBlocks, top), textLineGroup) =>
-                  val bottom = textLineGroup.last._2.bottom
-                  val textLines = textLineGroup.map(_._1)
-                  val childBlock = TextBlock(
-                    rectangle = textBlock.rectangle.copy(top = top, height = bottom - top),
-                    textLines = textLines
-                  )
-                  (childBlocks :+ childBlock, bottom)
+            if (log.isDebugEnabled && paragraphs.nonEmpty) {
+              log.debug(f"Paragraphs for text block ${textBlock.rectangle.coordinates}:")
+              paragraphs.zipWithIndex.foreach { case (paragraph, i) =>
+                log.debug(f"Paragraph $i: ${paragraph.rectangle.coordinates}")
               }
-              val lastChild = childTextBlocks.last
-              val fixedChildren = childTextBlocks.init :+ lastChild.copy(rectangle =
-                lastChild.rectangle.copy(height = textBlock.bottom - lastChild.top)
-              )
-              ComposedBlock(rectangle = textBlock.rectangle, textBlocks = fixedChildren)
             }
-          } else {
-            textBlock
+            if (paragraphs.size > 1 && textBlock.textLines.nonEmpty) {
+              val (textLineGroups, _, _) = textBlock.textLinesWithRectangles.foldLeft(
+                Vector(Vector.empty[(TextLine, Rectangle)]),
+                0,
+                Some(paragraphs.head): Option[PredictedRectangle]
+              ) {
+                case ((textLineGroups, paragraphIndex, Some(paragraph)), (textLine, rectangle)) =>
+                  if (textLine.baseLine.y1 > paragraph.rectangle.bottom) {
+                    if (log.isDebugEnabled) {
+                      log.debug(
+                        f"Found new paragraph, textLine baseline ${textLine.baseLine.y1}, paragraph bottom ${paragraph.rectangle.bottom}"
+                      )
+                    }
+                    val newTextLineGroups = if (textLineGroups.last.isEmpty) {
+                      textLineGroups.init :+ Vector(textLine -> rectangle)
+                    } else {
+                      textLineGroups :+ Vector(textLine -> rectangle)
+                    }
+                    if (paragraphIndex + 1 == paragraphs.size) {
+                      (newTextLineGroups, paragraphIndex + 1, None)
+                    } else {
+                      (newTextLineGroups, paragraphIndex + 1, Some(paragraphs(paragraphIndex + 1)))
+                    }
+                  } else {
+                    if (log.isDebugEnabled) {
+                      log.debug(
+                        f"Extending existing paragraph, textLine baseline ${textLine.baseLine.y1}, paragraph bottom ${paragraph.rectangle.bottom}"
+                      )
+                    }
+                    (
+                      textLineGroups.init :+ (textLineGroups.last :+ (textLine -> rectangle)),
+                      paragraphIndex,
+                      Some(paragraph)
+                    )
+                  }
+                case ((textLineGroups, paragraphIndex, None), (textLine, rectangle)) =>
+                  if (log.isDebugEnabled) {
+                    log.debug(
+                      f"Extending existing paragraph, textLine baseline ${textLine.baseLine.y1}, no paragraphs left"
+                    )
+                  }
+                  (textLineGroups.init :+ (textLineGroups.last :+ (textLine -> rectangle)), paragraphIndex, None)
+              }
+
+              if (textLineGroups.size <= 1) {
+                textBlock
+              } else {
+                if (log.isDebugEnabled) {
+                  textLineGroups.zipWithIndex.foreach { case (textLineGroup, i) =>
+                    log.debug(f"textLineGroup $i")
+                    textLineGroup.foreach { case (textLine, rectangle) =>
+                      log.debug(f"- textLine: ${textLine.baseLine} with rectangle ${rectangle.coordinates}")
+                    }
+                  }
+                }
+                val (childTextBlocks, _) = textLineGroups.foldLeft(Seq.empty[TextBlock], textBlock.rectangle.top) {
+                  case ((childBlocks, top), textLineGroup) =>
+                    val bottom = textLineGroup.last._2.bottom
+                    val textLines = textLineGroup.map(_._1)
+                    val childBlock = TextBlock(
+                      rectangle = textBlock.rectangle.copy(top = top, height = bottom - top),
+                      textLines = textLines
+                    )
+                    (childBlocks :+ childBlock, bottom)
+                }
+                val lastChild = childTextBlocks.last
+                val fixedChildren = childTextBlocks.init :+ lastChild
+                  .copy(rectangle = lastChild.rectangle.copy(height = textBlock.bottom - lastChild.top))
+                ComposedBlock(rectangle = textBlock.rectangle, textBlocks = fixedChildren)
+              }
+            } else {
+              textBlock
+            }
           }
-        }
+          .filter {
+            case composedBlock: ComposedBlock => composedBlock.textBlocks.nonEmpty
+            case textBlock: TextBlock         => textBlock.textLines.nonEmpty
+          }
 
         val newBlocks = BlockSorter
           .sort(correctedTextBlocks ++ illustrations, leftToRight)
@@ -643,12 +688,12 @@ private[segmentation] class FullYoloSegmenter(
         }
         if (log.isDebugEnabled)
           log.debug(
-            f"Found container block ${container.map(_.rectangle.coordinates)}"
+            f"Found container block for $itemType ${rect.rectangle.coordinates}: ${container.map(_.rectangle.coordinates)}"
           )
         if (container.isEmpty) {
           if (log.isDebugEnabled)
             log.debug(
-              f"Couldn't find container block for ${rect.rectangle.coordinates}"
+              f"Couldn't find container block for $itemType ${rect.rectangle.coordinates}"
             )
         }
         container
@@ -775,7 +820,7 @@ private[segmentation] class FullYoloSegmenter(
         val container = Option.when(containerIndex >= 0)(
           textLinesWithRectangles(containerIndex)._1
         )
-        if (log.isDebugEnabled) log.debug(f"Found container line $container")
+        if (log.isDebugEnabled) log.debug(f"Found container line ${container.map(_.baseLine)}")
         if (container.isEmpty) {
           if (log.isDebugEnabled)
             log.debug(
@@ -827,7 +872,7 @@ private[segmentation] class FullYoloSegmenter(
           Option.when(containerIndex >= 0)(textLine.words(containerIndex))
         }
 
-      if (log.isDebugEnabled) log.debug(f"Found container word $container")
+      if (log.isDebugEnabled) log.debug(f"Found container word ${container.map(_.rectangle.coordinates)}")
       if (container.isEmpty) {
         if (log.isDebugEnabled)
           log.debug(

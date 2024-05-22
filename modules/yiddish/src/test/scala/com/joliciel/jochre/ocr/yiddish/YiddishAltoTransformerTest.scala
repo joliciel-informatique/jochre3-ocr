@@ -124,6 +124,12 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
               <Glyph CONTENT="4"/>
               <Glyph CONTENT="5"/>
             </String>
+            <String CONTENT="71טן" WC="80">
+              <Glyph CONTENT="7"/>
+              <Glyph CONTENT="1"/>
+              <Glyph CONTENT="ט"/>
+              <Glyph CONTENT="ן"/>
+            </String>
           </TextLine>
         </TextBlock>
       </PrintSpace>
@@ -141,6 +147,9 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
           <TextLine>
             <String CONTENT="42" WC="80"></String>
             <String CONTENT="54.321" WC="50"></String>
+            <String CONTENT="17טן" WC="80">
+              <ALTERNATIVE PURPOSE="Roman">17tn</ALTERNATIVE>
+            </String>
           </TextLine>
         </TextBlock>
       </PrintSpace>
