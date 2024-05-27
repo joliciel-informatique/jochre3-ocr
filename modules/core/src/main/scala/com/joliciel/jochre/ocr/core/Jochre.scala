@@ -2,12 +2,18 @@ package com.joliciel.jochre.ocr.core
 
 import com.joliciel.jochre.ocr.core.alto.AltoTransformer
 import com.joliciel.jochre.ocr.core.graphics.Rectangle
-import com.joliciel.jochre.ocr.core.model.{Alto, ComposedBlock, Page, TextBlock}
+import com.joliciel.jochre.ocr.core.model.{Alto, ComposedBlock, Page, ProcessingStep, TextBlock}
 import com.joliciel.jochre.ocr.core.output.OutputFormat
 import com.joliciel.jochre.ocr.core.pdf.PDFToImageConverter
 import com.joliciel.jochre.ocr.core.segmentation.SegmenterService
 import com.joliciel.jochre.ocr.core.text.TextGuesserService
-import com.joliciel.jochre.ocr.core.transform.{BrightnessAndContrastTransform, Deskewer, GrayscaleTransform, Scale, SkewAngle}
+import com.joliciel.jochre.ocr.core.transform.{
+  BrightnessAndContrastTransform,
+  Deskewer,
+  GrayscaleTransform,
+  Scale,
+  SkewAngle
+}
 import com.joliciel.jochre.ocr.core.utils.{FileUtils, ImageUtils, OutputLocation, XmlImplicits}
 import com.typesafe.config.ConfigFactory
 import org.bytedeco.opencv.opencv_core.Mat
@@ -133,7 +139,7 @@ trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImpli
         .process((image: BufferedImage, i: Int) => {
           val imageFileName = f"${baseName}_$i%04d.png"
           if (writeImages) {
-            outputDir.map{ outputDir =>
+            outputDir.map { outputDir =>
               val imageFile = outputDir.resolve(imageFileName).toFile
               ImageIO.write(image, "png", imageFile)
             }
@@ -143,7 +149,7 @@ trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImpli
         .run {
           ZSink.collectAll
         }
-      altoXml = Alto(pdfFileName, pages)
+      altoXml = Alto(pdfFileName, pages, processingSteps = Seq(ProcessingStep.jochre()))
       _ <- ZIO.attempt {
         val baseName = FileUtils.removeFileExtension(pdfFileName)
         val outputLocation = outputDir.map(OutputLocation(_, baseName))
@@ -245,7 +251,7 @@ trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImpli
   ): Task[Alto] = {
     for {
       page <- processMatInternal(mat, fileName, 1, debugDir, testRectangle)
-      altoXml = Alto(fileName, Seq(page))
+      altoXml = Alto(fileName, pages = Seq(page), processingSteps = Seq(ProcessingStep.jochre()))
       _ <- ZIO.attempt {
         val baseName = FileUtils.removeFileExtension(fileName)
         val outputLocation = outputDir.map(OutputLocation(_, baseName))
@@ -370,7 +376,7 @@ trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImpli
         debugLocation.foreach { debugLocation =>
           val prettyPrinter = new PrettyPrinter(80, 2)
 
-          val initialAltoXml = Alto(fileName, Seq(rotatedPage))
+          val initialAltoXml = Alto(fileName, Seq(rotatedPage), processingSteps = Seq(ProcessingStep.jochre()))
           val initialAltoFile = debugLocation.resolve("_initial_alto4.xml")
           writeFile(initialAltoFile, prettyPrinter.format(initialAltoXml.toXml))
 
