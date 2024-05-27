@@ -1,6 +1,6 @@
 package com.joliciel.jochre.ocr.yiddish
 
-import com.joliciel.jochre.ocr.core.evaluation.{CharacterCount, CharacterErrorRate, TextEvaluator}
+import com.joliciel.jochre.ocr.core.evaluation.{BagOfWords, CharacterCount, CharacterErrorRate, TextEvaluator}
 import org.rogach.scallop._
 
 import java.io.{File, FileWriter}
@@ -33,7 +33,7 @@ object YiddishTextEvaluator {
     val ignoreParagraphs = cli.ignoreParagraphs()
 
     val evaluator = TextEvaluator(
-      Seq(CharacterErrorRate, CharacterCount),
+      Seq(CharacterErrorRate, BagOfWords, CharacterCount),
       evalDir,
       Some(YiddishTextSimpifier(replaceNonHebrewAlphabets = false)),
       ignoreParagraphs

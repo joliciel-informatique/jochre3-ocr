@@ -16,13 +16,15 @@ case class TextEvaluator(
   private val log = LoggerFactory.getLogger(getClass)
 
   def evaluate(inputDir: Path, goldDir: Path): Seq[EvaluationResult] = {
-    val files = listFiles(inputDir, raw".*\.txt".r)
-    val results = files.zipWithIndex.map { case (file, i) =>
-      log.info(f"Evaluating file $i: ${file.getPath}")
-      val predictedText = readFile(file).mkString("\n")
-      val filename = file.getName
-      val expectedFile = goldDir.resolve(filename)
-      val expectedText = readFile(expectedFile.toFile).mkString("\n")
+    val files = listFiles(goldDir, raw".*\.txt".r)
+    val results = files.zipWithIndex.map { case (expectedFile, i) =>
+      log.info(f"Evaluating file $i: ${expectedFile.getPath}")
+      val filename = expectedFile.getName
+      val predictedFile = inputDir.resolve(filename)
+      val predictedText =
+        Option.when(predictedFile.toFile.exists())(readFile(predictedFile.toFile).mkString("\n")).getOrElse("")
+
+      val expectedText = readFile(expectedFile).mkString("\n")
       val expected =
         textSimplifier.map(_.simplify(expectedText)).getOrElse(expectedText)
       val expectedForEvaluation = if (ignoreParagraphs) {
@@ -41,7 +43,7 @@ case class TextEvaluator(
       val results = metrics.map { metric =>
         metric.name -> metric.evaluate(predictedForEvaluation, expectedForEvaluation)
       }.toMap
-      EvaluationResult(file, results)
+      EvaluationResult(expectedFile, results)
     }
     results
   }
