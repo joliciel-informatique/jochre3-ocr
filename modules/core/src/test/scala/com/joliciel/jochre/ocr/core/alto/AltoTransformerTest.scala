@@ -7,7 +7,6 @@ import org.scalatest.matchers.should.Matchers
 class AltoTransformerTest extends AnyFlatSpec with Matchers {
   "addAlternativesToFile" should "add alternatives to an alto file" in {
     val sillyAltoProcessor = new AltoTransformer {
-      override val removeGlyphs: Boolean = true
       override def getAlternatives(word: Word): Set[SpellingAlternative] = Set(
         SpellingAlternative("X", f"X_${word.content}"),
         SpellingAlternative("Y", f"Y_${word.content}")
@@ -45,7 +44,7 @@ class AltoTransformerTest extends AnyFlatSpec with Matchers {
 
     val expectedPage = Page.fromXML(expected)
 
-    sillyAltoProcessor.process(page) shouldEqual expectedPage
+    sillyAltoProcessor.processPage(page, AltoTransformerOptions().withRemoveGlyphs(true)) shouldEqual expectedPage
   }
 
 }

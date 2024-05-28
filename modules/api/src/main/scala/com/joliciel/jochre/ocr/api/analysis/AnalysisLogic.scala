@@ -3,6 +3,7 @@ package com.joliciel.jochre.ocr.api.analysis
 import com.joliciel.jochre.ocr.api.Types.Requirements
 import com.joliciel.jochre.ocr.api.{HttpError, HttpErrorMapper}
 import com.joliciel.jochre.ocr.core.Jochre
+import com.joliciel.jochre.ocr.core.alto.AltoTransformerOptions
 import com.joliciel.jochre.ocr.core.output.OutputFormat
 import com.joliciel.jochre.ocr.core.utils.{FileUtils, ImageUtils}
 import com.typesafe.config.ConfigFactory
@@ -24,6 +25,8 @@ trait AnalysisLogic extends HttpErrorMapper with ImageUtils with FileUtils {
       fileForm: FileForm
   ): ZIO[Requirements, HttpError, ZStream[Any, Throwable, Byte]] = {
     val fileName = fileForm.image.fileName.getOrElse("Unknown")
+    val altoTransformerOptions = AltoTransformerOptions().withRemoveGlyphs(fileForm.removeGlyphs)
+
     val getAlto = if (fileName.endsWith(".pdf")) {
       val outputDir = Option.when(savePdfImages) {
         val imageParentDirectory = Path.of(config.getString("image-parent-directory"))
@@ -37,7 +40,7 @@ trait AnalysisLogic extends HttpErrorMapper with ImageUtils with FileUtils {
       for {
         pdfFile <- ZIO.attempt {
           fileForm match {
-            case FileForm(Part(_, body, _, _), _, _, _) =>
+            case FileForm(Part(_, body, _, _), _, _, _, _) =>
               body
           }
         }
@@ -49,7 +52,8 @@ trait AnalysisLogic extends HttpErrorMapper with ImageUtils with FileUtils {
           endPage = fileForm.end,
           dpi = fileForm.dpi,
           outputDir = outputDir,
-          writeImages = savePdfImages
+          writeImages = savePdfImages,
+          altoTransformerOptions = altoTransformerOptions
         )
         _ <- ZIO.attempt {
           pdfFile.delete()
@@ -59,7 +63,7 @@ trait AnalysisLogic extends HttpErrorMapper with ImageUtils with FileUtils {
       for {
         image <- ZIO.attempt {
           fileForm match {
-            case FileForm(Part(_, body, _, _), _, _, _) =>
+            case FileForm(Part(_, body, _, _), _, _, _, _) =>
               try {
                 ImageIO.read(body)
               } finally {
@@ -68,7 +72,7 @@ trait AnalysisLogic extends HttpErrorMapper with ImageUtils with FileUtils {
           }
         }
         jochre <- ZIO.service[Jochre]
-        alto <- jochre.processImage(image, fileName)
+        alto <- jochre.processImage(image, fileName, altoTransformerOptions = altoTransformerOptions)
       } yield alto
     }
 
@@ -85,9 +89,11 @@ trait AnalysisLogic extends HttpErrorMapper with ImageUtils with FileUtils {
   }
 
   def postAnalyzeURLLogic(
-      body: AnalyseURLRequest
+      request: AnalyseURLRequest
   ): ZIO[Requirements, HttpError, ZStream[Any, Throwable, Byte]] = {
-    val fileName = body.fileName.getOrElse(FilenameUtils.getName(body.url))
+    val fileName = request.fileName.getOrElse(FilenameUtils.getName(request.url))
+    val altoTransformerOptions = AltoTransformerOptions().withRemoveGlyphs(request.removeGlyphs)
+
     val getAlto = if (fileName.endsWith(".pdf")) {
       val outputDir = Option.when(savePdfImages) {
         val imageParentDirectory = Path.of(config.getString("image-parent-directory"))
@@ -100,27 +106,28 @@ trait AnalysisLogic extends HttpErrorMapper with ImageUtils with FileUtils {
 
       for {
         pdfFile <- ZIO.fromTry {
-          getFileFromUrl(body.url)
+          getFileFromUrl(request.url)
         }
         jochre <- ZIO.service[Jochre]
         alto <- jochre.processPdf(
           pdfFile.toPath,
           fileName = Some(fileName),
-          startPage = body.start,
-          endPage = body.end,
-          dpi = body.dpi,
+          startPage = request.start,
+          endPage = request.end,
+          dpi = request.dpi,
           outputDir = outputDir,
-          writeImages = savePdfImages
+          writeImages = savePdfImages,
+          altoTransformerOptions = altoTransformerOptions
         )
         _ <- ZIO.attempt(pdfFile.delete())
       } yield alto
     } else {
       for {
         image <- ZIO.fromTry {
-          getImageFromUrl(body.url)
+          getImageFromUrl(request.url)
         }
         jochre <- ZIO.service[Jochre]
-        alto <- jochre.processImage(image, fileName)
+        alto <- jochre.processImage(image, fileName, altoTransformerOptions = altoTransformerOptions)
       } yield alto
     }
 

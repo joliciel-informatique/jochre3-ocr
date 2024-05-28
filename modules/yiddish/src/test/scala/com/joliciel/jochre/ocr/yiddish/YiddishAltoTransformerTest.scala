@@ -1,5 +1,6 @@
 package com.joliciel.jochre.ocr.yiddish
 
+import com.joliciel.jochre.ocr.core.alto.AltoTransformerOptions
 import com.joliciel.jochre.ocr.core.graphics.{ImageInfo, Rectangle}
 import com.joliciel.jochre.ocr.core.model.{Page, SpellingAlternative, SubsType, TextLine, Word}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -8,6 +9,7 @@ import org.scalatest.matchers.should.Matchers
 class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
   private val yiddishConfig: YiddishConfig = YiddishConfig.fromConfig
   private val yiddishAltoProcessor = YiddishAltoTransformer(yiddishConfig)
+  private val withoutGlyphs = AltoTransformerOptions().withRemoveGlyphs(true)
 
   private def toWord(content: String) = Word(
     content = content,
@@ -94,7 +96,7 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
 
     val page = Page.fromXML(alto)
 
-    val actualPage = yiddishAltoProcessor.process(page)
+    val actualPage = yiddishAltoProcessor.processPage(page)
 
     actualPage shouldEqual page
   }
@@ -136,7 +138,7 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
     </Page>
     val page = Page.fromXML(alto)
 
-    val actualPage = yiddishAltoProcessor.process(page)
+    val actualPage = yiddishAltoProcessor.processPage(page, withoutGlyphs)
 
     val expected = <Page>
       <PrintSpace>
@@ -180,7 +182,7 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
     </Page>
     val page = Page.fromXML(alto)
 
-    val actualPage = yiddishAltoProcessor.process(page)
+    val actualPage = yiddishAltoProcessor.processPage(page, withoutGlyphs)
 
     val expected = <Page>
       <PrintSpace>
@@ -242,7 +244,7 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
     }
     val page = Page.fromXML(alto)
 
-    val actualPage = yiddishAltoProcessor.process(page)
+    val actualPage = yiddishAltoProcessor.processPage(page, withoutGlyphs)
     val expected = {
       <Page>
         <PrintSpace>

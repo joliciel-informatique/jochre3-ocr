@@ -1,5 +1,6 @@
 package com.joliciel.jochre.ocr.core
 
+import com.joliciel.jochre.ocr.core.alto.AltoTransformerOptions
 import com.joliciel.jochre.ocr.core.corpus.TextSimplifier
 import com.joliciel.jochre.ocr.core.evaluation.{BagOfWords, CharacterCount, CharacterErrorRate, Evaluator}
 import com.joliciel.jochre.ocr.core.graphics.Rectangle
@@ -27,6 +28,8 @@ trait JochreAppBase {
     }
     val writeImages = options.writeImages()
     val ignoreParagraphs = options.evalIgnoreParagraphs()
+    val removeGlyphs = options.removeGlyphs()
+    val altoTransformerOptions = AltoTransformerOptions().withRemoveGlyphs(removeGlyphs)
 
     for {
       testRectangle <- ZIO.attempt {
@@ -83,7 +86,8 @@ trait JochreAppBase {
                 Some(outDir),
                 debugDir,
                 maxImages,
-                testRectangle
+                testRectangle,
+                altoTransformerOptions
               )
             } else if (input.toFile.getName.endsWith(".pdf")) {
               jochre.processPdf(
@@ -96,7 +100,8 @@ trait JochreAppBase {
                 endPage,
                 dpi,
                 testRectangle,
-                writeImages
+                writeImages,
+                altoTransformerOptions
               )
             } else {
               // Assume image file
@@ -106,7 +111,8 @@ trait JochreAppBase {
                 outputFormats,
                 Some(outDir),
                 debugDir,
-                testRectangle
+                testRectangle,
+                altoTransformerOptions
               )
             }
           }
