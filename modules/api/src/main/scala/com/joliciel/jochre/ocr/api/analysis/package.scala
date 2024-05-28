@@ -9,7 +9,8 @@ package object analysis {
       image: Part[File],
       start: Option[Int] = None,
       end: Option[Int] = None,
-      dpi: Option[Int] = None
+      dpi: Option[Int] = None,
+      removeGlyphs: Option[Boolean] = None
   )
 
   case class AnalyseURLRequest(
@@ -17,7 +18,8 @@ package object analysis {
       fileName: Option[String],
       start: Option[Int] = None,
       end: Option[Int] = None,
-      dpi: Option[Int] = None
+      dpi: Option[Int] = None,
+      removeGlyphs: Option[Boolean] = None
   )
 
   object AnalysisHelper {

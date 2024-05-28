@@ -16,29 +16,27 @@ import com.joliciel.jochre.ocr.core.utils.XmlImplicits
 import java.io.{File, Reader}
 import scala.xml.transform.{RewriteRule, RuleTransformer}
 import scala.xml.{Attribute, Elem, Node, Text, XML}
-
 /** Given Alto XML as input, transforms it to produce appropriate output, including in particular the possibility of
   * adding String alternatives.
   */
 trait AltoTransformer extends XmlImplicits {
-  def removeGlyphs: Boolean = false
   def textSimplifier: Option[TextSimplifier] = None
 
-  def process(altoFile: File): Seq[Page] = {
+  def processFile(altoFile: File, options: AltoTransformerOptions = AltoTransformerOptions()): Seq[Page] = {
     val elem = XML.loadFile(altoFile)
     val pageElements = elem \\ "Page"
     val pages = pageElements.map(Page.fromXML(_))
-    pages.map(process(_))
+    pages.map(processPage(_, options))
   }
 
-  def process(altoFile: Reader): Seq[Page] = {
+  def processReader(altoFile: Reader, options: AltoTransformerOptions = AltoTransformerOptions()): Seq[Page] = {
     val elem = XML.load(altoFile)
     val pageElements = elem \\ "Page"
     val pages = pageElements.map(Page.fromXML(_))
-    pages.map(process(_))
+    pages.map(processPage(_, options))
   }
 
-  def process(alto: Page): Page = {
+  def processPage(alto: Page, options: AltoTransformerOptions = AltoTransformerOptions()): Page = {
     val simplified = textSimplifier
       .map(textSimplifier => alto.transform(simplifyContent(textSimplifier)))
       .getOrElse(alto)
@@ -47,7 +45,7 @@ trait AltoTransformer extends XmlImplicits {
       alto.transform(rule)
     }
 
-    val withoutGlyphs = if (removeGlyphs) {
+    val withoutGlyphs = if (options.removeGlyphs) {
       withSpecificRulesApplied.transform(glyphRemover)
     } else {
       withSpecificRulesApplied

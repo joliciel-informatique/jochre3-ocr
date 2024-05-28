@@ -40,5 +40,11 @@ class JochreCLI(arguments: Seq[String]) extends ScallopConf(arguments) {
       descr = "If true, ignore paragraph marks when evaluating, only evaluating the text inside the paragraphs."
     )
   }
+  val removeGlyphs: ScallopOption[Boolean] = {
+    opt[Boolean](
+      default = Some(false),
+      descr = "If true, glyphs will be removed from the generated Alto file"
+    )
+  }
   verify()
 }
