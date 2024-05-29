@@ -1,8 +1,8 @@
 package com.joliciel.jochre.ocr.core
 
-import com.joliciel.jochre.ocr.core.alto.AltoTransformer
+import com.joliciel.jochre.ocr.core.alto.{AltoTransformer, AltoTransformerOptions}
 import com.joliciel.jochre.ocr.core.graphics.Rectangle
-import com.joliciel.jochre.ocr.core.model.{Alto, ComposedBlock, Page, TextBlock}
+import com.joliciel.jochre.ocr.core.model.{Alto, ComposedBlock, Page, ProcessingStep, TextBlock}
 import com.joliciel.jochre.ocr.core.output.OutputFormat
 import com.joliciel.jochre.ocr.core.pdf.PDFToImageConverter
 import com.joliciel.jochre.ocr.core.segmentation.SegmenterService
@@ -24,6 +24,8 @@ import zio.{Task, ZIO}
 import java.awt.image.BufferedImage
 import java.io.File
 import java.nio.file.{Files, Path}
+import java.time.Instant
+import javax.imageio.ImageIO
 import scala.xml.PrettyPrinter
 
 trait Jochre {
@@ -36,7 +38,9 @@ trait Jochre {
       startPage: Option[Int] = None,
       endPage: Option[Int] = None,
       dpi: Option[Int] = None,
-      testRectangle: Option[Rectangle] = None
+      testRectangle: Option[Rectangle] = None,
+      writeImages: Boolean = true,
+      altoTransformerOptions: AltoTransformerOptions = AltoTransformerOptions()
   ): Task[Alto]
   def processDirectory(
       inputDir: Path,
@@ -44,7 +48,8 @@ trait Jochre {
       outputDir: Option[Path] = None,
       debugDir: Option[Path] = None,
       maxImages: Option[Int] = None,
-      testRectangle: Option[Rectangle] = None
+      testRectangle: Option[Rectangle] = None,
+      altoTransformerOptions: AltoTransformerOptions = AltoTransformerOptions()
   ): Task[Map[String, Alto]]
   def processImageFile(
       imageFile: Path,
@@ -52,7 +57,8 @@ trait Jochre {
       outputFormats: Seq[OutputFormat] = Seq(OutputFormat.Alto4),
       outputDir: Option[Path] = None,
       debugDir: Option[Path] = None,
-      testRectangle: Option[Rectangle] = None
+      testRectangle: Option[Rectangle] = None,
+      altoTransformerOptions: AltoTransformerOptions = AltoTransformerOptions()
   ): Task[Alto]
   def processImage(
       bufferedImage: BufferedImage,
@@ -60,7 +66,8 @@ trait Jochre {
       outputFormats: Seq[OutputFormat] = Seq(OutputFormat.Alto4),
       outputDir: Option[Path] = None,
       debugDir: Option[Path] = None,
-      testRectangle: Option[Rectangle] = None
+      testRectangle: Option[Rectangle] = None,
+      altoTransformerOptions: AltoTransformerOptions = AltoTransformerOptions()
   ): Task[Alto]
   def processMat(
       mat: Mat,
@@ -68,7 +75,8 @@ trait Jochre {
       outputFormats: Seq[OutputFormat] = Seq(OutputFormat.Alto4),
       outputDir: Option[Path] = None,
       debugDir: Option[Path] = None,
-      testRectangle: Option[Rectangle] = None
+      testRectangle: Option[Rectangle] = None,
+      altoTransformerOptions: AltoTransformerOptions = AltoTransformerOptions()
   ): Task[Alto]
 }
 
@@ -102,8 +110,8 @@ trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImpli
       inputDir: Path,
       maxImages: Option[Int]
   ): Seq[File] = {
-    val allFiles = FileUtils.recursiveListFiles(
-      inputDir.toFile,
+    val allFiles = FileUtils.listFiles(
+      inputDir,
       ".*\\.pdf|.*\\.jpg|.*\\.png|.*\\.jpeg".r
     )
     allFiles
@@ -119,7 +127,9 @@ trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImpli
       startPage: Option[Int] = None,
       endPage: Option[Int] = None,
       dpi: Option[Int] = None,
-      testRectangle: Option[Rectangle]
+      testRectangle: Option[Rectangle],
+      writeImages: Boolean,
+      altoTransformerOptions: AltoTransformerOptions = AltoTransformerOptions()
   ): Task[Alto] = {
     val pdfFileName = fileName.getOrElse(pdfFile.toFile.getName)
     log.debug(f"Processing file: $pdfFileName")
@@ -134,12 +144,18 @@ trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImpli
       pages <- converter
         .process((image: BufferedImage, i: Int) => {
           val imageFileName = f"${baseName}_$i%04d.png"
-          processImageInternal(image, imageFileName, i, debugDir, testRectangle)
+          if (writeImages) {
+            outputDir.map { outputDir =>
+              val imageFile = outputDir.resolve(imageFileName).toFile
+              ImageIO.write(image, "png", imageFile)
+            }
+          }
+          processImageInternal(image, imageFileName, i, debugDir, testRectangle, altoTransformerOptions)
         })
         .run {
           ZSink.collectAll
         }
-      altoXml = Alto(pdfFileName, pages)
+      altoXml = Alto(pdfFileName, pages, processingSteps = Seq(ProcessingStep.jochre()))
       _ <- ZIO.attempt {
         val baseName = FileUtils.removeFileExtension(pdfFileName)
         val outputLocation = outputDir.map(OutputLocation(_, baseName))
@@ -162,7 +178,8 @@ trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImpli
       outputDir: Option[Path],
       debugDir: Option[Path],
       maxImages: Option[Int],
-      testRectangle: Option[Rectangle] = None
+      testRectangle: Option[Rectangle] = None,
+      altoTransformerOptions: AltoTransformerOptions = AltoTransformerOptions()
   ): Task[Map[String, Alto]] = {
     val files = getFilesFromDir(inputDir, maxImages)
 
@@ -176,7 +193,8 @@ trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImpli
             outputFormats,
             outputDir,
             debugDir,
-            testRectangle = testRectangle
+            testRectangle = testRectangle,
+            altoTransformerOptions = altoTransformerOptions
           )
         } else {
           this.processImageFile(
@@ -199,7 +217,8 @@ trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImpli
       outputFormats: Seq[OutputFormat],
       outputDir: Option[Path],
       debugDir: Option[Path],
-      testRectangle: Option[Rectangle]
+      testRectangle: Option[Rectangle],
+      altoTransformerOptions: AltoTransformerOptions = AltoTransformerOptions()
   ): Task[Alto] = {
     val mat = loadImage(imageFile)
     this.processMat(
@@ -208,7 +227,8 @@ trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImpli
       outputFormats,
       outputDir,
       debugDir,
-      testRectangle
+      testRectangle,
+      altoTransformerOptions
     )
   }
 
@@ -218,7 +238,8 @@ trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImpli
       outputFormats: Seq[OutputFormat] = Seq(OutputFormat.Alto4),
       outputDir: Option[Path] = None,
       debugDir: Option[Path] = None,
-      testRectangle: Option[Rectangle] = None
+      testRectangle: Option[Rectangle] = None,
+      altoTransformerOptions: AltoTransformerOptions = AltoTransformerOptions()
   ): Task[Alto] = {
     val mat = fromBufferedImage(bufferedImage)
     this.processMat(
@@ -227,7 +248,8 @@ trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImpli
       outputFormats,
       outputDir,
       debugDir,
-      testRectangle
+      testRectangle,
+      altoTransformerOptions
     )
   }
 
@@ -237,11 +259,12 @@ trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImpli
       outputFormats: Seq[OutputFormat] = Seq(OutputFormat.Alto4),
       outputDir: Option[Path] = None,
       debugDir: Option[Path] = None,
-      testRectangle: Option[Rectangle] = None
+      testRectangle: Option[Rectangle] = None,
+      altoTransformerOptions: AltoTransformerOptions = AltoTransformerOptions()
   ): Task[Alto] = {
     for {
-      page <- processMatInternal(mat, fileName, 1, debugDir, testRectangle)
-      altoXml = Alto(fileName, Seq(page))
+      page <- processMatInternal(mat, fileName, 1, debugDir, testRectangle, altoTransformerOptions)
+      altoXml = Alto(fileName, pages = Seq(page), processingSteps = Seq(ProcessingStep.jochre()))
       _ <- ZIO.attempt {
         val baseName = FileUtils.removeFileExtension(fileName)
         val outputLocation = outputDir.map(OutputLocation(_, baseName))
@@ -263,7 +286,8 @@ trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImpli
       fileName: String,
       physicalPageNumber: Int = 1,
       debugDir: Option[Path] = None,
-      testRectangle: Option[Rectangle] = None
+      testRectangle: Option[Rectangle] = None,
+      altoTransformerOptions: AltoTransformerOptions = AltoTransformerOptions()
   ): Task[Page] = {
     val mat = fromBufferedImage(bufferedImage)
     this.processMatInternal(
@@ -271,7 +295,8 @@ trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImpli
       fileName,
       physicalPageNumber,
       debugDir,
-      testRectangle
+      testRectangle,
+      altoTransformerOptions
     )
   }
 
@@ -280,9 +305,11 @@ trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImpli
       fileName: String,
       physicalPageNumber: Int = 1,
       debugDir: Option[Path] = None,
-      testRectangle: Option[Rectangle] = None
+      testRectangle: Option[Rectangle] = None,
+      altoTransformerOptions: AltoTransformerOptions = AltoTransformerOptions()
   ): Task[Page] = {
-    log.info(f"Processing image $fileName of size ${mat.cols()}X${mat.rows()}")
+    val startTime = Instant.now
+    log.info(f"## Processing image $fileName of size ${mat.cols()}X${mat.rows()}")
 
     val baseName = FileUtils.removeFileExtension(fileName)
     val debugLocation = debugDir.map(OutputLocation(_, baseName))
@@ -360,12 +387,12 @@ trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImpli
 
         val rotatedPage = page.rescale(1.0 / scale).rotate()
 
-        val fixedPage = altoTransformer.process(rotatedPage)
+        val fixedPage = altoTransformer.processPage(rotatedPage, altoTransformerOptions)
 
         debugLocation.foreach { debugLocation =>
           val prettyPrinter = new PrettyPrinter(80, 2)
 
-          val initialAltoXml = Alto(fileName, Seq(rotatedPage))
+          val initialAltoXml = Alto(fileName, Seq(rotatedPage), processingSteps = Seq(ProcessingStep.jochre()))
           val initialAltoFile = debugLocation.resolve("_initial_alto4.xml")
           writeFile(initialAltoFile, prettyPrinter.format(initialAltoXml.toXml))
 
@@ -383,6 +410,9 @@ trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImpli
           rotatedPage.draw(labelled)
           saveImage(labelled, debugLocation.resolve("_seg.png"))
         }
+
+        val duration = (Instant.now.toEpochMilli - startTime.toEpochMilli).toDouble / 1000.0
+        log.info(f"## Finished processing image $fileName in $duration%.2f seconds")
 
         fixedPage
       }

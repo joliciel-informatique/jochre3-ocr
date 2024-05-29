@@ -1,7 +1,7 @@
 package com.joliciel.jochre.ocr.yiddish
 
-import com.joliciel.jochre.ocr.core.evaluation.{CharacterCount, CharacterErrorRate, TextEvaluator}
-import org.rogach.scallop.*
+import com.joliciel.jochre.ocr.core.evaluation.{BagOfWords, CharacterCount, CharacterErrorRate, TextEvaluator}
+import org.rogach.scallop._
 
 import java.io.{File, FileWriter}
 import java.nio.charset.StandardCharsets
@@ -14,6 +14,12 @@ object YiddishTextEvaluator {
     val inputDir: ScallopOption[String] = opt[String](required = true)
     val goldDir: ScallopOption[String] = opt[String](required = true)
     val evalDir: ScallopOption[String] = opt[String](required = true)
+    val ignoreParagraphs: ScallopOption[Boolean] = {
+      opt[Boolean](
+        default = Some(false),
+        descr = "If true, ignore paragraph marks when evaluating, only evaluating the text inside the paragraphs."
+      )
+    }
     verify()
   }
 
@@ -24,10 +30,13 @@ object YiddishTextEvaluator {
     val evalDir = Path.of(cli.evalDir())
     evalDir.toFile.mkdirs()
 
+    val ignoreParagraphs = cli.ignoreParagraphs()
+
     val evaluator = TextEvaluator(
-      Seq(CharacterErrorRate, CharacterCount),
+      Seq(CharacterErrorRate, BagOfWords, CharacterCount),
       evalDir,
-      Some(YiddishTextSimpifier(replaceNonHebrewAlphabets = false))
+      Some(YiddishTextSimpifier(replaceNonHebrewAlphabets = false)),
+      ignoreParagraphs
     )
     val evalWriter = new FileWriter(
       new File(evalDir.toFile, "eval.tsv"),

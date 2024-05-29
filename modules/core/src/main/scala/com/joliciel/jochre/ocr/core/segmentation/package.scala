@@ -1,6 +1,7 @@
 package com.joliciel.jochre.ocr.core
 
 import com.joliciel.jochre.ocr.core.graphics.{PredictedRectangle, Rectangle}
+import com.typesafe.config.ConfigFactory
 import enumeratum.{Enum, EnumEntry}
 import io.circe.Decoder
 
@@ -26,34 +27,66 @@ package object segmentation {
       values.find(_.yoloName == yoloName)
   }
 
-  private[segmentation] sealed trait YoloPredictionType extends EnumEntry {
+  sealed trait YoloPredictionType extends EnumEntry {
     def extension: String
     def endpoint: String
     def getLabel(category: String): String = category
+    def maxWidth: Int
+    def maxHeight: Int
+    def defaultMinConfidence: Double
   }
 
-  private[segmentation] object YoloPredictionType extends Enum[YoloPredictionType] {
+  object YoloPredictionType extends Enum[YoloPredictionType] {
+    private val config = ConfigFactory.load().getConfig("jochre.ocr.yolo")
+
     val values: IndexedSeq[YoloPredictionType] = findValues
 
     case object Blocks extends YoloPredictionType {
-      val extension: String = "_block_prediction.png"
+      val extension: String = "_block_prediction"
       val endpoint: String = "analyze-blocks"
       override def getLabel(category: String): String = BlockType
         .withYoloName(category)
         .map(_.entryName)
         .getOrElse(throw new Exception(f"Unknown BlockType: $category"))
+
+      val maxWidth: Int = config.getInt("image-size-for-blocks")
+      val maxHeight: Int = config.getInt("image-size-for-blocks")
+      val defaultMinConfidence: Double = config.getDouble("default-min-confidence.blocks")
+    }
+    case object TextBlocks extends YoloPredictionType {
+      val extension: String = "_textblock_prediction"
+      val endpoint: String = "analyze-text-blocks"
+      val maxWidth: Int = config.getInt("image-size-for-text-blocks")
+      val maxHeight: Int = config.getInt("image-size-for-text-blocks")
+      val defaultMinConfidence: Double = config.getDouble("default-min-confidence.text-blocks")
     }
     case object Lines extends YoloPredictionType {
-      val extension: String = "_line_prediction.png"
+      val extension: String = "_line_prediction"
       val endpoint: String = "analyze-lines"
+      val maxWidth: Int = config.getInt("image-size-for-lines")
+      val maxHeight: Int = config.getInt("image-size-for-lines")
+      val defaultMinConfidence: Double = config.getDouble("default-min-confidence.lines")
     }
     case object Words extends YoloPredictionType {
-      val extension: String = "_word_prediction.png"
+      val extension: String = "_word_prediction"
       val endpoint: String = "analyze-words"
+      val maxWidth: Int = config.getInt("image-size-for-words")
+      val maxHeight: Int = config.getInt("image-size-for-words")
+      val defaultMinConfidence: Double = config.getDouble("default-min-confidence.words")
     }
     case object Glyphs extends YoloPredictionType {
-      val extension: String = "_glyph_prediction.png"
+      val extension: String = "_glyph_prediction"
       val endpoint: String = "analyze-glyphs"
+      val maxWidth: Int = config.getInt("image-size-for-glyphs")
+      val maxHeight: Int = config.getInt("image-size-for-glyphs")
+      val defaultMinConfidence: Double = config.getDouble("default-min-confidence.glyphs")
+    }
+    case object WordToGlyphs extends YoloPredictionType {
+      val extension: String = "_word_to_glyph_prediction"
+      val endpoint: String = "word-to-glyph"
+      val maxWidth: Int = config.getInt("word-width-for-glyphs")
+      val maxHeight: Int = config.getInt("word-height-for-glyphs")
+      val defaultMinConfidence: Double = config.getDouble("default-min-confidence.word-to-glyph")
     }
   }
 

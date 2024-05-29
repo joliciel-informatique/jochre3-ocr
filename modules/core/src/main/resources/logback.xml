@@ -30,6 +30,22 @@
     </encoder>
   </appender>
 
+  <appender name="file" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <file>temp/logs/jochre3-test.log</file>
+    <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+      <fileNamePattern>temp/logs/jochre3-test-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+      <!-- each archived file's size will be max 10MB -->
+      <maxFileSize>10MB</maxFileSize>
+      <!-- 30 days to keep -->
+      <maxHistory>2</maxHistory>
+      <!-- total size of all archive files, if total size > 100GB, it will delete old archived file -->
+      <totalSizeCap>100MB</totalSizeCap>
+    </rollingPolicy>
+    <encoder>
+      <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+    </encoder>
+  </appender>
+
   <logger name="com.joliciel" level="INFO" />
   <logger name="com.joliciel.jochre.ocr" level="INFO" />
   <logger name="com.joliciel.jochre.ocr.core.text" level="INFO" />
@@ -39,5 +55,6 @@
 
   <root level="INFO">
     <appender-ref ref="console" />
+    <appender-ref ref="file" />
   </root>
 </configuration>

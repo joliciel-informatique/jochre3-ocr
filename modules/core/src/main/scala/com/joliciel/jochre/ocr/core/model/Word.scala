@@ -1,7 +1,7 @@
 package com.joliciel.jochre.ocr.core.model
 
 import com.joliciel.jochre.ocr.core.graphics.{ImageInfo, Rectangle, WithRectangle}
-import com.joliciel.jochre.ocr.core.utils.MathUtils.MathImplicits.*
+import com.joliciel.jochre.ocr.core.utils.MathUtils.MathImplicits._
 import org.bytedeco.opencv.global.opencv_imgproc
 import org.bytedeco.opencv.global.opencv_imgproc.LINE_8
 import org.bytedeco.opencv.opencv_core.{AbstractScalar, Mat, Point}
@@ -48,18 +48,18 @@ case class Word(
     >{alternatives.map(_.toXml)}
       {glyphs.map(_.toXml)}</String>
 
-  def combineWith(that: Word): Word = Word(
-    f"${this.content}${that.content}",
-    this.rectangle.union(that.rectangle),
-    this.glyphs ++ that.glyphs,
-    this.alternatives ++ that.alternatives,
-    Math.sqrt(this.confidence * that.confidence)
+  def combineWith(that: Word): Word = this.copy(
+    content = f"${this.content}${that.content}",
+    rectangle = this.rectangle.union(that.rectangle),
+    glyphs = this.glyphs ++ that.glyphs,
+    alternatives = this.alternatives ++ that.alternatives,
+    confidence = Math.sqrt(this.confidence * that.confidence)
   )
 
   def combineWith(hyphen: Hyphen): Word = {
     val newRectangle = this.rectangle.union(hyphen.rectangle)
     val newGlyphs = this.glyphs :+ Glyph(hyphen.content, hyphen.rectangle, 0.5)
-    this.copy(rectangle = newRectangle, glyphs = newGlyphs)
+    this.copy(rectangle = newRectangle, glyphs = newGlyphs, content = this.content + hyphen.content)
   }
 
   override def draw(mat: Mat): Unit = {

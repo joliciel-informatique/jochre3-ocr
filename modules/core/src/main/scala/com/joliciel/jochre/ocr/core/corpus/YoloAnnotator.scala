@@ -5,9 +5,9 @@ import com.joliciel.jochre.ocr.core.graphics.{Rectangle, WithRectangle}
 import com.joliciel.jochre.ocr.core.model.{Alto, ComposedBlock, Illustration, TextBlock}
 import com.joliciel.jochre.ocr.core.utils.{FileUtils, ImageUtils}
 import com.typesafe.config.ConfigFactory
-import enumeratum.*
+import enumeratum._
 import org.bytedeco.opencv.opencv_core.Mat
-import org.rogach.scallop.*
+import org.rogach.scallop._
 import org.slf4j.LoggerFactory
 
 import java.awt.image.BufferedImage
@@ -35,7 +35,7 @@ case class YoloAnnotator(
 ) extends CorpusAnnotator
     with ImageUtils {
 
-  import YoloAnnotator.*
+  import YoloAnnotator._
 
   private val config = ConfigFactory.load().getConfig("jochre.ocr.yolo")
   private val log = LoggerFactory.getLogger(getClass)
@@ -194,8 +194,21 @@ case class YoloAnnotator(
       }
     }
 
-    // Blocks are based on the uncropped page, since we don't yet know the print area
-    val yoloBlocks = page.blocks
+    // Text blocks will be used to separate bigger blocks into paragraphs - so we already know the print area.
+    val yoloTextBlocks = baseAlto.allTextBoxes
+      .map { textBlock =>
+        YoloBox(
+          YoloObjectType.TextBlock,
+          xCenter = textBlock.rectangle.xCenter.toDouble / width,
+          yCenter = textBlock.rectangle.yCenter.toDouble / height,
+          width = textBlock.rectangle.width.toDouble / width,
+          height = textBlock.rectangle.height.toDouble / height
+        )
+      }
+      .filter(box => objectTypeSet.contains(box.yoloClass))
+
+    // Top-level blocks and illustrations are based on the uncropped page, since we don't yet know the print area
+    val yoloTopLevelBlocks = page.blocks
       .map {
         case composedBlock: ComposedBlock =>
           YoloBox(
@@ -224,7 +237,7 @@ case class YoloAnnotator(
       }
       .filter(box => objectTypeSet.contains(box.yoloClass))
 
-    val yoloBoxes = yoloNonBlocks ++ yoloBlocks
+    val yoloBoxes = yoloNonBlocks ++ yoloTextBlocks ++ yoloTopLevelBlocks
 
     val trainOrVal = validationOneEvery
       .map { validationOneEvery =>
@@ -293,7 +306,9 @@ case class YoloAnnotator(
           val colors = yoloClass match {
             case YoloObjectType.TopLevelTextBlock =>
               (Color.YELLOW, Color.YELLOW)
-            case YoloObjectType.Illustration     => (Color.BLUE, Color.BLUE)
+            case YoloObjectType.Illustration => (Color.BLUE, Color.BLUE)
+            case YoloObjectType.TextBlock =>
+              (Color.YELLOW, Color.YELLOW)
             case YoloObjectType.BaseLine         => (Color.BLUE, Color.GREEN)
             case YoloObjectType.NonFinalBaseLine => (Color.BLUE, Color.GREEN)
             case YoloObjectType.FinalBaseLine    => (Color.RED, Color.ORANGE)
@@ -488,7 +503,7 @@ object YoloAnnotator {
     val yamlFile = options.yamlFile.toOption
 
     val validationOneEvery = options.validationOneEvery.toOption
-    val segmentCount = options.tileCount.toOption
+    val tileCount = options.tileCount.toOption
     val imageSize = options.imageSize()
 
     val objectsToInclude = options.objectsToInclude.toOption
@@ -507,7 +522,7 @@ object YoloAnnotator {
       objectsToInclude,
       yamlFile,
       validationOneEvery,
-      segmentCount,
+      tileCount,
       imageSize,
       altoFinder
     )

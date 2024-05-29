@@ -17,7 +17,8 @@ case class Evaluator(
     metrics: Seq[TextEvaluationMetric],
     evalDir: Path,
     textSimplifier: Option[TextSimplifier] = None,
-    altoFinder: AltoFinder = AltoFinder.default
+    altoFinder: AltoFinder = AltoFinder.default,
+    ignoreParagraphs: Boolean = false
 ) extends EvaluatorBase
     with FileUtils {
 
@@ -51,9 +52,22 @@ case class Evaluator(
           .foreach(metrics) { metric =>
             ZIO.attempt {
               val predictedText = predicted.content
+
+              val predictedForEvaluation = if (ignoreParagraphs) {
+                predictedText.replaceAll("\n\n+", "\n")
+              } else {
+                predictedText
+              }
+
               val expectedText = textSimplifier
                 .map(_.simplify(expected.content))
                 .getOrElse(expected.content)
+
+              val expectedForEvaluation = if (ignoreParagraphs) {
+                expectedText.replaceAll("\n\n+", "\n")
+              } else {
+                expectedText
+              }
 
               writeFile(
                 evalDir.resolve(f"${file.getName}_predicted.txt"),
@@ -64,7 +78,7 @@ case class Evaluator(
                 expectedText
               )
 
-              metric.name -> metric.evaluate(predictedText, expectedText)
+              metric.name -> metric.evaluate(predictedForEvaluation, expectedForEvaluation)
             }
           }
           .map(

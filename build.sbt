@@ -6,16 +6,17 @@ import scala.sys.process._
 import xerial.sbt.Sonatype._
 import com.typesafe.sbt.packager.docker.Cmd
 
-ThisBuild / scalaVersion := "3.3.3"
+//ThisBuild / scalaVersion := "3.3.3"
+ThisBuild / scalaVersion := "2.13.13"
 ThisBuild / organization := "com.joli-ciel"
-ThisBuild / homepage     := Some(url("https://www.joli-ciel.com/"))
-ThisBuild / licenses     := List("AGPL-v3" -> url("https://www.gnu.org/licenses/agpl-3.0.en.html"))
+ThisBuild / homepage := Some(url("https://gitlab.com/jochre/jochre3-ocr"))
+ThisBuild / licenses := List("AGPL-v3" -> url("https://www.gnu.org/licenses/agpl-3.0.en.html"))
 ThisBuild / versionScheme := Some("semver-spec")
 
 val cloakroomVersion = "0.5.13"
 val amazonSdkVersion = "2.20.98"
 val scalaXmlVersion = "2.1.0"
-val yivoTranscriberVersion = "0.1.2"
+val yivoTranscriberVersion = "0.1.4"
 val javaCVVersion = "1.5.9"
 val scallopVersion = "5.0.0"
 val apacheCommonsTextVersion = "1.11.0"
@@ -24,9 +25,11 @@ val apachePdfBoxVersion = "3.0.1"
 val twelveMonkeysVersion = "3.10.1"
 val djlVersion = "0.26.0"
 val pytorchVersion = "2.1.1"
+val classGraphVersion = "4.8.172"
 
-lazy val jochre3OCRVersion = sys.env.get("JOCHRE3_OCR_VERSION")
-  .getOrElse{
+lazy val jochre3OCRVersion = sys.env
+  .get("JOCHRE3_OCR_VERSION")
+  .getOrElse {
     ConsoleLogger().warn("JOCHRE3_OCR_VERSION env var not found")
     "0.0.1-SNAPSHOT"
   }
@@ -62,7 +65,7 @@ ThisBuild / homepage := Some(url("https://gitlab.com/jochre/jochre3-ocr"))
 ThisBuild / pomIncludeRepository := { _ => false }
 ThisBuild / publishTo := {
   // For accounts created after Feb 2021:
-  //val nexus = "https://s01.oss.sonatype.org/"
+  // val nexus = "https://s01.oss.sonatype.org/"
   val nexus = "https://oss.sonatype.org/"
   if (isSnapshot.value) Some("snapshots" at nexus + "content/repositories/snapshots")
   else Some("releases" at nexus + "service/local/staging/deploy/maven2")
@@ -73,7 +76,7 @@ ThisBuild / publishTo := sonatypePublishToBundle.value
 ThisBuild / sonatypeProjectHosting := Some(GitLabHosting("assafurieli", "jochre/jochre3-ocr", "assafurieli@gmail.com"))
 
 val projectSettings = commonSettings ++ Seq(
-  version := jochre3OCRVersion,
+  version := jochre3OCRVersion
 )
 
 testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
@@ -84,7 +87,7 @@ lazy val root =
     .settings(noPublishSettings: _*)
     .settings(
       name := "jochre3-ocr",
-      publish / skip := false,
+      publish / skip := false
     )
     .aggregate(core, yiddish, api)
     .enablePlugins(DockerForwardPlugin)
@@ -103,6 +106,8 @@ val learningDeps = Seq(
 val jpegDeps = Seq(
   "com.twelvemonkeys.imageio" % "imageio-jpeg" % twelveMonkeysVersion,
   "com.twelvemonkeys.imageio" % "imageio-tiff" % twelveMonkeysVersion,
+  "com.github.jai-imageio" % "jai-imageio-jpeg2000" % "1.4.0",
+  "org.apache.pdfbox" % "jbig2-imageio" % apachePdfBoxVersion
 )
 
 lazy val core = project
@@ -118,12 +123,14 @@ lazy val core = project
       "org.apache.commons" % "commons-math3" % apacheCommonsMathVersion,
       "org.apache.pdfbox" % "pdfbox" % apachePdfBoxVersion,
       "org.apache.pdfbox" % "pdfbox-io" % apachePdfBoxVersion,
+      "io.github.classgraph" % "classgraph" % classGraphVersion
     ) ++ learningDeps,
-    //Compile / packageDoc / mappings := Seq(),
+    // Compile / packageDoc / mappings := Seq(),
     Compile / packageDoc / publishArtifact := true,
     fork := true,
-    publish / skip := false,
-  ).disablePlugins(DockerPlugin)
+    publish / skip := false
+  )
+  .disablePlugins(DockerPlugin)
 
 lazy val yiddish = project
   .in(file("modules/yiddish"))
@@ -131,12 +138,12 @@ lazy val yiddish = project
   .settings(
     name := "jochre3-ocr-yiddish",
     libraryDependencies ++= commonDeps ++ Seq(
-      "com.joliciel.ljtrad" % "yivo-transcriber" % yivoTranscriberVersion,
+      "com.joliciel.ljtrad" % "yivo-transcriber" % yivoTranscriberVersion
     ),
-    //Compile / packageDoc / mappings := Seq(),
+    // Compile / packageDoc / mappings := Seq(),
     Compile / packageDoc / publishArtifact := true,
     fork := true,
-    publish / skip := false,
+    publish / skip := false
   )
   .dependsOn(core % "compile->compile;test->test")
   .disablePlugins(DockerPlugin)
@@ -153,32 +160,32 @@ lazy val api = project
       "com.github.cb372" %% "cats-retry" % "3.1.0"
     ),
     Docker / packageName := "jochre/jochre3-ocr",
-    Docker / maintainer  := "Joliciel Informatique SARL",
+    Docker / maintainer := "Joliciel Informatique SARL",
     Docker / daemonUserUid := Some("1001"),
     dockerBaseImage := "openjdk:17.0.2-bullseye",
     Docker / dockerRepository := sys.env.get("JOCHRE3_DOCKER_REGISTRY"),
-    Docker / version     := version.value,
+    Docker / version := version.value,
     dockerExposedPorts := Seq(3434),
     dockerExposedVolumes := Seq("/opt/docker/index"),
-    // These next lines result in directories /opt/docker/lexicons and /opt/docker/models
-    Universal / mappings ++= directory("modules/yiddish/resources/lexicons"),
+    // These next line results in directory /opt/docker/models
     Universal / mappings ++= directory("modules/yiddish/resources/models"),
     // Add docker commands before changing user
     Docker / dockerCommands := dockerCommands.value.flatMap {
-      case Cmd("USER", args@_*) if args.contains("1001:0") => Seq(
-        // Add unattended security upgrades to docker image
-        Cmd("RUN", "apt update && apt install -y unattended-upgrades"),
-        Cmd("RUN", "unattended-upgrade -d --dry-run"),
-        Cmd("RUN", "unattended-upgrade -d"),
-        Cmd("USER", args: _*)
-      )
+      case Cmd("USER", args @ _*) if args.contains("1001:0") =>
+        Seq(
+          // Add unattended security upgrades to docker image
+          Cmd("RUN", "apt update && apt install -y unattended-upgrades"),
+          Cmd("RUN", "unattended-upgrade -d --dry-run"),
+          Cmd("RUN", "unattended-upgrade -d"),
+          Cmd("USER", args: _*)
+        )
       case cmd => Seq(cmd)
     },
-    //do not package scaladoc
-    Compile/ packageDoc / mappings := Seq(),
+    // do not package scaladoc
+    Compile / packageDoc / mappings := Seq(),
     Compile / mainClass := Some("com.joliciel.jochre.ocr.api.MainApp"),
     publish / skip := true,
-    fork := true,
+    fork := true
   )
   .dependsOn(core % "compile->compile;test->test", yiddish % "compile->compile;test->test")
   .enablePlugins(DockerPlugin)

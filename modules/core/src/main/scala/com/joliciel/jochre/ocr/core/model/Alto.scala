@@ -1,22 +1,15 @@
 package com.joliciel.jochre.ocr.core.model
 
-import java.time.format.{DateTimeFormatter, DateTimeParseException}
-import java.time.{LocalDateTime, ZoneOffset, ZonedDateTime}
 import scala.xml.{Elem, Node}
 
 case class Alto(
     fileName: String,
     pages: Seq[Page],
+    processingSteps: Seq[ProcessingStep] = Seq.empty,
     textStyles: Seq[TextStyle] = Seq.empty,
-    tags: Seq[Tag] = Seq.empty,
-    processingTime: ZonedDateTime = LocalDateTime.now().atZone(ZoneOffset.UTC)
+    tags: Seq[Tag] = Seq.empty
 ) {
-  import com.joliciel.jochre.ocr.core.model.Alto._
-
   lazy val content: String = pages.map(_.content).mkString("\n")
-
-  private val ocrVersion =
-    sys.env.getOrElse("JOCHRE3_OCR_VERSION", "0.0.1-SNAPSHOT")
 
   def toXml: Elem = <alto xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                           xmlns="http://www.loc.gov/standards/alto/ns-v4#"
@@ -27,16 +20,7 @@ case class Alto(
       <sourceImageInformation>
         <fileName>{fileName}</fileName>
       </sourceImageInformation>
-      <Processing ID="OCR_1">
-        <processingDateTime>{processingTime.format(dateTimeFormatter)}</processingDateTime>
-        <processingStepDescription>contentGeneration</processingStepDescription>
-        <processingSoftware>
-          <softwareCreator>Joliciel Informatique</softwareCreator>
-          <softwareName>Jochre</softwareName>
-          <softwareVersion>{ocrVersion}</softwareVersion>
-          <applicationDescription>Java Optical CHaracter REcognition: https://gitlab.com/jochre/jochre3-ocr/</applicationDescription>
-        </processingSoftware>
-      </Processing>
+      {processingSteps.map(_.toXml)}
     </Description>
     <Layout>{pages.map(_.toXml)}</Layout>
     <Styles>{textStyles.map(_.toXml)}</Styles>
@@ -54,13 +38,15 @@ case class Alto(
 }
 
 object Alto {
-  private val dateTimeFormatter = DateTimeFormatter.ISO_OFFSET_DATE_TIME
-
   def fromXML(node: Node): Alto = {
     import com.joliciel.jochre.ocr.core.utils.XmlImplicits._
 
     val pageNodes = node \\ "Page"
     val pages = pageNodes.map(Page.fromXML)
+
+    val processingStepNodes = node \\ "Processing"
+    val processingSteps = processingStepNodes.map(ProcessingStep.fromXML)
+
     val textStyleNodes = node \\ "TextStyle"
     val textStyles = textStyleNodes.map(TextStyle.fromXML)
 
@@ -75,24 +61,12 @@ object Alto {
     val fileNameNode = (node \\ "fileName").headOption
     val fileName = fileNameNode.map(_.textContent).getOrElse("")
 
-    val processingTimeNode = (node \\ "processingDateTime").headOption
-    val processingTime = processingTimeNode
-      .map { node =>
-        try {
-          ZonedDateTime.parse(node.textContent, dateTimeFormatter)
-        } catch {
-          case _: DateTimeParseException =>
-            LocalDateTime.now().atZone(ZoneOffset.UTC)
-        }
-      }
-      .getOrElse(LocalDateTime.now().atZone(ZoneOffset.UTC))
-
     Alto(
       fileName = fileName,
       pages = pages,
+      processingSteps = processingSteps,
       textStyles = textStyles,
-      tags = tags,
-      processingTime = processingTime
+      tags = tags
     )
   }
 }

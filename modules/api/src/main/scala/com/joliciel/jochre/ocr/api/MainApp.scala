@@ -99,6 +99,13 @@ object MainApp extends ZIOAppDefault {
   }
 
   private def app: Task[Unit] = {
+    Runtime.setReportFatal { t =>
+      t.printStackTrace()
+      try {
+        java.lang.System.exit(-1)
+        throw t
+      } catch { case _: Throwable => throw t }
+    }
     for {
       executor <- ZIO.executor
       server <- runServer(executor)

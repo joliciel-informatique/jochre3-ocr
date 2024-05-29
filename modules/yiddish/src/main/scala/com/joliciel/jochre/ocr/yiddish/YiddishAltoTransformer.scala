@@ -27,7 +27,7 @@ case class YiddishAltoTransformer(
   override def getAlternatives(word: Word): Set[SpellingAlternative] = {
     val content = word.content
     val contentAlternatives = getAlternatives(content)
-    val hyphenatedAlternatives = word.subsContent.map(getAlternatives(_, true)).getOrElse(Set.empty)
+    val hyphenatedAlternatives = word.subsContent.map(getAlternatives(_, hyphenated = true)).getOrElse(Set.empty)
     contentAlternatives ++ hyphenatedAlternatives
   }
 
@@ -101,8 +101,6 @@ case class YiddishAltoTransformer(
     Some(YiddishAltoTransformer.punctuationSplitRule(textSimplifier)),
     Some(YiddishAltoTransformer.reverseNumberRule)
   ).flatten
-
-  override val removeGlyphs: Boolean = true
 }
 
 object YiddishAltoTransformer extends XmlImplicits with StringUtils {
@@ -236,12 +234,17 @@ object YiddishAltoTransformer extends XmlImplicits with StringUtils {
   }
 
   private val numberRegex = raw"\d+\.?\d+".r
+  private val numberWithHebrewRegex = raw"(\d+)(\p{IsHebrew}+)".r
 
   private val reverseNumberRule: PartialFunction[AltoElement, AltoElement] = { case word: Word =>
     val content = word.content
     if (numberRegex.matches(content)) {
       val inverseNumber = content.reverse
       word.copy(content = inverseNumber)
+    } else if (numberWithHebrewRegex.matches(content)) {
+      val matches = numberWithHebrewRegex.findAllMatchIn(content).next()
+      val newContent = matches.group(1).reverse + matches.group(2)
+      word.copy(content = newContent)
     } else {
       word
     }

@@ -3,6 +3,7 @@ package com.joliciel.jochre.ocr.yiddish.lexicon
 import com.joliciel.jochre.ocr.core.lexicon.{Lexicon, TextFileLexicon}
 import com.joliciel.jochre.ocr.yiddish.{YiddishConfig, YiddishTextSimpifier}
 import com.joliciel.yivoTranscriber.YivoTranscriber
+import com.typesafe.config.ConfigFactory
 import zio.{Task, ZIO, ZLayer}
 
 import java.io.File
@@ -21,7 +22,7 @@ trait YivoLexiconService {
 private case class YivoLexiconServiceImpl(yiddishConfig: YiddishConfig) extends YivoLexiconService {
   override def getYivoLexicon: Task[YivoLexicon] = ZIO.attempt {
     yiddishConfig.lexiconPath
-      .map { path => YivoLexicon.load(new File(path)) }
+      .map { path => YivoLexicon.load(path) }
       .getOrElse(new YivoLexiconImpl(Set.empty))
   }
 }
@@ -31,6 +32,8 @@ trait YivoLexicon extends Lexicon {
 }
 
 private class YivoLexiconImpl(entries: Set[String]) extends TextFileLexicon(entries) with YivoLexicon {
+  private val config = ConfigFactory.load().getConfig("jochre.ocr.yiddish.yivo-lexicon")
+  private val cacheYivoTranscriptions = config.getBoolean("cache-yivo-transcriptions")
   private val yivoTranscriber = new YivoTranscriber()
   private var wordToYivo = Map.empty[String, String]
 
@@ -57,18 +60,26 @@ private class YivoLexiconImpl(entries: Set[String]) extends TextFileLexicon(entr
   }
 
   def toYivo(word: String, presimplified: Boolean = false): String = {
-    wordToYivo.getOrElse(
-      word, {
-        val simplifiedWord = if (presimplified) {
-          word
-        } else {
-          YivoLexicon.textSimplifier.simplify(word)
+    if (cacheYivoTranscriptions) {
+      wordToYivo.getOrElse(
+        word, {
+          val yivoWord = toYivoInternal(word, presimplified)
+          wordToYivo = wordToYivo + (word -> yivoWord)
+          yivoWord
         }
-        val yivoWord = yivoTranscriber.transcribe(simplifiedWord, false)
-        wordToYivo = wordToYivo + (word -> yivoWord)
-        yivoWord
-      }
-    )
+      )
+    } else {
+      toYivoInternal(word, presimplified)
+    }
+  }
+
+  private def toYivoInternal(word: String, presimplified: Boolean = false): String = {
+    val simplifiedWord = if (presimplified) {
+      word
+    } else {
+      YivoLexicon.textSimplifier.simplify(word)
+    }
+    yivoTranscriber.transcribe(simplifiedWord, false)
   }
 
   private val punctuationAndNotRegex =
@@ -165,15 +176,15 @@ private class YivoLexiconImpl(entries: Set[String]) extends TextFileLexicon(entr
 
 object YivoLexicon {
   val textSimplifier: YiddishTextSimpifier = YiddishTextSimpifier()
-  def load(input: File): YivoLexicon =
-    TextFileLexicon.load(
-      input,
+  def load(resourcePath: String): YivoLexicon =
+    TextFileLexicon.loadFromResource(
+      resourcePath,
       Some(textSimplifier),
       (entries, _) => new YivoLexiconImpl(entries)
     )
 
   def fromYiddishConfig(yiddishConfig: YiddishConfig): YivoLexicon =
     yiddishConfig.lexiconPath
-      .map { path => load(new File(path)) }
+      .map { path => load(path) }
       .getOrElse(new YivoLexiconImpl(Set.empty))
 }

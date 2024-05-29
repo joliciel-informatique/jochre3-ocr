@@ -31,5 +31,20 @@ class JochreCLI(arguments: Seq[String]) extends ScallopConf(arguments) {
   val lexiconDir: ScallopOption[String] = opt[String](descr =
     "If provided, will use lexicon to recognize known words. If not provided, no lexicon will be used."
   )
+  val writeImages: ScallopOption[Boolean] = {
+    opt[Boolean](default = Some(false), descr = "If true, write PDF images to output directory")
+  }
+  val evalIgnoreParagraphs: ScallopOption[Boolean] = {
+    opt[Boolean](
+      default = Some(false),
+      descr = "If true, ignore paragraph marks when evaluating, only evaluating the text inside the paragraphs."
+    )
+  }
+  val removeGlyphs: ScallopOption[Boolean] = {
+    opt[Boolean](
+      default = Some(false),
+      descr = "If true, glyphs will be removed from the generated Alto file"
+    )
+  }
   verify()
 }

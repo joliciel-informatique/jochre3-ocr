@@ -1,7 +1,8 @@
 package com.joliciel.jochre.ocr.core
 
+import com.joliciel.jochre.ocr.core.alto.AltoTransformerOptions
 import com.joliciel.jochre.ocr.core.corpus.TextSimplifier
-import com.joliciel.jochre.ocr.core.evaluation.{CharacterCount, CharacterErrorRate, Evaluator}
+import com.joliciel.jochre.ocr.core.evaluation.{BagOfWords, CharacterCount, CharacterErrorRate, Evaluator}
 import com.joliciel.jochre.ocr.core.graphics.Rectangle
 import com.joliciel.jochre.ocr.core.output.OutputFormat
 import zio._
@@ -22,8 +23,14 @@ trait JochreAppBase {
     val startPage = options.startPage.toOption
     val endPage = options.endPage.toOption
     val dpi = options.dpi.toOption
-    val outputFormats =
+    val outputFormats = {
       options.outputFormats().split(",").map(OutputFormat.withName).toSeq
+    }
+    val writeImages = options.writeImages()
+    val ignoreParagraphs = options.evalIgnoreParagraphs()
+    val removeGlyphs = options.removeGlyphs()
+    val altoTransformerOptions = AltoTransformerOptions().withRemoveGlyphs(removeGlyphs)
+
     for {
       testRectangle <- ZIO.attempt {
         options.testRectangle.toOption.map { rectString =>
@@ -46,9 +53,10 @@ trait JochreAppBase {
             }
             val evaluator = Evaluator(
               jochre,
-              Seq(CharacterErrorRate, CharacterCount),
+              Seq(CharacterErrorRate, BagOfWords, CharacterCount),
               evalDir,
-              textSimplifier
+              textSimplifier,
+              ignoreParagraphs = ignoreParagraphs
             )
             val evalWriter = new FileWriter(
               new File(evalDir.toFile, "eval.tsv"),
@@ -78,7 +86,8 @@ trait JochreAppBase {
                 Some(outDir),
                 debugDir,
                 maxImages,
-                testRectangle
+                testRectangle,
+                altoTransformerOptions
               )
             } else if (input.toFile.getName.endsWith(".pdf")) {
               jochre.processPdf(
@@ -90,7 +99,9 @@ trait JochreAppBase {
                 startPage,
                 endPage,
                 dpi,
-                testRectangle
+                testRectangle,
+                writeImages,
+                altoTransformerOptions
               )
             } else {
               // Assume image file
@@ -100,7 +111,8 @@ trait JochreAppBase {
                 outputFormats,
                 Some(outDir),
                 debugDir,
-                testRectangle
+                testRectangle,
+                altoTransformerOptions
               )
             }
           }

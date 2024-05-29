@@ -12,13 +12,13 @@ import java.io.File
 import java.nio.file.Path
 
 case class YiddishCorpusTransformer(
-    corpusDir: Path,
-    outDir: Path,
-    override val keepStructure: Boolean = false,
-    maxFiles: Option[Int] = None,
-    extension: String = ".png",
-    fileList: Option[Set[String]] = None,
-    altoFinder: AltoFinder = AltoFinder.default
+  corpusDir: Path,
+  outDir: Path,
+  override val keepStructure: Boolean = false,
+  maxFiles: Option[Int] = None,
+  extension: String = ".png",
+  fileList: Option[Set[String]] = None,
+  altoFinder: AltoFinder = AltoFinder.default
 ) extends CorpusAnnotator
     with ImageUtils {
   private val config: Config =

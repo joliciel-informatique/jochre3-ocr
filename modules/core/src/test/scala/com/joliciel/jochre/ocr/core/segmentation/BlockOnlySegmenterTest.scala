@@ -14,15 +14,16 @@ import javax.imageio.ImageIO
 
 object BlockOnlySegmenterTest extends JUnitRunnableSpec with ImageUtils {
   object MockYoloPredictorService extends YoloPredictorService {
-    override def getYoloPredictor(
-        predictionType: YoloPredictionType,
-        mat: Mat,
-        fileName: String,
-        outputLocation: Option[OutputLocation],
-        minConfidence: Option[Double]
-    ): Task[SegmentationPredictor] = ZIO.attempt {
-      new SegmentationPredictor {
-        override def predict(): Task[Seq[PredictedRectangle]] = ZIO.attempt(
+    override def getYoloPredictor: Task[YoloPredictor] = ZIO.attempt {
+      new YoloPredictor {
+        override def predict(
+            predictionType: YoloPredictionType,
+            mat: Mat,
+            fileName: String,
+            outputLocation: Option[OutputLocation],
+            minConfidence: Option[Double],
+            tileNumber: Option[Int]
+        ): Task[Seq[PredictedRectangle]] = ZIO.attempt(
           Seq(
             PredictedRectangle(
               BlockType.TopLevelTextBlock.entryName,

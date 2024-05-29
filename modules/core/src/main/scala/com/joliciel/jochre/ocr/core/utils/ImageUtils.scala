@@ -133,8 +133,10 @@ trait ImageUtils {
   }
 
   def crop(src: Mat, rectangle: Rectangle): Mat = {
+    val fullRect = Rectangle(0, 0, src.cols(), src.rows())
+    val adjustedRect = fullRect.intersection(rectangle).get
     val rect: Rect =
-      new Rect(rectangle.left, rectangle.top, rectangle.width, rectangle.height)
+      new Rect(adjustedRect.left, adjustedRect.top, adjustedRect.width, adjustedRect.height)
     val cropped: Mat = new Mat(src, rect)
     cropped
   }
