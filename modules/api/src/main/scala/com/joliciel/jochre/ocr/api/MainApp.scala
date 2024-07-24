@@ -13,6 +13,7 @@ import org.http4s.implicits._
 import org.http4s.server.Router
 import org.http4s.server.middleware.CORS
 import org.slf4j.LoggerFactory
+import sttp.tapir.server.http4s.Http4sServerOptions
 import sttp.tapir.server.http4s.ztapir.ZHttp4sServerInterpreter
 import sttp.tapir.swagger.bundle.SwaggerInterpreter
 import zio._
@@ -30,11 +31,18 @@ object MainApp extends ZIOAppDefault {
     Runtime.setConfigProvider(TypesafeConfigProvider.fromTypesafeConfig(config))
 
   private def runServer(executor: Executor): Task[Unit] = {
+    val serverLog =
+      Http4sServerOptions.defaultServerLog[AppTask].copy(logWhenReceived = true, logAllDecodeFailures = true)
+    val serverOptions = Http4sServerOptions
+      .customiseInterceptors[AppTask]
+      .serverLog(serverLog)
+      .options
+
     val analysisDirectives: AnalysisApp = AnalysisApp(
       executor.asExecutionContext
     )
     val analysisRoutes: HttpRoutes[AppTask] =
-      ZHttp4sServerInterpreter().from(analysisDirectives.http).toRoutes
+      ZHttp4sServerInterpreter(serverOptions).from(analysisDirectives.http).toRoutes
 
     val version = sys.env.getOrElse("JOCHRE3_OCR_VERSION", "0.1.0-SNAPSHOT")
     val swaggerDirectives = SwaggerInterpreter().fromEndpoints[AppTask](
@@ -43,7 +51,7 @@ object MainApp extends ZIOAppDefault {
       version
     )
     val swaggerRoutes: HttpRoutes[AppTask] =
-      ZHttp4sServerInterpreter().from(swaggerDirectives).toRoutes
+      ZHttp4sServerInterpreter(serverOptions).from(swaggerDirectives).toRoutes
 
     val routes = analysisRoutes <+> swaggerRoutes
 

@@ -46,7 +46,9 @@ package object model {
 
   trait Block extends PageElement with WithRectangle
 
-  trait TextContainer extends Block
+  trait TextContainer extends Block {
+    def processedContent: String
+  }
 
   trait WithLanguage {
     def language: Option[String]

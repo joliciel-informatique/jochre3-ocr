@@ -91,6 +91,38 @@ case class TextBlock(
 
   override lazy val content: String = textLines.map(_.content).mkString("\n")
 
+  override lazy val processedContent: String = {
+    val (content, _) = textLines.foldLeft("" -> false) { case ((content, skipFirstWord), textLine) =>
+      val wordsToProcess = if (skipFirstWord) {
+        if (textLine.wordsAndSpaces.nonEmpty) {
+          val tailWords = textLine.wordsAndSpaces.tail
+          tailWords.headOption match {
+            case Some(_: Space) => tailWords.tail // Skip initial space after skipped word
+            case _              => tailWords
+          }
+        } else {
+          Seq.empty
+        }
+      } else {
+        textLine.wordsAndSpaces
+      }
+      textLine.hyphen match {
+        case Some(_) =>
+          val initWords = wordsToProcess.init
+          val lastWord = initWords.lastOption
+          lastWord match {
+            case Some(word: Word) if word.subsContent.nonEmpty =>
+              content + " " + (initWords.init.map(_.content) :+ word.subsContent.get).mkString -> true
+            case _ =>
+              content + " " + wordsToProcess.map(_.content).mkString -> false
+          }
+        case None =>
+          content + " " + wordsToProcess.map(_.content).mkString -> false
+      }
+    }
+    content.strip()
+  }
+
   override def transform(
       partialFunction: PartialFunction[AltoElement, AltoElement]
   ): TextBlock = {
