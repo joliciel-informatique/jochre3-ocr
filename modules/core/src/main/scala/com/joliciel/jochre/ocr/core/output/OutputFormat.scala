@@ -28,11 +28,15 @@ object OutputFormat extends Enum[OutputFormat] {
     override val suffix: String = ".txt"
 
     override def apply(altoXml: Alto): String = {
-      altoXml.pages
-        .map {
-          _.content
-        }
-        .mkString("\n")
+      altoXml.content
+    }
+  }
+
+  case object ProcessedText extends OutputFormat {
+    override val suffix: String = "_processed.txt"
+
+    override def apply(altoXml: Alto): String = {
+      altoXml.processedContent
     }
   }
 }

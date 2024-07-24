@@ -151,11 +151,17 @@ case class Page(
     this.blocks.foreach(_.draw(mat))
   }
 
-  override def content: String = this.blocks
+  override lazy val content: String = this.blocks
     .collect { case textContainer: TextContainer =>
       textContainer.content
     }
     .mkString("\n\n")
+
+  lazy val processedContent: String = this.blocks
+    .collect { case textContainer: TextContainer =>
+      textContainer.processedContent
+    }
+    .mkString("\n")
 
   override def transform(
       partialFunction: PartialFunction[AltoElement, AltoElement]

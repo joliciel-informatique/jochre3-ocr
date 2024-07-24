@@ -7,4 +7,9 @@ trait AnalysisApiProtocol {
     DeriveJsonDecoder.gen[AnalyseURLRequest]
   implicit val jsonEncoder_analyseURLRequest: JsonEncoder[AnalyseURLRequest] =
     DeriveJsonEncoder.gen[AnalyseURLRequest]
+
+  implicit val jsonDecoder_analyseURLRequestWithOutputFormats: JsonDecoder[AnalyseURLRequestWithOutputFormats] =
+    DeriveJsonDecoder.gen[AnalyseURLRequestWithOutputFormats]
+  implicit val jsonEncoder_analyseURLRequestWithOutputFormats: JsonEncoder[AnalyseURLRequestWithOutputFormats] =
+    DeriveJsonEncoder.gen[AnalyseURLRequestWithOutputFormats]
 }
