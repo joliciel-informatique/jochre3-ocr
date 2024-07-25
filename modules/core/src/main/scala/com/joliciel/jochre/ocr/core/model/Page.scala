@@ -38,11 +38,13 @@ case class Page(
     illustration
   }
 
-  lazy val allTextBoxes: Seq[TextBlock] = BlockSorter
-    .sort(composedBlocks.flatMap(_.textBlocks) ++ textBlocks, leftToRight)
-    .collect { case t: TextBlock =>
-      t
+  lazy val allTextBlocks: Seq[TextBlock] = BlockSorter
+    .sort(composedBlocks ++ textBlocks, leftToRight)
+    .collect {
+      case c: ComposedBlock => c.textBlocks
+      case t: TextBlock     => Seq(t)
     }
+    .flatten
 
   lazy val allTextLines: Seq[TextLine] = (textBlocks.flatMap(
     _.textLines
