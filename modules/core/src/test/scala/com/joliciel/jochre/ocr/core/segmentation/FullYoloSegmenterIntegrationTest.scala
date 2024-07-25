@@ -31,7 +31,7 @@ object FullYoloSegmenterIntegrationTest extends JUnitRunnableSpec with ImageUtil
       } yield {
         val expectedBlock = Rectangle(624, 2248, 2434, 632)
         val foundBlock =
-          result.allTextBoxes.find(_.rectangle.percentageIntersection(expectedBlock) > 0.9)
+          result.allTextBlocks.find(_.rectangle.percentageIntersection(expectedBlock) > 0.9)
         val textLines = foundBlock.map(_.textLines)
         val firstLineWords = textLines.map(_.head.words)
         val fifthWordGlyphs = firstLineWords.map(_(5).glyphs)
