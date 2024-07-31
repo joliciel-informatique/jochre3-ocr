@@ -111,6 +111,14 @@ case class Rectangle(
     0
   }
 
+  def failSafeCompare(that: Rectangle, leftToRight: Boolean) : Int = {
+    val vertical = this.verticalCompare(that)
+    if (vertical != 0) {
+      return vertical
+    }
+    this.horizontalCompare(that, leftToRight)
+  }
+
   /** Return 0 if there's an overlap > 50%. Return -1 if we should check later rectangles. Return 1 if we should check
     * earlier rectangles.
     */

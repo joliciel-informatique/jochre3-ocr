@@ -124,10 +124,16 @@ case class BlockSorter(blocks: Seq[WithRectangle], leftToRight: Boolean) extends
 }
 
 object BlockSorter {
+  private val log = LoggerFactory.getLogger(getClass)
+
   def sort(
       blocks: Seq[WithRectangle],
       leftToRight: Boolean
-  ): Seq[WithRectangle] = {
+  ): Seq[WithRectangle] = try {
     blocks.sorted(BlockSorter(blocks, leftToRight))
+  } catch {
+    case _: IllegalArgumentException =>
+      log.info("Unable to sort using vertical breaks, falling back on failsafe method")
+      blocks.sorted((x: WithRectangle, y: WithRectangle) => x.rectangle.failSafeCompare(y.rectangle, leftToRight))
   }
 }
