@@ -61,8 +61,6 @@ ThisBuild / licenses := List(
 )
 ThisBuild / homepage := Some(url("https://gitlab.com/jochre/jochre3-ocr"))
 
-// Remove all additional repository other than Maven Central from POM
-ThisBuild / pomIncludeRepository := { _ => false }
 ThisBuild / publishTo := {
   // For accounts created after Feb 2021:
   // val nexus = "https://s01.oss.sonatype.org/"
@@ -70,7 +68,6 @@ ThisBuild / publishTo := {
   if (isSnapshot.value) Some("snapshots" at nexus + "content/repositories/snapshots")
   else Some("releases" at nexus + "service/local/staging/deploy/maven2")
 }
-ThisBuild / publishMavenStyle := true
 ThisBuild / credentials += Credentials(Path.userHome / ".sbt" / "sonatype_credentials_joliciel")
 ThisBuild / publishTo := sonatypePublishToBundle.value
 ThisBuild / sonatypeProjectHosting := Some(GitLabHosting("assafurieli", "jochre/jochre3-ocr", "assafurieli@gmail.com"))
