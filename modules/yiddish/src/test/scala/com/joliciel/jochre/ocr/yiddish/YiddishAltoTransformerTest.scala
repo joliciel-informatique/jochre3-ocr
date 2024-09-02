@@ -455,6 +455,27 @@ class YiddishAltoTransformerTest extends AnyFlatSpec with Matchers {
     actualWords shouldEqual expectedWords
   }
 
+  it should "not split on internal apostrophes" in {
+    val alto =
+      <TextLine HPOS="0" VPOS="10" WIDTH="500" HEIGHT="500">
+        <String HPOS="1000" VPOS="1000" WIDTH="50" HEIGHT="42" CONTENT="a'b'c" WC="0.5">
+          <Glyph HPOS="1000" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="a" GC="0.5"></Glyph>
+          <Glyph HPOS="1010" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="'" GC="0.5"></Glyph>
+          <Glyph HPOS="1020" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="b" GC="0.5"></Glyph>
+          <Glyph HPOS="1030" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="'" GC="0.5"></Glyph>
+          <Glyph HPOS="1040" VPOS="1000" WIDTH="10" HEIGHT="42" CONTENT="c" GC="0.5"></Glyph>
+        </String>
+      </TextLine>
+
+    val imageInfo = ImageInfo(200, 200, 0)
+    val textLine = TextLine.fromXML(imageInfo, alto)
+
+    val transform = YiddishAltoTransformer.punctuationSplitRule()
+
+    val actualTextLine = transform(textLine).asInstanceOf[TextLine]
+    actualTextLine shouldEqual textLine
+  }
+
   "addHyphenRule" should "split off hyphens at the end of a text line" in {
     val alto =
       <TextLine HPOS="0" VPOS="10" WIDTH="90" HEIGHT="100">
