@@ -167,16 +167,13 @@ object YiddishAltoTransformer extends XmlImplicits with StringUtils {
             )(i - 1)
           }.toSet
 
-          val correctedGlyphSequences = glyphSequences.zipWithIndex.flatMap { case (nodes, i) =>
-            if (abbreviationIndexes.contains(i)) {
-              Some(glyphSequences(i - 1) ++ nodes ++ glyphSequences(i + 1))
-            } else if (abbreviationIndexes.contains(i - 1)) {
-              None
-            } else if (abbreviationIndexes.contains(i + 1)) {
-              None
-            } else {
-              Some(nodes)
-            }
+          val correctedGlyphSequences = glyphSequences.zipWithIndex.foldLeft(Seq.empty[Seq[Glyph]]) {
+            case (newGlyphSeqs, (glyphs, i)) =>
+              if (newGlyphSeqs.nonEmpty && (abbreviationIndexes.contains(i) || abbreviationIndexes.contains(i - 1))) {
+                newGlyphSeqs.init :+ (newGlyphSeqs.last ++ glyphs)
+              } else {
+                newGlyphSeqs :+ glyphs
+              }
           }
 
           val correctedWords = correctedGlyphSequences.map { glyphSeq =>
