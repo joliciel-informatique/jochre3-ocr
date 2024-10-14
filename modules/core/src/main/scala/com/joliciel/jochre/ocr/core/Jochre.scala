@@ -112,7 +112,7 @@ trait AbstractJochre extends Jochre with ImageUtils with FileUtils with XmlImpli
   ): Seq[File] = {
     val allFiles = FileUtils.listFiles(
       inputDir,
-      ".*\\.pdf|.*\\.jpg|.*\\.png|.*\\.jpeg".r
+      ".*\\.pdf|.*\\.jpg|.*\\.png|.*\\.jpeg|.*\\.tif".r
     )
     allFiles
       .take(maxImages.getOrElse(allFiles.size))
