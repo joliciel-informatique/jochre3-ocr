@@ -30,8 +30,10 @@ object YivoTransliterator {
     ("תּ", "תּ")
   )
 
+  private val decomposedUnicodePairs = precombinedUnicodePairs.map(_.swap)
+
   private val pairsWithoutVovYud =
-    precombinedUnicodePairs.removedAll(Seq("װ", "ױ", "ײ"))
+    decomposedUnicodePairs.removedAll(Seq("װ", "ױ", "ײ"))
 
   private def replaceAll(map: Seq[(String, String)], string: String): String =
     map.foldLeft(string) { case (string, (find, replace)) =>
@@ -48,27 +50,27 @@ object YivoTransliterator {
 
   def replaceWithPrecombined(string: String): String =
     replaceAll(precombinedUnicodePairs.toSeq, string)
-      .replace("בּ", "ב")
+      .replace("בּ", "ב") // diacritic not used in YIVO
       .replace("בּ", "ב")
 
   // When vovYud==True, these will be preserved as precombined chars:
   //      װ, ײ, ױ
-  private def replaceWithDecomposed(string: String, vovYud: Boolean = false): String = {
+  def replaceWithDecomposed(string: String, vovYud: Boolean = false): String = {
     val pairsToReplace = if (vovYud) {
-      pairsWithoutVovYud
+      decomposedUnicodePairs
     } else {
-      precombinedUnicodePairs
+      pairsWithoutVovYud
     }
     replaceAll(pairsToReplace.toSeq, string)
-      .replace("ייַ", "ײַ")
-      .replace("בּ", "ב")
+      .replace("ייַ", "ײַ") // the double yud char exists ONLY in this context
+      .replace("בּ", "ב") // diacritic not used in YIVO
       .replace("בּ", "ב")
   }
 
-  private def replacePunctuation(string: String): String = {
+  def replacePunctuation(string: String): String = {
     string
-      .replace("-", "־")
-      .replace("′", "\"")
+      .replace("-", "־") // YIVO-style hyphen
+      .replace("′", "\"") // more common punct for abbreviations
       .replace("׳", "\"")
       .replace(
         "″",
