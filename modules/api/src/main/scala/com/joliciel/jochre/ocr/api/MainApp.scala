@@ -89,6 +89,7 @@ object MainApp extends ZIOAppDefault {
     val corsService = corsPolicyWithHosts.apply(httpApp)
 
     val jochreLayer = JochreYiddishFull.jochreYiddishLayer
+    val lexiconLayer = JochreYiddishFull.lexiconLayer
 
     // Starting the server
     val server = EmberServerBuilder
@@ -102,7 +103,8 @@ object MainApp extends ZIOAppDefault {
 
     server
       .provide(
-        jochreLayer
+        jochreLayer,
+        lexiconLayer
       )
   }
 

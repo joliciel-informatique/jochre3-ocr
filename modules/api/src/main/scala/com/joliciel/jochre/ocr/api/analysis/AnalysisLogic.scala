@@ -4,6 +4,7 @@ import com.joliciel.jochre.ocr.api.Types.Requirements
 import com.joliciel.jochre.ocr.api.{HttpError, HttpErrorMapper, UnknownOutputFormatException}
 import com.joliciel.jochre.ocr.core.Jochre
 import com.joliciel.jochre.ocr.core.alto.AltoTransformerOptions
+import com.joliciel.jochre.ocr.core.lexicon.Lexicon
 import com.joliciel.jochre.ocr.core.model.Alto
 import com.joliciel.jochre.ocr.core.output.OutputFormat
 import com.joliciel.jochre.ocr.core.utils.{FileUtils, ImageUtils}
@@ -240,4 +241,16 @@ trait AnalysisLogic extends HttpErrorMapper with ImageUtils with FileUtils {
     zos.finish()
     bos.toByteArray
   }
+
+  def getWordInLexiconLogic(word: String): ZIO[Requirements, HttpError, WordInLexiconResponse] = {
+    (for {
+      lexicon <- ZIO.service[Lexicon]
+      frequency <- ZIO.attempt(lexicon.getFrequency(word))
+    } yield {
+      WordInLexiconResponse(frequency)
+    })
+      .tapErrorCause(error => ZIO.logErrorCause(s"Unable to check word in lexicon", error))
+      .mapError(mapToHttpError)
+  }
+
 }

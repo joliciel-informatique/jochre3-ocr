@@ -155,17 +155,39 @@ case class AnalysisApp(executionContext: ExecutionContext)
   val postAnalyzeURLWithOutputFormatsHttp: ZServerEndpoint[Requirements, Any with ZioStreams] =
     postAnalyzeURLWithOutputFormatsEndpoint.zServerLogic(input => postAnalyzeURLWithOutputFormatsLogic(input))
 
+  val getWordInLexiconEndpoint: PublicEndpoint[String, HttpError, WordInLexiconResponse, Any] =
+    tapirEndpoint.get
+      .errorOut(
+        oneOf[HttpError](
+          oneOfVariant[BadRequest](StatusCode.BadRequest, jsonBody[BadRequest])
+        )
+      )
+      .in("word-in-lexicon")
+      .in(query[String]("word").description("The word to check").example("שױן"))
+      .out(jsonBody[WordInLexiconResponse].example(WordInLexiconResponse(1)))
+      .description(
+        "Check if the word is in the lexicon." +
+          " If the frequency is greater than 0, the word is in the lexicon." +
+          " If the frequency is equal to 0, the word is not in the lexicon." +
+          " If the frequency is less than 0, the word is deemed impossible."
+      )
+
+  val getWordInLexiconHttp: ZServerEndpoint[Requirements, Any] =
+    getWordInLexiconEndpoint.zServerLogic(input => getWordInLexiconLogic(input))
+
   val endpoints: List[AnyEndpoint] = List(
     postAnalyzeFileEndpoint,
     postAnalyzeURLEndpoint,
     postAnalyzeFileWithOutputFormatsEndpoint,
-    postAnalyzeURLWithOutputFormatsEndpoint
+    postAnalyzeURLWithOutputFormatsEndpoint,
+    getWordInLexiconEndpoint
   )
 
   val http: List[ZServerEndpoint[Requirements, Any with ZioStreams]] = List(
     postAnalyzeFileHttp,
     postAnalyzeURLHttp,
     postAnalyzeFileWithOutputFormatsHttp,
-    postAnalyzeURLWithOutputFormatsHttp
+    postAnalyzeURLWithOutputFormatsHttp,
+    getWordInLexiconHttp
   )
 }

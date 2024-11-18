@@ -42,6 +42,10 @@ package object analysis {
       removeGlyphs: Option[Boolean] = None
   )
 
+  case class WordInLexiconResponse(
+      frequency: Int
+  )
+
   object AnalysisHelper {
     val analyzeURLRequestExample: AnalyseURLRequest = AnalyseURLRequest(
       url = "https://iiif.archive.org/iiif/nybc200058$8/full/1800,/0/default.jpg",
