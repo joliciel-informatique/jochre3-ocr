@@ -12,4 +12,10 @@ trait AnalysisApiProtocol {
     DeriveJsonDecoder.gen[AnalyseURLRequestWithOutputFormats]
   implicit val jsonEncoder_analyseURLRequestWithOutputFormats: JsonEncoder[AnalyseURLRequestWithOutputFormats] =
     DeriveJsonEncoder.gen[AnalyseURLRequestWithOutputFormats]
+
+  implicit val jsonDecoder_wordInLexiconResponse: JsonDecoder[WordInLexiconResponse] =
+    DeriveJsonDecoder.gen[WordInLexiconResponse]
+  implicit val jsonEncoder_wordInLexiconResponse: JsonEncoder[WordInLexiconResponse] =
+    DeriveJsonEncoder.gen[WordInLexiconResponse]
+
 }
