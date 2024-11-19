@@ -46,6 +46,11 @@ package object analysis {
       frequency: Int
   )
 
+  case class WordFrequency(word: String, frequency: Int)
+  case class WordsInLexiconResponse(
+    frequencies: Seq[WordFrequency]
+  )
+
   object AnalysisHelper {
     val analyzeURLRequestExample: AnalyseURLRequest = AnalyseURLRequest(
       url = "https://iiif.archive.org/iiif/nybc200058$8/full/1800,/0/default.jpg",

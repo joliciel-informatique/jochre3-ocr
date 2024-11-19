@@ -253,4 +253,15 @@ trait AnalysisLogic extends HttpErrorMapper with ImageUtils with FileUtils {
       .mapError(mapToHttpError)
   }
 
+  def getWordsInLexiconLogic(words: List[String]): ZIO[Requirements, HttpError, WordsInLexiconResponse] = {
+    (for {
+      lexicon <- ZIO.service[Lexicon]
+      frequencies <- ZIO.foreach(words) { word => ZIO.attempt(lexicon.getFrequency(word)) }
+    } yield {
+      WordsInLexiconResponse(words.zip(frequencies).map { case (word, frequency) => WordFrequency(word, frequency) })
+    })
+      .tapErrorCause(error => ZIO.logErrorCause(s"Unable to check words in lexicon", error))
+      .mapError(mapToHttpError)
+  }
+
 }

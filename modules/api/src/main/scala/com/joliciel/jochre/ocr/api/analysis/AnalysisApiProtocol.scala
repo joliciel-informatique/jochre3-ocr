@@ -18,4 +18,14 @@ trait AnalysisApiProtocol {
   implicit val jsonEncoder_wordInLexiconResponse: JsonEncoder[WordInLexiconResponse] =
     DeriveJsonEncoder.gen[WordInLexiconResponse]
 
+  implicit val jsonDecoder_wordFrequency: JsonDecoder[WordFrequency] =
+    DeriveJsonDecoder.gen[WordFrequency]
+  implicit val jsonEncoder_wordFrequency: JsonEncoder[WordFrequency] =
+    DeriveJsonEncoder.gen[WordFrequency]
+
+  implicit val jsonDecoder_wordsInLexiconResponse: JsonDecoder[WordsInLexiconResponse] =
+    DeriveJsonDecoder.gen[WordsInLexiconResponse]
+  implicit val jsonEncoder_wordsInLexiconResponse: JsonEncoder[WordsInLexiconResponse] =
+    DeriveJsonEncoder.gen[WordsInLexiconResponse]
+
 }
