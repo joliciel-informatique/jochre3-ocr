@@ -2,7 +2,7 @@ package com.joliciel.jochre.ocr.core.transform
 
 import com.joliciel.jochre.ocr.core.corpus.AltoFinder
 import com.joliciel.jochre.ocr.core.graphics.Rectangle
-import com.joliciel.jochre.ocr.core.utils.{FileUtils, ImageUtils}
+import com.joliciel.jochre.ocr.core.utils.{FileUtils, ImageUtils, MathUtils}
 import com.typesafe.config.ConfigFactory
 import org.bytedeco.opencv.global.opencv_core._
 import org.bytedeco.opencv.global.opencv_imgproc
@@ -224,7 +224,7 @@ object Deskewer extends ImageUtils {
     val inputDir: ScallopOption[String] = opt[String](required = true)
     val outDir: ScallopOption[String] = opt[String](required = true)
     val debugDir: ScallopOption[String] = opt[String](required = false)
-    val longSide: ScallopOption[Int] = opt[Int](default = Some(1000))
+    val longSide: ScallopOption[Int] = opt[Int](required = false)
     verify()
   }
 
@@ -237,13 +237,18 @@ object Deskewer extends ImageUtils {
     val debugDir = options.debugDir.toOption.map(Path.of(_))
     debugDir.foreach(_.toFile.mkdirs())
 
+    val longSide = options.longSide.toOption
+
     val files = FileUtils.listImages(inputDir)
 
     val deskewer = Deskewer(Some(outDir), debugDir)
 
-    val transforms = List[ImageTransformer[_]](
-      new ResizeImageAndKeepAspectRatio(options.longSide(), options.longSide())
-    )
+    val transforms = List[Option[ImageTransformer[_]]](
+      longSide.map(longSide => new ResizeImageAndKeepAspectRatio(longSide, longSide))
+    ).flatten
+
+    var diffs = Seq.empty[Double]
+    var golds = Seq.empty[Double]
 
     files.map { file =>
       log.debug(f"Processing ${file.getPath}")
@@ -262,7 +267,18 @@ object Deskewer extends ImageUtils {
       log.info(f"Calculated: $calculatedOrZero")
       log.info(f"Expected:   $expected")
 
+      diffs = diffs :+ Math.abs(calculatedOrZero - expected)
+      golds = golds :+ expected
+
       deskewer.deskew(file.getPath, mat, calculated)
     }
+
+    val mean = MathUtils.mean(diffs)
+    val stdDev = MathUtils.stdDev(diffs)
+    log.info(f"Count: ${diffs.size}. Mean: $mean%2.3f. Std dev $stdDev%2.3f")
+
+    log.info(
+      f"Gold count: ${golds.size}. Mean: ${MathUtils.mean(golds)}%2.3f. Std edv ${MathUtils.stdDev(golds)}%2.3f."
+    )
   }
 }
