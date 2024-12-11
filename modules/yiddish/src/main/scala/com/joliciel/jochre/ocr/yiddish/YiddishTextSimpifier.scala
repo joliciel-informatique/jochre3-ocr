@@ -3,6 +3,7 @@ package com.joliciel.jochre.ocr.yiddish
 import com.joliciel.jochre.ocr.core.corpus.TextSimplifier
 
 import java.io.{File, PrintWriter}
+import java.text.Normalizer
 import scala.io.Source
 import scala.language.implicitConversions
 import scala.util.matching.Regex
@@ -38,7 +39,9 @@ case class YiddishTextSimpifier(replaceNonHebrewAlphabets: Boolean = false) exte
   private val greekAlphabet = """(?U)\p{IsGreek}""".r
 
   override def simplify(text: String): String = {
-    val simplifiedText = text
+    val normalizedText = Normalizer.normalize(text, Normalizer.Form.NFD)
+
+    val simplifiedText = normalizedText
       // Replace non-YIVO nikud first, for cases like a shin with a non-YIVO shva and a YIVO sin-dot
       .replaceRegex(nonYivoNikud, "")
       .replaceRegex(nonYivoKomets, "")

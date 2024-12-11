@@ -6,7 +6,6 @@ import com.joliciel.yivoTranscriber.YivoTranscriber
 import com.typesafe.config.ConfigFactory
 import zio.{Task, ZIO, ZLayer}
 
-import java.io.File
 import scala.collection.compat.immutable.ArraySeq
 
 object YivoLexiconService {
