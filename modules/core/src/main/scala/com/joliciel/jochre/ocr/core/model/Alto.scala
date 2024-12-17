@@ -10,6 +10,7 @@ case class Alto(
     tags: Seq[Tag] = Seq.empty
 ) {
   lazy val content: String = pages.map(_.content).mkString("\n")
+  lazy val processedContent: String = pages.map(_.processedContent).mkString("\n===============\n")
 
   def toXml: Elem = <alto xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                           xmlns="http://www.loc.gov/standards/alto/ns-v4#"

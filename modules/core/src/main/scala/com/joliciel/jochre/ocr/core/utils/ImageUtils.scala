@@ -86,8 +86,12 @@ trait ImageUtils {
 
   def toRGB(src: Mat): Mat = {
     val dest = new Mat()
-    if (src.`type`() == opencv_core.CV_8UC1) {
+    val imageType = src.`type`()
+    if (imageType == opencv_core.CV_8UC1) {
       cvtColor(src, dest, opencv_imgproc.CV_GRAY2RGB)
+      dest
+    } else if (imageType == opencv_core.CV_8UC4) {
+      cvtColor(src, dest, opencv_imgproc.CV_RGBA2RGB)
       dest
     } else {
       src

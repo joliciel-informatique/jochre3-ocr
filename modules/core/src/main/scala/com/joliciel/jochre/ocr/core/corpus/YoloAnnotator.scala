@@ -110,7 +110,7 @@ case class YoloAnnotator(
     val height = baseAlto.height.toDouble
 
     // Non-blocks are based on the page cropped down to the print area
-    val yoloNonBlocks = baseAlto.allTextBoxes.flatMap { textBlock =>
+    val yoloNonBlocks = baseAlto.allTextBlocks.flatMap { textBlock =>
       textBlock.textLinesWithRectangles.zipWithIndex.flatMap { case ((textLine, textLineRectangle), i) =>
         val baseLineType = if (i == textBlock.textLines.length - 1) {
           YoloObjectType.FinalBaseLine
@@ -195,7 +195,7 @@ case class YoloAnnotator(
     }
 
     // Text blocks will be used to separate bigger blocks into paragraphs - so we already know the print area.
-    val yoloTextBlocks = baseAlto.allTextBoxes
+    val yoloTextBlocks = baseAlto.allTextBlocks
       .map { textBlock =>
         YoloBox(
           YoloObjectType.TextBlock,

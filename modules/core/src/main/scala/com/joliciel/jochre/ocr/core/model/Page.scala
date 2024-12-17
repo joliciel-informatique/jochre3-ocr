@@ -38,11 +38,13 @@ case class Page(
     illustration
   }
 
-  lazy val allTextBoxes: Seq[TextBlock] = BlockSorter
-    .sort(composedBlocks.flatMap(_.textBlocks) ++ textBlocks, leftToRight)
-    .collect { case t: TextBlock =>
-      t
+  lazy val allTextBlocks: Seq[TextBlock] = BlockSorter
+    .sort(composedBlocks ++ textBlocks, leftToRight)
+    .collect {
+      case c: ComposedBlock => c.textBlocks
+      case t: TextBlock     => Seq(t)
     }
+    .flatten
 
   lazy val allTextLines: Seq[TextLine] = (textBlocks.flatMap(
     _.textLines
@@ -151,11 +153,17 @@ case class Page(
     this.blocks.foreach(_.draw(mat))
   }
 
-  override def content: String = this.blocks
+  override lazy val content: String = this.blocks
     .collect { case textContainer: TextContainer =>
       textContainer.content
     }
     .mkString("\n\n")
+
+  lazy val processedContent: String = this.blocks
+    .collect { case textContainer: TextContainer =>
+      textContainer.processedContent
+    }
+    .mkString("\n")
 
   override def transform(
       partialFunction: PartialFunction[AltoElement, AltoElement]

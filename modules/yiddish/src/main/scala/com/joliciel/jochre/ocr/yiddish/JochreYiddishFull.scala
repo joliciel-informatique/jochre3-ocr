@@ -44,12 +44,15 @@ object JochreYiddishFull extends ZIOAppDefault with JochreAppBase {
   private val yivoLexiconService: ZLayer[YiddishConfig, Throwable, YivoLexiconService] =
     YivoLexiconService.live
 
-  private val lexiconService: ZLayer[YivoLexiconService, Throwable, YivoLexicon] = ZLayer {
+  private val yivoLexiconLayer: ZLayer[YivoLexiconService, Throwable, YivoLexicon] = ZLayer {
     for {
       yivoLexiconService <- ZIO.service[YivoLexiconService]
       yivoLexicon <- yivoLexiconService.getYivoLexicon
     } yield yivoLexicon
   }
+
+  val lexiconLayer: ZLayer[Any, Throwable, Lexicon] =
+    YiddishConfig.configLayer >>> yivoLexiconService >>> yivoLexiconLayer
 
   private val fullSegmentationConfigLayer =
     ZLayer.fromZIO(ZIO.attempt(FullSegmentationGuesserConfig.fromConfig))
@@ -93,7 +96,7 @@ object JochreYiddishFull extends ZIOAppDefault with JochreAppBase {
       .service[YiddishConfig]) >>>
       (noDepSegmenterService ++ ZLayer.service[YivoLexiconService] ++ ZLayer
         .service[YiddishConfig] ++
-        (glyphGuesserLayer ++ glyphGuessersForOtherAlphabetsLayer ++ textSimplifierLayer ++ lexiconService ++ fullSegmentationConfigLayer >>> textGuesserService ++ ZLayer
+        (glyphGuesserLayer ++ glyphGuessersForOtherAlphabetsLayer ++ textSimplifierLayer ++ yivoLexiconLayer ++ fullSegmentationConfigLayer >>> textGuesserService ++ ZLayer
           .service[YivoLexicon]))) >>>
       jochreYiddishLayerInternal
 
@@ -110,7 +113,7 @@ object JochreYiddishFull extends ZIOAppDefault with JochreAppBase {
         textSimplifierLayer,
         YiddishConfig.appArgsLayer,
         yivoLexiconService,
-        lexiconService,
+        yivoLexiconLayer,
         FullSegmentationGuesserConfig.appArgsLayer,
         textGuesserService,
         jochreYiddishLayerInternal

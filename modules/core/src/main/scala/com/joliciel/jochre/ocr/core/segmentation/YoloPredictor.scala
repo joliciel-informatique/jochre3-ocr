@@ -13,11 +13,11 @@ import sttp.client3.circe._
 import sttp.client3.httpclient.zio.SttpClient
 import sttp.client3.{SttpBackend, UriContext, basicRequest, multipart}
 import sttp.model.StatusCode
-import zio.{Task, ZIO, ZLayer}
+import zio.{Schedule, Task, ZIO, ZLayer, durationInt}
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 import javax.imageio.ImageIO
-import scala.jdk.DurationConverters._
+import scala.jdk.DurationConverters.JavaDurationOps
 
 trait YoloPredictorService {
   def getYoloPredictor: Task[YoloPredictor]
@@ -81,7 +81,7 @@ private[segmentation] class YoloPredictorImpl(
 
         val uri =
           uri"$documentLayoutAnalysisUrl/${predictionType.endpoint}?min-confidence=$myMinConfidence"
-        if (log.isDebugEnabled) log.debug(f"Uri: $uri")
+
         val request = basicRequest
           .readTimeout(requestTimeout)
           .post(uri)
@@ -96,7 +96,20 @@ private[segmentation] class YoloPredictorImpl(
           )
         request
       }
-      response <- httpClient.send(request)
+      response <- httpClient
+        .send {
+          if (log.isInfoEnabled) log.info(f"Sending request to ${request.uri}")
+          request
+        }
+        .fold(
+          error => {
+            log.error(f"Failed to predict YOLO ${predictionType.entryName} for $fileName", error)
+            ZIO.fail(error)
+          },
+          response => ZIO.succeed(response)
+        )
+        .flatten
+        .retry(Schedule.exponential(1.second) && Schedule.recurs(5))
       predictions <- ZIO
         .attempt {
           response.code match {

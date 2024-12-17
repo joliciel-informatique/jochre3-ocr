@@ -67,6 +67,8 @@ case class ComposedBlock(
 
   override lazy val content: String = textBlocks.map(_.content).mkString("\n\n")
 
+  override lazy val processedContent: String = textBlocks.map(_.processedContent).mkString("\n")
+
   override def transform(
       partialFunction: PartialFunction[AltoElement, AltoElement]
   ): ComposedBlock = {
