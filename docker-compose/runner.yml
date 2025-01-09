@@ -9,7 +9,7 @@ services:
       - ivy_cache:/root/.ivy2
       - sbt_cache:/root/.sbt
     environment:
-      DOCUMENT_LAYOUT_ANALYSIS_URL: http://yolo-dla:8444
+      DOCUMENT_LAYOUT_ANALYSIS_URL: http://jochre3-dla:8444
   publisher:
     command: forwardedDockerPublish
     build:
