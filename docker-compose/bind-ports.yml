@@ -1,5 +1,5 @@
 version: '3.7'
 services:
-  yolo-dla:
+  jochre3-dla:
     ports:
       - 8444:8444
