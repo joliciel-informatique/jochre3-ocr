@@ -7,25 +7,24 @@ import xerial.sbt.Sonatype._
 import com.typesafe.sbt.packager.docker.Cmd
 
 //ThisBuild / scalaVersion := "3.3.3"
-ThisBuild / scalaVersion := "2.13.13"
+ThisBuild / scalaVersion := "2.13.15"
 ThisBuild / organization := "com.joli-ciel"
 ThisBuild / homepage := Some(url("https://gitlab.com/jochre/jochre3-ocr"))
 ThisBuild / licenses := List("AGPL-v3" -> url("https://www.gnu.org/licenses/agpl-3.0.en.html"))
 ThisBuild / versionScheme := Some("semver-spec")
 
-val cloakroomVersion = "0.5.13"
-val amazonSdkVersion = "2.20.98"
-val scalaXmlVersion = "2.1.0"
+val cloakroomVersion = "0.5.15"
+val scalaXmlVersion = "2.3.0"
 val yivoTranscriberVersion = "0.1.6"
-val javaCVVersion = "1.5.9"
-val scallopVersion = "5.0.0"
-val apacheCommonsTextVersion = "1.11.0"
+val javaCVVersion = "1.5.11"
+val scallopVersion = "5.2.0"
+val apacheCommonsTextVersion = "1.13.0"
 val apacheCommonsMathVersion = "3.6.1"
-val apachePdfBoxVersion = "3.0.1"
-val twelveMonkeysVersion = "3.10.1"
-val djlVersion = "0.26.0"
-val pytorchVersion = "2.1.1"
-val classGraphVersion = "4.8.172"
+val apachePdfBoxVersion = "3.0.3"
+val twelveMonkeysVersion = "3.12.0"
+val djlVersion = "0.31.1"
+val pytorchVersion = "2.5.1"
+val classGraphVersion = "4.8.179"
 
 lazy val jochre3OCRVersion = sys.env
   .get("JOCHRE3_OCR_VERSION")
