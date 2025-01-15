@@ -3,7 +3,7 @@ package com.joliciel.jochre.ocr.core.corpus
 import com.joliciel.jochre.ocr.core.model.Alto
 import com.joliciel.jochre.ocr.core.utils.FileUtils
 import org.bytedeco.opencv.opencv_core.Mat
-import org.rogach.scallop.{ScallopConf, ScallopOption}
+import org.rogach.scallop.{ScallopConf, ScallopOption, stringConverter, intConverter}
 
 import java.awt.geom.AffineTransform
 import java.awt.image.{AffineTransformOp, BufferedImage}

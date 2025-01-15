@@ -179,5 +179,11 @@ private[segmentation] class YoloPredictorImpl(
 
 object YoloPredictorService {
   val live: ZLayer[SttpClient, Nothing, YoloPredictorService] =
-    ZLayer.fromFunction(YoloPredictorServiceImpl(_))
+    ZLayer(
+      for {
+        httpClient <- ZIO.service[SttpClient]
+      } yield {
+        YoloPredictorServiceImpl(httpClient)
+      }
+    )
 }

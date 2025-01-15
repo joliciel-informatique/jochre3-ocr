@@ -6,8 +6,8 @@ import scala.sys.process._
 import xerial.sbt.Sonatype._
 import com.typesafe.sbt.packager.docker.Cmd
 
-//ThisBuild / scalaVersion := "3.3.3"
-ThisBuild / scalaVersion := "2.13.15"
+ThisBuild / scalaVersion := "3.6.2"
+//ThisBuild / scalaVersion := "2.13.15"
 ThisBuild / organization := "com.joli-ciel"
 ThisBuild / homepage := Some(url("https://gitlab.com/jochre/jochre3-ocr"))
 ThisBuild / licenses := List("AGPL-v3" -> url("https://www.gnu.org/licenses/agpl-3.0.en.html"))
