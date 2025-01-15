@@ -24,7 +24,7 @@ trait YoloPredictorService {
 }
 
 private[segmentation] case class YoloPredictorServiceImpl(
-    httpClient: SttpBackend[Task, ZioStreams with capabilities.WebSockets]
+    httpClient: SttpBackend[Task, ZioStreams & capabilities.WebSockets]
 ) extends YoloPredictorService {
   def getYoloPredictor: Task[YoloPredictor] =
     ZIO.attempt(
@@ -46,7 +46,7 @@ trait YoloPredictor {
 }
 
 private[segmentation] class YoloPredictorImpl(
-    httpClient: SttpBackend[Task, ZioStreams with capabilities.WebSockets]
+    httpClient: SttpBackend[Task, ZioStreams & capabilities.WebSockets]
 ) extends YoloPredictor
     with ImageUtils {
   private val log = LoggerFactory.getLogger(getClass)

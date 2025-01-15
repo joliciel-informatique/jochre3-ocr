@@ -25,7 +25,7 @@ case class RotationAnnotator(
     imageSize: Int = 1280,
     altoFinder: AltoFinder = AltoFinder.default
 ) extends CorpusAnnotator {
-  override val initialTransforms: Seq[AnnotatedImageTransformer[_]] = Seq.empty
+  override val initialTransforms: Seq[AnnotatedImageTransformer[?]] = Seq.empty
 
   override def annotateOneFile(mat: Mat, alto: Alto, parentDir: File, baseName: String, index: Int): Unit = {
     val page = alto.pages.head

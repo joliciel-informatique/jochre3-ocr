@@ -13,7 +13,7 @@ package object learning {
   private val contrast = config.getDouble("contrast")
   private val brightness = config.getInt("brightness")
 
-  val transforms: Seq[AnnotatedImageTransformer[_]] = Seq[Option[AnnotatedImageTransformer[_]]](
+  val transforms: Seq[AnnotatedImageTransformer[?]] = Seq[Option[AnnotatedImageTransformer[?]]](
     // Increase contrast and brightness
     Option.when(applyContrastAndBrightness)(
       AnnotatedImageTransformer(

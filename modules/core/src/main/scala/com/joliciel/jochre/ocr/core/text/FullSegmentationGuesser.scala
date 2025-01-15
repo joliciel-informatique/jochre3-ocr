@@ -22,7 +22,7 @@ import scala.util.matching.Regex
 
 object FullSegmentationGuesserService {
   val live: ZLayer[
-    GlyphGuesser with GlyphGuessersForOtherAlphabets with Lexicon with FullSegmentationGuesserConfig,
+    GlyphGuesser & GlyphGuessersForOtherAlphabets & Lexicon & FullSegmentationGuesserConfig,
     Nothing,
     TextGuesserService
   ] = ZLayer.fromFunction {

@@ -61,17 +61,17 @@ object JochreYiddishFull extends ZIOAppDefault with JochreAppBase {
     ZLayer.succeed(textSimplifier.get)
   private val textGuesserService: ZLayer[
     GlyphGuesser
-      with GlyphGuessersForOtherAlphabets
-      with Lexicon
-      with TextSimplifier
-      with FullSegmentationGuesserConfig,
+      & GlyphGuessersForOtherAlphabets
+      & Lexicon
+      & TextSimplifier
+      & FullSegmentationGuesserConfig,
     Throwable,
     TextGuesserService
   ] =
     FullSegmentationGuesserService.live
 
   private val jochreYiddishLayerInternal: ZLayer[
-    SegmenterService with TextGuesserService with YiddishConfig with YivoLexicon,
+    SegmenterService & TextGuesserService & YiddishConfig & YivoLexicon,
     Throwable,
     Jochre
   ] = ZLayer {
@@ -100,7 +100,7 @@ object JochreYiddishFull extends ZIOAppDefault with JochreAppBase {
           .service[YivoLexicon]))) >>>
       jochreYiddishLayerInternal
 
-  override def run: ZIO[Any with ZIOAppArgs with Scope, Throwable, ExitCode] = {
+  override def run: ZIO[Any & ZIOAppArgs & Scope, Throwable, ExitCode] = {
     for {
       args <- getArgs
       jochreCLI <- ZIO.attempt(new JochreCLI(args))

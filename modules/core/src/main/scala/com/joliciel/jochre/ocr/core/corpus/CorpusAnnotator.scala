@@ -23,7 +23,7 @@ trait CorpusAnnotator extends FileUtils with ImageUtils {
 
   private val log = LoggerFactory.getLogger(getClass)
 
-  val initialTransforms: Seq[AnnotatedImageTransformer[_]] = Seq[AnnotatedImageTransformer[_]](
+  val initialTransforms: Seq[AnnotatedImageTransformer[?]] = Seq[AnnotatedImageTransformer[?]](
     RotationTransformer
   )
 

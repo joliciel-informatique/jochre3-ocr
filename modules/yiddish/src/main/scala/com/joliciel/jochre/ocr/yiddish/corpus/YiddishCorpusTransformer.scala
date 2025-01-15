@@ -28,7 +28,7 @@ case class YiddishCorpusTransformer(
   private val yudKhirikYud = config.getBoolean("yud-khirik-yud")
   private val tsveyVovn = config.getBoolean("tsvey-vovn")
 
-  override val initialTransforms: Seq[AnnotatedImageTransformer[_]] = Seq.empty
+  override val initialTransforms: Seq[AnnotatedImageTransformer[?]] = Seq.empty
 
   override def annotateOneFile(
       mat: Mat,
