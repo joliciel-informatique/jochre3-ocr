@@ -243,7 +243,7 @@ object Deskewer extends ImageUtils {
 
     val deskewer = Deskewer(Some(outDir), debugDir)
 
-    val transforms = List[Option[ImageTransformer[_]]](
+    val transforms = List[Option[ImageTransformer[?]]](
       longSide.map(longSide => new ResizeImageAndKeepAspectRatio(longSide, longSide))
     ).flatten
 

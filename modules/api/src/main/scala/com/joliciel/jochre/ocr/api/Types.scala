@@ -5,7 +5,7 @@ import com.joliciel.jochre.ocr.core.lexicon.Lexicon
 import zio.{RIO, Task}
 
 object Types {
-  type Requirements = Jochre with Lexicon
+  type Requirements = Jochre & Lexicon
 
   type AppTask[T] = RIO[Requirements, T]
 }

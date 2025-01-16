@@ -3,7 +3,7 @@ package com.joliciel.jochre.ocr.core.corpus
 import com.joliciel.jochre.ocr.core.model.Alto
 import com.joliciel.jochre.ocr.core.utils.FileUtils
 import org.bytedeco.opencv.opencv_core.Mat
-import org.rogach.scallop.{ScallopConf, ScallopOption}
+import org.rogach.scallop.{ScallopConf, ScallopOption, stringConverter, intConverter}
 
 import java.awt.geom.AffineTransform
 import java.awt.image.{AffineTransformOp, BufferedImage}
@@ -25,7 +25,7 @@ case class RotationAnnotator(
     imageSize: Int = 1280,
     altoFinder: AltoFinder = AltoFinder.default
 ) extends CorpusAnnotator {
-  override val initialTransforms: Seq[AnnotatedImageTransformer[_]] = Seq.empty
+  override val initialTransforms: Seq[AnnotatedImageTransformer[?]] = Seq.empty
 
   override def annotateOneFile(mat: Mat, alto: Alto, parentDir: File, baseName: String, index: Int): Unit = {
     val page = alto.pages.head

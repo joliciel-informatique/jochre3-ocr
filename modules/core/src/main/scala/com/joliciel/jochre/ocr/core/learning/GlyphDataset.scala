@@ -40,7 +40,7 @@ case class GlyphDataset(builder: GlyphDatasetBuilder)
   private val alphabet = SortedSet(
     allGlyphs
       .map(_.content)
-      .map(builder.textSimplifier.simplify): _*
+      .map(builder.textSimplifier.simplify)*
   )
 
   private val alphabetToIndex = alphabet.zipWithIndex.toMap

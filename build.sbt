@@ -6,8 +6,8 @@ import scala.sys.process._
 import xerial.sbt.Sonatype._
 import com.typesafe.sbt.packager.docker.Cmd
 
-//ThisBuild / scalaVersion := "3.3.3"
-ThisBuild / scalaVersion := "2.13.15"
+ThisBuild / scalaVersion := "3.6.2"
+//ThisBuild / scalaVersion := "2.13.15"
 ThisBuild / organization := "com.joli-ciel"
 ThisBuild / homepage := Some(url("https://gitlab.com/jochre/jochre3-ocr"))
 ThisBuild / licenses := List("AGPL-v3" -> url("https://www.gnu.org/licenses/agpl-3.0.en.html"))
@@ -124,7 +124,8 @@ lazy val core = project
     // Compile / packageDoc / mappings := Seq(),
     Compile / packageDoc / publishArtifact := true,
     fork := true,
-    publish / skip := false
+    publish / skip := false,
+    scalacOptions ++= Seq("-rewrite", "-source:3.4-migration")
   )
   .disablePlugins(DockerPlugin)
 
@@ -139,7 +140,8 @@ lazy val yiddish = project
     // Compile / packageDoc / mappings := Seq(),
     Compile / packageDoc / publishArtifact := true,
     fork := true,
-    publish / skip := false
+    publish / skip := false,
+    scalacOptions ++= Seq("-rewrite", "-source:3.4-migration")
   )
   .dependsOn(core % "compile->compile;test->test")
   .disablePlugins(DockerPlugin)
@@ -181,7 +183,8 @@ lazy val api = project
     Compile / packageDoc / mappings := Seq(),
     Compile / mainClass := Some("com.joliciel.jochre.ocr.api.MainApp"),
     publish / skip := true,
-    fork := true
+    fork := true,
+    scalacOptions ++= Seq("-rewrite", "-source:3.4-migration")
   )
   .dependsOn(core % "compile->compile;test->test", yiddish % "compile->compile;test->test")
   .enablePlugins(DockerPlugin)
