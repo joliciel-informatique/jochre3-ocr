@@ -19,6 +19,20 @@ Yiddish implementation capabilities (possible to apply to other languages):
 - Nikkud is currently handled by learning to ignore non-YIVO nikkud.
 - Training corpus covering a wide range of page layouts and historical fonts.
 
+If you use this software in your studies, please cite the [following article](https://arxiv.org/abs/2501.08442):
+
+```bibtex
+@misc{urieli2025jochre3yiddishocr,
+      title={Jochre 3 and the Yiddish OCR corpus},
+      author={Assaf Urieli and Amber Clooney and Michelle Sigiel and Grisha Leyfer},
+      year={2025},
+      eprint={2501.08442},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2501.08442},
+}
+```
+
 ## Running Jochre 3 OCR locally
 
 Install [Docker Compose](https://docs.docker.com/compose/install/).
