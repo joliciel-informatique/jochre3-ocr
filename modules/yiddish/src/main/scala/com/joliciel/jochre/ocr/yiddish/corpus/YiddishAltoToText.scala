@@ -4,7 +4,7 @@ import com.joliciel.jochre.ocr.core.corpus.TextSimplifier
 import com.joliciel.jochre.ocr.core.model.Alto
 import com.joliciel.jochre.ocr.core.utils.FileUtils
 import com.joliciel.jochre.ocr.yiddish.YiddishTextSimpifier
-import org.rogach.scallop.{ScallopConf, ScallopOption}
+import org.rogach.scallop.{ScallopConf, ScallopOption, stringConverter, intConverter, flagConverter}
 
 import java.io.File
 import java.nio.file.Path

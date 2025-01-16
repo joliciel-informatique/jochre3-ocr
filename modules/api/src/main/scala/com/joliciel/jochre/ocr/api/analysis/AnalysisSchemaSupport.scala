@@ -10,8 +10,7 @@ trait AnalysisSchemaSupport {
     override def mediaType: MediaType = MediaType.ApplicationZip
   }
 
-
-  implicit val codec_outputFormat: Codec[String, OutputFormat, CodecFormat.TextPlain] =
+  given Codec[String, OutputFormat, CodecFormat.TextPlain] =
     Codec.string.mapDecode(s => DecodeResult.Value(OutputFormat.withName(s)))(_.entryName)
-  implicit val schema_outputFormat: Schema[OutputFormat] = Schema(SString(), description = Some("OutputFormat"))
+  given Schema[OutputFormat] = Schema(SString(), description = Some("OutputFormat"))
 }

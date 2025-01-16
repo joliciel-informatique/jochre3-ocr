@@ -42,7 +42,7 @@ object BlockOnlySegmenterTest extends JUnitRunnableSpec with ImageUtils {
     }
   }
 
-  override def spec: Spec[TestEnvironment with Scope, Any] = suite("BlockPredictor")(
+  override def spec: Spec[TestEnvironment & Scope, Any] = suite("BlockPredictor")(
     test("transform blocks into page") {
       val image =
         ImageIO.read(getClass.getResourceAsStream("/images/nybc200089_0011_deskewered.jpg"))

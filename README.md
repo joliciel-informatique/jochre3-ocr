@@ -5,11 +5,13 @@ OCR software using neural networks for page layout analysis and character recogn
 Input is either a PDF file or an image.
 
 Output is possible in the following formats:
+
 - `Alto4`: the full [Alto4 XML](https://www.loc.gov/standards/alto/) output down to the glyph level.
 - `Text`: the original text, with physical line breaks preserved.
 - `ProcessedText`: the text with end-of-line line breaks removed, hyphenated words combined "intelligently" (with hard vs soft hyphen handling), and line breaks between paragraphs.
 
 Yiddish implementation capabilities (possible to apply to other languages):
+
 - Increase probability of known words
 - Multi-alphabet management (text with Hebrew, Latin and Cyrillic characters)
 - Correct handling of bidi (for numbers)
@@ -17,18 +19,33 @@ Yiddish implementation capabilities (possible to apply to other languages):
 - Nikkud is currently handled by learning to ignore non-YIVO nikkud.
 - Training corpus covering a wide range of page layouts and historical fonts.
 
+If you use this software in your studies, please cite the [following article](https://arxiv.org/abs/2501.08442):
+
+```bibtex
+@misc{urieli2025jochre3yiddishocr,
+      title={Jochre 3 and the Yiddish OCR corpus},
+      author={Assaf Urieli and Amber Clooney and Michelle Sigiel and Grisha Leyfer},
+      year={2025},
+      eprint={2501.08442},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2501.08442},
+}
+```
+
 ## Running Jochre 3 OCR locally
 
 Install [Docker Compose](https://docs.docker.com/compose/install/).
 
 In a directory of your choice, create the following two files.
 
-`docker-compose.yml` (replace `1.0.2` below with the latest tag):
+`docker-compose.yml` (replace `1.1.0` below with the latest tag):
+
 ```yml
-version: '3.7'
+version: "3.7"
 services:
   jochre3-ocr:
-    image: registry.gitlab.com/jochre/jochre3-ocr:1.0.2
+    image: registry.gitlab.com/jochre/jochre3-ocr:1.1.0
     command: -Dconfig.file=/opt/docker/etc/jochre.conf
     ports:
       - 3434:3434
@@ -36,7 +53,7 @@ services:
       - ./jochre.conf:/opt/docker/etc/jochre.conf
     environment:
       DOCUMENT_LAYOUT_ANALYSIS_URL: http://jochre3-dla:8444
-      JOCHRE3_OCR_VERSION: 1.0.2
+      JOCHRE3_OCR_VERSION: 1.1.0
       JOCHRE3_OCR_DIRECTORY: /opt/docker
     logging:
       driver: "json-file"
@@ -55,6 +72,7 @@ services:
 ```
 
 `jochre.conf`:
+
 ```conf
 include "/application"
 
@@ -70,6 +88,7 @@ jochre {
 ```
 
 Next, launch your docker compose file as follows (for Linux command line, may vary for other systems):
+
 ```shell
 cd [your-directory]
 docker compose -f docker-compose.yml up -d
@@ -80,6 +99,7 @@ If the launch functioned correctly, you should be able to navigate to the Swagge
 You can run Jochre from the Swagger page above, or else from the command line (instructions below for Linux using curl).
 
 Command line for running OCR analysis on a local file:
+
 ```shell
 curl -X 'POST' \
   'http://localhost:3434/ocr/file/zip' \
@@ -90,6 +110,7 @@ curl -X 'POST' \
 ```
 
 Command line for running OCR analysis on a URL:
+
 ```shell
 curl -X 'POST' \
   'http://localhost:3434/ocr/url/zip' \
@@ -103,11 +124,13 @@ curl -X 'POST' \
 ```
 
 If you want to be sure Jochre OCR is working while waiting for a response, you can use the Docker logs command as follows, in a separate command line:
+
 ```shell
 docker logs --follow --since 2m docker-compose_jochre3-ocr_1
 ```
 
 To stop the Jochre server, run the following command:
+
 ```shell
 cd [your-directory]
 docker compose -f docker-compose.yml down
@@ -120,7 +143,7 @@ Navigate to the project directory, and run the application as follows:
 ```shell
 make init-dev-env
 sbt
-project api 
+project api
 run
 ```
 
@@ -129,17 +152,20 @@ You can then navigate to the Swagger documentation as follows: http://localhost:
 ## Building the docker image
 
 Create your environment variables:
+
 ```shell
 export JOCHRE3_DOCKER_REGISTRY=registry.gitlab.com
 export JOCHRE3_DOCKER_USERNAME=assafurieli@gmail.com
 ```
 
 Either create an additional JOCHRE3_DOCKER_PASSWORD variable, or (more secure) add the password to pass:
+
 ```shell
 pass insert jochre/sonatype_deploy
 ```
 
 Run the publish script
+
 ```shell
 make publish-image
 ```
@@ -149,12 +175,14 @@ Note that the GitLab CI script automatically builds and publishes a docker image
 ## Building and publishing as a sonatype library
 
 To publish a snapshot, run:
+
 ```shell
 export JOCHRE3_OCR_VERSION=[YOUR VERSION]-SNAPSHOT
 sbt publishSigned
 ```
 
 To publish a release, run:
+
 ```shell
 export JOCHRE3_OCR_VERSION=[YOUR VERSION]
 sbt publishSigned

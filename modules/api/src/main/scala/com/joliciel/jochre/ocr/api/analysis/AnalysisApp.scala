@@ -20,13 +20,13 @@ case class AnalysisApp(executionContext: ExecutionContext)
     with AnalysisLogic
     with AnalysisSchemaSupport
     with AnalysisApiProtocol {
-  implicit val ec: ExecutionContext = executionContext
+  given ExecutionContext = executionContext
 
   val postAnalyzeFileEndpoint: PublicEndpoint[FileForm, HttpError, ZStream[
     Any,
     Throwable,
     Byte
-  ], Any with ZioStreams] =
+  ], Any & ZioStreams] =
     tapirEndpoint
       .errorOut(
         oneOf[HttpError](
@@ -51,7 +51,7 @@ case class AnalysisApp(executionContext: ExecutionContext)
       )
       .description("Post an image file for analysis and return xml result.")
 
-  val postAnalyzeFileHttp: ZServerEndpoint[Requirements, Any with ZioStreams] =
+  val postAnalyzeFileHttp: ZServerEndpoint[Requirements, Any & ZioStreams] =
     postAnalyzeFileEndpoint.zServerLogic(input => postAnalyzeFileLogic(input))
 
   val postAnalyzeFileWithOutputFormatsEndpoint: PublicEndpoint[
@@ -65,7 +65,7 @@ case class AnalysisApp(executionContext: ExecutionContext)
         ],
         String
     ),
-    Any with ZioStreams
+    Any & ZioStreams
   ] =
     tapirEndpoint
       .errorOut(
@@ -92,14 +92,14 @@ case class AnalysisApp(executionContext: ExecutionContext)
       .out(header[String](HeaderNames.ContentDisposition))
       .description("Post an image file for analysis and return requested outputs in zip file.")
 
-  val postAnalyzeFileWithOutputFormatsHttp: ZServerEndpoint[Requirements, Any with ZioStreams] =
+  val postAnalyzeFileWithOutputFormatsHttp: ZServerEndpoint[Requirements, Any & ZioStreams] =
     postAnalyzeFileWithOutputFormatsEndpoint.zServerLogic(input => postAnalyzeFileWithOutputFormatsLogic(input))
 
   val postAnalyzeURLEndpoint: PublicEndpoint[
     AnalyseURLRequest,
     HttpError,
     ZStream[Any, Throwable, Byte],
-    Any with ZioStreams
+    Any & ZioStreams
   ] =
     tapirEndpoint
       .errorOut(
@@ -123,14 +123,14 @@ case class AnalysisApp(executionContext: ExecutionContext)
       )
       .description("Post an image URL for analysis and return xml result.")
 
-  val postAnalyzeURLHttp: ZServerEndpoint[Requirements, Any with ZioStreams] =
+  val postAnalyzeURLHttp: ZServerEndpoint[Requirements, Any & ZioStreams] =
     postAnalyzeURLEndpoint.zServerLogic(input => postAnalyzeURLLogic(input))
 
   val postAnalyzeURLWithOutputFormatsEndpoint: PublicEndpoint[
     AnalyseURLRequestWithOutputFormats,
     HttpError,
     (ZStream[Any, Throwable, Byte], String),
-    Any with ZioStreams
+    Any & ZioStreams
   ] =
     tapirEndpoint
       .errorOut(
@@ -152,7 +152,7 @@ case class AnalysisApp(executionContext: ExecutionContext)
       .out(header[String](HeaderNames.ContentDisposition))
       .description("Post an image URL for analysis and return requested outputs in zip file.")
 
-  val postAnalyzeURLWithOutputFormatsHttp: ZServerEndpoint[Requirements, Any with ZioStreams] =
+  val postAnalyzeURLWithOutputFormatsHttp: ZServerEndpoint[Requirements, Any & ZioStreams] =
     postAnalyzeURLWithOutputFormatsEndpoint.zServerLogic(input => postAnalyzeURLWithOutputFormatsLogic(input))
 
   val getWordInLexiconEndpoint: PublicEndpoint[String, HttpError, WordInLexiconResponse, Any] =
@@ -208,7 +208,7 @@ case class AnalysisApp(executionContext: ExecutionContext)
     getWordsInLexiconEndpoint
   )
 
-  val http: List[ZServerEndpoint[Requirements, Any with ZioStreams]] = List(
+  val http: List[ZServerEndpoint[Requirements, Any & ZioStreams]] = List(
     postAnalyzeFileHttp,
     postAnalyzeURLHttp,
     postAnalyzeFileWithOutputFormatsHttp,

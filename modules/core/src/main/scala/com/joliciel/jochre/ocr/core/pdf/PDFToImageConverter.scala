@@ -4,7 +4,7 @@ import com.joliciel.jochre.ocr.core.utils.FileUtils
 import org.apache.pdfbox.Loader
 import org.apache.pdfbox.io.RandomAccessReadBuffer
 import org.apache.pdfbox.rendering.{ImageType, PDFRenderer}
-import org.rogach.scallop.{ScallopConf, ScallopOption}
+import org.rogach.scallop.{ScallopConf, ScallopOption, stringConverter, intConverter}
 import org.slf4j.LoggerFactory
 import zio.stream.ZStream
 import zio.{Task, ZIO}

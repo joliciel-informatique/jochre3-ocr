@@ -15,7 +15,7 @@ import scala.xml.{Atom, PrettyPrinter, Text}
 object JochreYiddishFullTest extends JUnitRunnableSpec with XmlImplicits {
   private val log = LoggerFactory.getLogger(getClass)
 
-  override def spec: Spec[TestEnvironment with Scope, Any] = suite("JochreYiddishFull")(
+  override def spec: Spec[TestEnvironment & Scope, Any] = suite("JochreYiddishFull")(
     test("analyze an image") {
       val inputStream = getClass.getClassLoader.getResourceAsStream("nybc200089_0011.png")
       val image = ImageIO.read(inputStream)

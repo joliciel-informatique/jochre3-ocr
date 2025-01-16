@@ -103,7 +103,7 @@ case class GlyphTrainer(
       .optDevices(Engine.getInstance.getDevices(maxGpus))
       .optOptimizer(optimizer)
       .addTrainingListeners(
-        TrainingListener.Defaults.logging(outputDir.toFile.getPath): _*
+        TrainingListener.Defaults.logging(outputDir.toFile.getPath)*
       )
       .addTrainingListeners(listener)
   }

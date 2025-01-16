@@ -13,7 +13,7 @@ import java.nio.file.Path
 import javax.imageio.ImageIO
 
 object FullYoloSegmenterIntegrationTest extends JUnitRunnableSpec with ImageUtils {
-  override def spec: Spec[TestEnvironment with Scope, Any] = suite("FullYoloSegmenter")(
+  override def spec: Spec[TestEnvironment & Scope, Any] = suite("FullYoloSegmenter")(
     test("transform blocks into page") {
       val image =
         ImageIO.read(getClass.getResourceAsStream("/images/nybc200089_0011_deskewered.jpg"))

@@ -15,7 +15,7 @@ import javax.imageio.ImageIO
 object YoloPredictorTest extends JUnitRunnableSpec with ImageUtils {
   private val log = LoggerFactory.getLogger(getClass)
 
-  override def spec: Spec[TestEnvironment with Scope, Any] = suite("YoloPredictor")(
+  override def spec: Spec[TestEnvironment & Scope, Any] = suite("YoloPredictor")(
     test("predict blocks") {
       val image =
         ImageIO.read(getClass.getResourceAsStream("/images/nybc200089_0011_deskewered.jpg"))
