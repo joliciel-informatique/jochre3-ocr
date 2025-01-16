@@ -103,8 +103,7 @@ package object segmentation {
       )
   }
 
-  private[segmentation] object YoloImplicits {
-    implicit val decodeYoloResult: Decoder[YoloResult] =
-      Decoder.forProduct3("box", "class", "conf")(YoloResult.apply)
+  private[segmentation] trait YoloImplicits {
+    given Decoder[YoloResult] = Decoder.forProduct3("box", "class", "conf")(YoloResult.apply)
   }
 }

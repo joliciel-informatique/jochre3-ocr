@@ -20,7 +20,7 @@ case class AnalysisApp(executionContext: ExecutionContext)
     with AnalysisLogic
     with AnalysisSchemaSupport
     with AnalysisApiProtocol {
-  implicit val ec: ExecutionContext = executionContext
+  given ExecutionContext = executionContext
 
   val postAnalyzeFileEndpoint: PublicEndpoint[FileForm, HttpError, ZStream[
     Any,

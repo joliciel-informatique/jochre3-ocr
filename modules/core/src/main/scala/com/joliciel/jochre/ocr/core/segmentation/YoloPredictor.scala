@@ -18,6 +18,7 @@ import zio.{Schedule, Task, ZIO, ZLayer, durationInt}
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 import javax.imageio.ImageIO
 import scala.jdk.DurationConverters.JavaDurationOps
+import io.circe.Decoder
 
 trait YoloPredictorService {
   def getYoloPredictor: Task[YoloPredictor]
@@ -48,7 +49,8 @@ trait YoloPredictor {
 private[segmentation] class YoloPredictorImpl(
     httpClient: SttpBackend[Task, ZioStreams & capabilities.WebSockets]
 ) extends YoloPredictor
-    with ImageUtils {
+    with ImageUtils
+    with YoloImplicits {
   private val log = LoggerFactory.getLogger(getClass)
 
   private val config = ConfigFactory.load().getConfig("jochre.ocr.yolo")
@@ -63,7 +65,6 @@ private[segmentation] class YoloPredictorImpl(
       minConfidence: Option[Double] = None,
       tileNumber: Option[Int] = None
   ): Task[Seq[PredictedRectangle]] = {
-    import YoloImplicits._
     val resizer = new ResizeImageAndKeepAspectRatio(predictionType.maxWidth, predictionType.maxHeight)
 
     for {

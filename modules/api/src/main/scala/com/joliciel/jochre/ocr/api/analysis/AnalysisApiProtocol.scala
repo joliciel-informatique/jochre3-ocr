@@ -3,29 +3,18 @@ package com.joliciel.jochre.ocr.api.analysis
 import zio.json._
 
 trait AnalysisApiProtocol {
-  implicit val jsonDecoder_analyseURLRequest: JsonDecoder[AnalyseURLRequest] =
-    DeriveJsonDecoder.gen[AnalyseURLRequest]
-  implicit val jsonEncoder_analyseURLRequest: JsonEncoder[AnalyseURLRequest] =
-    DeriveJsonEncoder.gen[AnalyseURLRequest]
+  given JsonDecoder[AnalyseURLRequest] = DeriveJsonDecoder.gen[AnalyseURLRequest]
+  given JsonEncoder[AnalyseURLRequest] = DeriveJsonEncoder.gen[AnalyseURLRequest]
 
-  implicit val jsonDecoder_analyseURLRequestWithOutputFormats: JsonDecoder[AnalyseURLRequestWithOutputFormats] =
-    DeriveJsonDecoder.gen[AnalyseURLRequestWithOutputFormats]
-  implicit val jsonEncoder_analyseURLRequestWithOutputFormats: JsonEncoder[AnalyseURLRequestWithOutputFormats] =
-    DeriveJsonEncoder.gen[AnalyseURLRequestWithOutputFormats]
+  given JsonDecoder[AnalyseURLRequestWithOutputFormats] = DeriveJsonDecoder.gen[AnalyseURLRequestWithOutputFormats]
+  given JsonEncoder[AnalyseURLRequestWithOutputFormats] = DeriveJsonEncoder.gen[AnalyseURLRequestWithOutputFormats]
 
-  implicit val jsonDecoder_wordInLexiconResponse: JsonDecoder[WordInLexiconResponse] =
-    DeriveJsonDecoder.gen[WordInLexiconResponse]
-  implicit val jsonEncoder_wordInLexiconResponse: JsonEncoder[WordInLexiconResponse] =
-    DeriveJsonEncoder.gen[WordInLexiconResponse]
+  given JsonDecoder[WordInLexiconResponse] = DeriveJsonDecoder.gen[WordInLexiconResponse]
+  given JsonEncoder[WordInLexiconResponse] = DeriveJsonEncoder.gen[WordInLexiconResponse]
 
-  implicit val jsonDecoder_wordFrequency: JsonDecoder[WordFrequency] =
-    DeriveJsonDecoder.gen[WordFrequency]
-  implicit val jsonEncoder_wordFrequency: JsonEncoder[WordFrequency] =
-    DeriveJsonEncoder.gen[WordFrequency]
+  given JsonDecoder[WordFrequency] = DeriveJsonDecoder.gen[WordFrequency]
+  given JsonEncoder[WordFrequency] = DeriveJsonEncoder.gen[WordFrequency]
 
-  implicit val jsonDecoder_wordsInLexiconResponse: JsonDecoder[WordsInLexiconResponse] =
-    DeriveJsonDecoder.gen[WordsInLexiconResponse]
-  implicit val jsonEncoder_wordsInLexiconResponse: JsonEncoder[WordsInLexiconResponse] =
-    DeriveJsonEncoder.gen[WordsInLexiconResponse]
-
+  given JsonDecoder[WordsInLexiconResponse] = DeriveJsonDecoder.gen[WordsInLexiconResponse]
+  given JsonEncoder[WordsInLexiconResponse] = DeriveJsonEncoder.gen[WordsInLexiconResponse]
 }
