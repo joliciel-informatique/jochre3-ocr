@@ -1,8 +1,8 @@
 ############################################################
 # Historical names as written in Yiddish, compiled by Assaf Urieli
-# A mish-mash of composers, authors, politicans, dictators, etc.
-# This work is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
-# See http://creativecommons.org/licenses/by-nc-sa/3.0/ for details
+# A mish־mash of composers, authors, politicans, dictators, etc.
+# This work is licensed under a Creative Commons Attribution־NonCommercial־ShareAlike 3.0 Unported License.
+# See http://creativecommons.org/licenses/by־nc־sa/3.0/ for details
 #############################################################
 באַך
 באַרטאָלדי
@@ -39,13 +39,13 @@
 נאַפּאָלעאָן
 סטאַלין
 סיבעליוס
-סען-סאַנס
+סען־סאַנס
 פּושקין
 קאָרסאַקאָװ
 ראָמאַנאָװ
 רוזװעלט
 רימסקי
-רימסקי-קאָרסאַקאָװ
+רימסקי־קאָרסאַקאָװ
 שאָסטאַקאָװיטש
 שובערט
 שומאַן
