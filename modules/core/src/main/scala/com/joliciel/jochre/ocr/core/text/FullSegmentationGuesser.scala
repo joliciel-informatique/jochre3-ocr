@@ -87,24 +87,287 @@ object FullSegmentationGuesserConfig {
     }
 }
 
+private[text] trait FullSegmentationGuesserHelper {
+  def lexicon: Lexicon
+  def config: FullSegmentationGuesserConfig
+  private val log = LoggerFactory.getLogger(getClass)
+
+  val beamWidth = config.beamWidth
+  val unknownWordFactor = config.unknownWordFactor
+
+  sealed trait HyphenationStatus
+
+  object NonHyphenated extends HyphenationStatus
+  case class HyphenatedWithHyphen(hyphenatedWord: String) extends HyphenationStatus
+  case class HyphenatedWithoutHyphen(hyphenatedWord: String) extends HyphenationStatus
+  case class HyphenatedPart2WithHyphen(hyphenatedWord: String) extends HyphenationStatus
+  case class HyphenatedPart2WithoutHyphen(hyphenatedWord: String) extends HyphenationStatus
+
+  case class Guess(glyphPredictions: Seq[Prediction]) extends Ordered[Guess] {
+    val score: Double = Math.exp(glyphPredictions.foldLeft(0.0) { case (score, prediction) =>
+      score + Math.log(prediction.confidence)
+    } / glyphPredictions.size)
+    override def compare(that: Guess): Int = {
+      this.score.compare(that.score)
+    }
+
+    private lazy val unsimplifiedWord = glyphPredictions.map(_.outcome).mkString
+
+    lazy val word: String = lexicon.textSimplifier
+      .map(_.simplify(unsimplifiedWord))
+      .getOrElse(unsimplifiedWord)
+  }
+
+  case class GuessWithScore(guess: Guess, score: Double)
+
+  case class WordWithBeam(
+      word: WordOrSpace,
+      beam: Seq[GuessWithScore]
+  ) {
+    def selectBestGuess(mat: Mat): WordOrSpace = word match {
+      case word: Word =>
+        val rescored = rescoreBeam(beam)
+        if (log.isDebugEnabled) {
+          log.debug("Guesses for next word")
+          beam.zipWithIndex.foreach { case (topGuess, i) =>
+            log.debug(
+              f"Guess $i: ${topGuess.guess.word}. Initial score: ${topGuess.guess.score}%.3f. Score: ${topGuess.score}%.3f"
+            )
+          }
+        }
+        val guessedWord = guessToWord(mat, word, rescored.head)
+        guessedWord
+      case other =>
+        other
+    }
+  }
+
+  def removeExternalPunct(word: String): String = {
+    word.replaceAll("""(?U)^\p{Punct}+|\p{Punct}+$""", "")
+  }
+
+  def guessToWordSingleAlphabet(
+      word: Word,
+      topGuess: GuessWithScore,
+      hyphenationStatus: HyphenationStatus = NonHyphenated
+  ): Word = {
+    val glyphsWithContent =
+      word.glyphs.zip(topGuess.guess.glyphPredictions).map { case (glyph, guess) =>
+        glyph.copy(content = guess.outcome, confidence = guess.confidence)
+      }
+
+    val guessedWord = word.copy(
+      content = topGuess.guess.word,
+      glyphs = glyphsWithContent,
+      confidence = topGuess.score,
+      subsType = hyphenationStatus match {
+        case NonHyphenated                   => None
+        case HyphenatedWithHyphen(_)         => Some(SubsType.HypPart1)
+        case HyphenatedWithoutHyphen(_)      => Some(SubsType.HypPart1)
+        case HyphenatedPart2WithHyphen(_)    => Some(SubsType.HypPart2)
+        case HyphenatedPart2WithoutHyphen(_) => Some(SubsType.HypPart2)
+      },
+      subsContent = hyphenationStatus match {
+        case NonHyphenated                      => None
+        case HyphenatedWithHyphen(word)         => Some(removeExternalPunct(word))
+        case HyphenatedWithoutHyphen(word)      => Some(removeExternalPunct(word))
+        case HyphenatedPart2WithHyphen(word)    => Some(removeExternalPunct(word))
+        case HyphenatedPart2WithoutHyphen(word) => Some(removeExternalPunct(word))
+      }
+    )
+    guessedWord
+  }
+
+  def guessToWord(
+      mat: Mat,
+      word: Word,
+      topGuess: GuessWithScore,
+      hyphenationStatus: HyphenationStatus = NonHyphenated
+  ): Word = {
+    val guessedWord = guessToWordSingleAlphabet(word, topGuess, hyphenationStatus)
+    val otherAlphabetWord =
+      guessWithOtherAlphabets(mat, guessedWord).getOrElse(guessedWord)
+    otherAlphabetWord
+  }
+
+  def guessWithOtherAlphabets(mat: Mat, word: Word): Option[Word]
+
+  case class ScoredPair(
+      guessWithHyphen: GuessWithScore,
+      firstGuessNextLine: GuessWithScore,
+      combinedScore: Double,
+      hyphenationStatus: HyphenationStatus
+  )
+
+  def rescoreBeam(beam: Seq[GuessWithScore]): Seq[GuessWithScore] = {
+    // Rescore the guesses and sort by the new highest scoring word
+    val topGuesses = beam.map(rescoreGuess).sortBy(0 - _.score)
+    topGuesses
+  }
+
+  def rescoreGuess(guessWithScore: GuessWithScore): GuessWithScore = {
+    val frequency =
+      lexicon.getFrequency(guessWithScore.guess.word, preSimplified = true)
+    if (frequency > 0) {
+      guessWithScore
+    } else if (frequency < 0) {
+      // lower the score of impossible words
+      guessWithScore.copy(score = guessWithScore.score * 0.01)
+    } else {
+      // lower the score of unknown words
+      guessWithScore.copy(score = guessWithScore.score * unknownWordFactor)
+    }
+  }
+
+  def getHyphenationStatus(
+      lastWordWithHyphenGuess: GuessWithScore,
+      firstWordNextLineGuess: GuessWithScore
+  ): ScoredPair = {
+    val firstWordGlyphs = lastWordWithHyphenGuess.guess.glyphPredictions
+    val firstWordGlyphsNoHyphen = firstWordGlyphs.init
+    val secondWordGlyphs = firstWordNextLineGuess.guess.glyphPredictions
+
+    val combinedGuessWithHyphen = Guess(firstWordGlyphs ++ secondWordGlyphs)
+    val combinedGuessWithoutHyphen = Guess(firstWordGlyphsNoHyphen ++ secondWordGlyphs)
+
+    val combinedGuessWithHyphenFrequency =
+      lexicon.getFrequency(
+        combinedGuessWithHyphen.word,
+        preSimplified = true
+      )
+    val combinedGuessWithoutHyphenFrequency =
+      lexicon.getFrequency(
+        combinedGuessWithoutHyphen.word,
+        preSimplified = true
+      )
+
+    val combinedGuessMaxFrequency = Math.max(
+      combinedGuessWithHyphenFrequency,
+      combinedGuessWithoutHyphenFrequency
+    )
+
+    val hyphenationStatus =
+      if (combinedGuessWithHyphenFrequency > combinedGuessWithoutHyphenFrequency) {
+        HyphenatedWithHyphen(combinedGuessWithHyphen.word)
+      } else {
+        HyphenatedWithoutHyphen(combinedGuessWithoutHyphen.word)
+      }
+
+    val initialCombinedScore = Math.sqrt(
+      lastWordWithHyphenGuess.score * firstWordNextLineGuess.score
+    )
+    val factor = if (combinedGuessMaxFrequency > 0) {
+      1
+    } else if (combinedGuessMaxFrequency < 0) {
+      // lower the score of impossible words
+      0.01
+    } else {
+      // lower the score of unknown words
+      unknownWordFactor
+    }
+
+    val rescoredGuess1 = lastWordWithHyphenGuess
+      .copy(score = lastWordWithHyphenGuess.score * factor)
+    val rescoredGuess2 = firstWordNextLineGuess
+      .copy(score = firstWordNextLineGuess.score * factor)
+    val combinedScore = initialCombinedScore * factor
+    ScoredPair(rescoredGuess1, rescoredGuess2, combinedScore, hyphenationStatus)
+  }
+
+  def changeTextLineLanguageIfRequired: PartialFunction[AltoElement, AltoElement] = { case textLine: TextLine =>
+    val languages = textLine.words
+      .map(_.language)
+      .groupBy(identity)
+      .view
+      .mapValues(_.size)
+      .toSeq
+      .sortBy(0 - _._2)
+
+    if (languages.nonEmpty && languages.head._1.isDefined) {
+      val topLanguage = languages.head._1.get
+      if (log.isDebugEnabled) {
+        log.debug(
+          f"Changing language to $topLanguage for textLine ${textLine.baseLine}. Word languages: ${textLine.words.map(_.language).mkString(", ")}"
+        )
+      }
+      textLine.copy(
+        language = Some(topLanguage),
+        wordsAndSpaces = textLine.wordsAndSpaces
+          .map {
+            case word: Word => word.withDefaultLanguage(topLanguage)
+            case other      => other
+          }
+          .sorted(
+            WithRectangle.HorizontalOrdering(
+              StringUtils.isLeftToRight(topLanguage)
+            )
+          )
+      )
+    } else {
+      textLine
+    }
+  }
+
+  def changeTextBlockLanguageIfRequired: PartialFunction[AltoElement, AltoElement] = { case textBlock: TextBlock =>
+    val languages = textBlock.textLines
+      .map(_.language)
+      .groupBy(identity)
+      .view
+      .mapValues(_.size)
+      .toSeq
+      .sortBy(0 - _._2)
+
+    if (languages.nonEmpty && languages.head._1.isDefined) {
+      val topLanguage = languages.head._1.get
+      if (log.isDebugEnabled) {
+        log.debug(
+          f"Changing language to $topLanguage for textBlock ${textBlock.rectangle.coordinates}. TextLine languages: ${textBlock.textLines.map(_.language).mkString(", ")}"
+        )
+      }
+      textBlock.copy(
+        language = Some(topLanguage),
+        textLines = textBlock.textLines.map(_.withDefaultLanguage(topLanguage))
+      )
+    } else {
+      textBlock
+    }
+  }
+
+  def changePageLanguageIfRequired: PartialFunction[AltoElement, AltoElement] = { case page: Page =>
+    val languages = page.textBlocks
+      .map(_.language)
+      .groupBy(identity)
+      .view
+      .mapValues(_.size)
+      .toSeq
+      .sortBy(0 - _._2)
+      .map(_._1)
+
+    if (languages.nonEmpty && languages.head.isDefined) {
+      val topLanguage = languages.head.get
+      if (log.isDebugEnabled) {
+        log.debug(
+          f"Changing language to $topLanguage for page ${page.physicalPageNumber}"
+        )
+        log.debug(
+          f"Textblock languages: ${page.textBlocks.map(_.language).mkString(", ")}"
+        )
+      }
+      page.withLanguage(topLanguage)
+    } else {
+      page
+    }
+  }
+}
+
 case class FullSegmentationGuesser(
     glyphGuesser: GlyphGuesser,
     glyphGuessersForOtherAlphabets: GlyphGuessersForOtherAlphabets,
     lexicon: Lexicon = Lexicon.default,
     config: FullSegmentationGuesserConfig
-) extends TextGuesser {
+) extends TextGuesser
+    with FullSegmentationGuesserHelper {
   private val log = LoggerFactory.getLogger(getClass)
-
-  private val beamWidth = config.beamWidth
-  private val unknownWordFactor = config.unknownWordFactor
-
-  private sealed trait HyphenationStatus
-
-  private object NonHyphenated extends HyphenationStatus
-  private case class HyphenatedWithHyphen(hyphenatedWord: String) extends HyphenationStatus
-  private case class HyphenatedWithoutHyphen(hyphenatedWord: String) extends HyphenationStatus
-  private case class HyphenatedPart2WithHyphen(hyphenatedWord: String) extends HyphenationStatus
-  private case class HyphenatedPart2WithoutHyphen(hyphenatedWord: String) extends HyphenationStatus
 
   /** Given an image and a pre-segmented [[Page]] structure, attempt to guess the text within the page by assigning
     * content to the resulting page.
@@ -169,47 +432,6 @@ case class FullSegmentationGuesser(
     )
   }
 
-  private case class Guess(glyphPredictions: Seq[Prediction]) extends Ordered[Guess] {
-    val score: Double = Math.exp(glyphPredictions.foldLeft(0.0) { case (score, prediction) =>
-      score + Math.log(prediction.confidence)
-    } / glyphPredictions.size)
-    override def compare(that: Guess): Int = {
-      this.score.compare(that.score)
-    }
-
-    private lazy val unsimplifiedWord = glyphPredictions.map(_.outcome).mkString
-
-    lazy val word: String = lexicon.textSimplifier
-      .map(_.simplify(unsimplifiedWord))
-      .getOrElse(unsimplifiedWord)
-  }
-
-  private case class GuessWithScore(guess: Guess, score: Double)
-
-  private case class WordWithBeam(
-      word: WordOrSpace,
-      beam: Seq[GuessWithScore]
-  ) {
-    def selectBestGuess(mat: Mat): WordOrSpace = word match {
-      case word: Word =>
-        val rescored = rescoreBeam(beam)
-        if (log.isDebugEnabled) {
-          log.debug("Guesses for next word")
-          beam.zipWithIndex.foreach { case (topGuess, i) =>
-            log.debug(
-              f"Guess $i: ${topGuess.guess.word}. Initial score: ${topGuess.guess.score}%.3f. Score: ${topGuess.score}%.3f"
-            )
-          }
-        }
-        val guessedWord = guessToWord(mat, word, rescored.head)
-        val otherAlphabetWord =
-          guessWithOtherAlphabets(mat, guessedWord).getOrElse(guessedWord)
-        otherAlphabetWord
-      case other =>
-        other
-    }
-  }
-
   private def guessTextBlockWithBeam(
       mat: Mat
   ): PartialFunction[AltoElement, AltoElement] = { case textBlock: TextBlock =>
@@ -262,86 +484,43 @@ case class FullSegmentationGuesser(
                     Some(WordWithBeam(word2: Word, beam2))
                   ) =>
                 val scoredPairs = beam1
-                  .flatMap { guessWithScore =>
+                  .flatMap { lastWordGuess =>
                     val endsWithHyphen =
-                      guessWithScore.guess.glyphPredictions.nonEmpty && config.hyphenRegex
+                      lastWordGuess.guess.glyphPredictions.nonEmpty && config.hyphenRegex
                         .matches(
-                          guessWithScore.guess.glyphPredictions.last.outcome
+                          lastWordGuess.guess.glyphPredictions.last.outcome
                         )
                     if (endsWithHyphen) {
                       // Current guess ends with a hyphen
-                      beam2.map { nextWordGuessWithScore =>
-                        val combinedGuessWithHyphen = Guess(
-                          guessWithScore.guess.glyphPredictions ++ nextWordGuessWithScore.guess.glyphPredictions
-                        )
-                        val combinedGuessWithHyphenFrequency =
-                          lexicon.getFrequency(
-                            combinedGuessWithHyphen.word,
-                            preSimplified = true
-                          )
-                        val combinedGuessWithoutHyphen = Guess(
-                          guessWithScore.guess.glyphPredictions.init ++ nextWordGuessWithScore.guess.glyphPredictions
-                        )
-                        val combinedGuessWithoutHyphenFrequency =
-                          lexicon.getFrequency(
-                            combinedGuessWithoutHyphen.word,
-                            preSimplified = true
-                          )
-                        val combinedGuessMaxFrequency = Math.max(
-                          combinedGuessWithHyphenFrequency,
-                          combinedGuessWithoutHyphenFrequency
-                        )
-
-                        val hyphenationStatus =
-                          if (combinedGuessWithHyphenFrequency > combinedGuessWithoutHyphenFrequency) {
-                            HyphenatedWithHyphen(combinedGuessWithHyphen.word)
-                          } else {
-                            HyphenatedWithoutHyphen(combinedGuessWithoutHyphen.word)
-                          }
-
-                        val initialCombinedScore = Math.sqrt(
-                          guessWithScore.score * nextWordGuessWithScore.score
-                        )
-                        val factor = if (combinedGuessMaxFrequency > 0) {
-                          1
-                        } else if (combinedGuessMaxFrequency < 0) {
-                          // lower the score of impossible words
-                          0.01
-                        } else {
-                          // lower the score of unknown words
-                          unknownWordFactor
-                        }
-
-                        val rescoredGuess1 = guessWithScore
-                          .copy(score = guessWithScore.score * factor)
-                        val rescoredGuess2 = nextWordGuessWithScore
-                          .copy(score = nextWordGuessWithScore.score * factor)
-                        val combinedScore = initialCombinedScore * factor
-                        (rescoredGuess1, rescoredGuess2, combinedScore, hyphenationStatus)
+                      beam2.map { firstWordNextLineGuess =>
+                        getHyphenationStatus(lastWordGuess, firstWordNextLineGuess)
                       }
                     } else {
-                      val rescoredGuess1 = rescoreGuess(guessWithScore)
+                      val rescoredGuess1 = rescoreGuess(lastWordGuess)
                       val rescoredBeam2 = rescoreBeam(beam2)
                       rescoredBeam2.map { rescoredGuess2 =>
                         val combinedScore =
                           Math.sqrt(rescoredGuess2.score * rescoredGuess2.score)
-                        (rescoredGuess1, rescoredGuess2, combinedScore, NonHyphenated)
+                        ScoredPair(rescoredGuess1, rescoredGuess2, combinedScore, NonHyphenated)
                       }
                     }
                   }
-                  .sortBy(0 - _._3)
+                  .sortBy(0 - _.combinedScore)
 
                 if (log.isDebugEnabled) {
                   log.debug("Guesses for hyphenated pair")
                   scoredPairs.zipWithIndex.foreach {
-                    case ((guessWithScore1, guessWithScore2, score, hyphenationStatus), i) =>
+                    case (ScoredPair(guessWithScore1, guessWithScore2, score, hyphenationStatus), i) =>
                       log.debug(
                         f"Guess $i: Word 1: ${guessWithScore1.guess.word}. Word 2: ${guessWithScore2.guess.word}. Score 1: ${guessWithScore1.guess.score}%.3f. Score 2: ${guessWithScore2.guess.score}%.3f. Combined score: $score%.3f"
                       )
                   }
                 }
 
-                val (bestGuessWord1, bestGuessWord2, _, hyphenationStatus) = scoredPairs.head
+                val (bestGuessWord1, bestGuessWord2, hyphenationStatus) = scoredPairs.head match {
+                  case ScoredPair(guessWithHyphen, firstGuessNextLine, _, hyphenationStatus) =>
+                    (guessWithHyphen, firstGuessNextLine, hyphenationStatus)
+                }
 
                 val word2HyphenationStatus = hyphenationStatus match {
                   case HyphenatedWithHyphen(word)    => HyphenatedPart2WithHyphen(word)
@@ -380,61 +559,6 @@ case class FullSegmentationGuesser(
     textBlock.copy(textLines = newTextLines)
   }
 
-  private def guessToWord(
-      mat: Mat,
-      word: Word,
-      topGuess: GuessWithScore,
-      hyphenationStatus: HyphenationStatus = NonHyphenated
-  ): Word = {
-    val glyphsWithContent =
-      word.glyphs.zip(topGuess.guess.glyphPredictions).map { case (glyph, guess) =>
-        glyph.copy(content = guess.outcome, confidence = guess.confidence)
-      }
-
-    val guessedWord = word.copy(
-      content = topGuess.guess.word,
-      glyphs = glyphsWithContent,
-      confidence = topGuess.score,
-      subsType = hyphenationStatus match {
-        case NonHyphenated                   => None
-        case HyphenatedWithHyphen(_)         => Some(SubsType.HypPart1)
-        case HyphenatedWithoutHyphen(_)      => Some(SubsType.HypPart1)
-        case HyphenatedPart2WithHyphen(_)    => Some(SubsType.HypPart2)
-        case HyphenatedPart2WithoutHyphen(_) => Some(SubsType.HypPart2)
-      },
-      subsContent = hyphenationStatus match {
-        case NonHyphenated                      => None
-        case HyphenatedWithHyphen(word)         => Some(word)
-        case HyphenatedWithoutHyphen(word)      => Some(word)
-        case HyphenatedPart2WithHyphen(word)    => Some(word)
-        case HyphenatedPart2WithoutHyphen(word) => Some(word)
-      }
-    )
-    val otherAlphabetWord =
-      guessWithOtherAlphabets(mat, guessedWord).getOrElse(guessedWord)
-    otherAlphabetWord
-  }
-
-  private def rescoreBeam(beam: Seq[GuessWithScore]): Seq[GuessWithScore] = {
-    // Rescore the guesses and sort by the new highest scoring word
-    val topGuesses = beam.map(rescoreGuess).sortBy(0 - _.score)
-    topGuesses
-  }
-
-  private def rescoreGuess(guessWithScore: GuessWithScore): GuessWithScore = {
-    val frequency =
-      lexicon.getFrequency(guessWithScore.guess.word, preSimplified = true)
-    if (frequency > 0) {
-      guessWithScore
-    } else if (frequency < 0) {
-      // lower the score of impossible words
-      guessWithScore.copy(score = guessWithScore.score * 0.01)
-    } else {
-      // lower the score of unknown words
-      guessWithScore.copy(score = guessWithScore.score * unknownWordFactor)
-    }
-  }
-
   private def getBeam(mat: Mat, word: Word): Seq[GuessWithScore] = {
     val predictionsPerGlyph = word.glyphs.map { glyph =>
       glyphGuesser.guess(mat, glyph, beamWidth)
@@ -461,7 +585,7 @@ case class FullSegmentationGuesser(
     topGuesses
   }
 
-  private def guessWithOtherAlphabets(mat: Mat, word: Word): Option[Word] = {
+  override def guessWithOtherAlphabets(mat: Mat, word: Word): Option[Word] = {
     // TODO: set entire line or block to language if all non-number non-punctuation elements are another language
     val otherAlphabetGuesser =
       glyphGuessersForOtherAlphabets.glyphGuessers.find { case GlyphGuesserForAnotherAlphabet(language, regex, _) =>
@@ -486,92 +610,6 @@ case class FullSegmentationGuesser(
       val updatedWord =
         word.copy(language = Some(language), glyphs = newGlyphs)
       guessWordWithoutBeam(mat, updatedWord, otherAlphabetGuesser)
-    }
-  }
-
-  private def changeTextLineLanguageIfRequired: PartialFunction[AltoElement, AltoElement] = { case textLine: TextLine =>
-    val languages = textLine.words
-      .map(_.language)
-      .groupBy(identity)
-      .view
-      .mapValues(_.size)
-      .toSeq
-      .sortBy(0 - _._2)
-
-    if (languages.nonEmpty && languages.head._1.isDefined) {
-      val topLanguage = languages.head._1.get
-      if (log.isDebugEnabled) {
-        log.debug(
-          f"Changing language to $topLanguage for textLine ${textLine.baseLine}. Word languages: ${textLine.words.map(_.language).mkString(", ")}"
-        )
-      }
-      textLine.copy(
-        language = Some(topLanguage),
-        wordsAndSpaces = textLine.wordsAndSpaces
-          .map {
-            case word: Word => word.withDefaultLanguage(topLanguage)
-            case other      => other
-          }
-          .sorted(
-            WithRectangle.HorizontalOrdering(
-              StringUtils.isLeftToRight(topLanguage)
-            )
-          )
-      )
-    } else {
-      textLine
-    }
-  }
-
-  private def changeTextBlockLanguageIfRequired: PartialFunction[AltoElement, AltoElement] = {
-    case textBlock: TextBlock =>
-      val languages = textBlock.textLines
-        .map(_.language)
-        .groupBy(identity)
-        .view
-        .mapValues(_.size)
-        .toSeq
-        .sortBy(0 - _._2)
-
-      if (languages.nonEmpty && languages.head._1.isDefined) {
-        val topLanguage = languages.head._1.get
-        if (log.isDebugEnabled) {
-          log.debug(
-            f"Changing language to $topLanguage for textBlock ${textBlock.rectangle.coordinates}. TextLine languages: ${textBlock.textLines.map(_.language).mkString(", ")}"
-          )
-        }
-        textBlock.copy(
-          language = Some(topLanguage),
-          textLines = textBlock.textLines.map(_.withDefaultLanguage(topLanguage))
-        )
-      } else {
-        textBlock
-      }
-  }
-
-  private def changePageLanguageIfRequired: PartialFunction[AltoElement, AltoElement] = { case page: Page =>
-    val languages = page.textBlocks
-      .map(_.language)
-      .groupBy(identity)
-      .view
-      .mapValues(_.size)
-      .toSeq
-      .sortBy(0 - _._2)
-      .map(_._1)
-
-    if (languages.nonEmpty && languages.head.isDefined) {
-      val topLanguage = languages.head.get
-      if (log.isDebugEnabled) {
-        log.debug(
-          f"Changing language to $topLanguage for page ${page.physicalPageNumber}"
-        )
-        log.debug(
-          f"Textblock languages: ${page.textBlocks.map(_.language).mkString(", ")}"
-        )
-      }
-      page.withLanguage(topLanguage)
-    } else {
-      page
     }
   }
 }

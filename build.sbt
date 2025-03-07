@@ -15,7 +15,7 @@ ThisBuild / versionScheme := Some("semver-spec")
 
 val cloakroomVersion = "0.5.15"
 val scalaXmlVersion = "2.3.0"
-val yivoTranscriberVersion = "0.1.6"
+val yivoTranscriberVersion = "1.0.1"
 val javaCVVersion = "1.5.11"
 val scallopVersion = "5.2.0"
 val apacheCommonsTextVersion = "1.13.0"
