@@ -113,7 +113,7 @@ lazy val core = project
     name := "jochre3-ocr-core",
     libraryDependencies ++= jpegDeps ++ commonDeps ++ httpClientDeps ++ Seq(
       "org.rogach" %% "scallop" % scallopVersion,
-      "org.bytedeco" % "javacv-platform" % javaCVVersion,
+      "org.bytedeco" % "javacv-platform" % javaCVVersion exclude ("org.bytedeco", "ffmpeg") exclude ("org.bytedeco", "ffmpeg-platform"),
       "org.scala-lang.modules" %% "scala-xml" % scalaXmlVersion,
       "org.apache.commons" % "commons-text" % apacheCommonsTextVersion,
       "org.apache.commons" % "commons-math3" % apacheCommonsMathVersion,
