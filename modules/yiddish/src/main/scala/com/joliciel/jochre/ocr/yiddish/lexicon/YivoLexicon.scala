@@ -186,4 +186,7 @@ object YivoLexicon {
     yiddishConfig.lexiconPath
       .map { path => load(path) }
       .getOrElse(new YivoLexiconImpl(Set.empty))
+
+  def fromEntries(entries: Set[String]): YivoLexicon =
+    new YivoLexiconImpl(entries)
 }
