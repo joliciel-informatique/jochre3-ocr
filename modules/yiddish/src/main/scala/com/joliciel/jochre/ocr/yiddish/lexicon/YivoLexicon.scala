@@ -58,6 +58,8 @@ private class YivoLexiconImpl(entries: Set[String]) extends TextFileLexicon(entr
     minFrequency
   }
 
+  override def standardize(word: String): String = toYivo(word)
+
   def toYivo(word: String, presimplified: Boolean = false): String = {
     if (cacheYivoTranscriptions) {
       wordToYivo.getOrElse(

@@ -22,6 +22,7 @@ import zio.interop.catz._
 
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
+import com.joliciel.jochre.ocr.yiddish.YiddishDehyphenator
 
 object MainApp extends ZIOAppDefault {
   private val log = LoggerFactory.getLogger(getClass)
@@ -90,6 +91,7 @@ object MainApp extends ZIOAppDefault {
 
     val jochreLayer = JochreYiddishFull.jochreYiddishLayer
     val lexiconLayer = JochreYiddishFull.lexiconLayer
+    val dehyphenatorLayer = YiddishDehyphenator.live
 
     // Starting the server
     val server = EmberServerBuilder
@@ -104,7 +106,9 @@ object MainApp extends ZIOAppDefault {
     server
       .provide(
         jochreLayer,
-        lexiconLayer
+        lexiconLayer,
+        JochreYiddishFull.yiddishConfigLayer,
+        dehyphenatorLayer
       )
   }
 

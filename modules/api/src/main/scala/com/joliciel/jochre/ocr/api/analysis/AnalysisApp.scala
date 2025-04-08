@@ -199,13 +199,62 @@ case class AnalysisApp(executionContext: ExecutionContext)
   val getWordsInLexiconHttp: ZServerEndpoint[Requirements, Any] =
     getWordsInLexiconEndpoint.zServerLogic(input => getWordsInLexiconLogic(input))
 
+  val getStandardizeWordsEndpoint: PublicEndpoint[List[String], HttpError, StandardizedWordsResponse, Any] =
+    tapirEndpoint.get
+      .errorOut(
+        oneOf[HttpError](
+          oneOfVariant[BadRequest](StatusCode.BadRequest, jsonBody[BadRequest])
+        )
+      )
+      .in("standardize")
+      .in(query[List[String]]("words").description("The words to standardize").example(List("איהר", "איר", "האבּן")))
+      .out(
+        jsonBody[StandardizedWordsResponse].example(
+          StandardizedWordsResponse(Seq("איר", "איר", "האָבן"))
+        )
+      )
+      .description(
+        "Standardize a sequence of words"
+      )
+
+  val getStandardizeWordsHttp: ZServerEndpoint[Requirements, Any] =
+    getStandardizeWordsEndpoint.zServerLogic(input => getStandardizeWordsLogic(input))
+
+  val postDehyphenateEndpoint: PublicEndpoint[TextFileForm, HttpError, ZStream[
+    Any,
+    Throwable,
+    Byte
+  ], Any & ZioStreams] =
+    tapirEndpoint.post
+      .errorOut(
+        oneOf[HttpError](
+          oneOfVariant[BadRequest](StatusCode.BadRequest, jsonBody[BadRequest])
+        )
+      )
+      .in("dehyphenate")
+      .in(multipartBody[TextFileForm].description("The text file to dehyphenate"))
+      .out(
+        streamTextBody(ZioStreams)(
+          CodecFormat.TextPlain(),
+          Some(StandardCharsets.UTF_8)
+        )
+      )
+      .description(
+        "Dehyphenate a file, attempting to recognize hard and soft hyphens."
+      )
+
+  val postDehyphenateHttp: ZServerEndpoint[Requirements, Any & ZioStreams] =
+    postDehyphenateEndpoint.zServerLogic(input => postDehyphenateLogic(input))
+
   val endpoints: List[AnyEndpoint] = List(
     postAnalyzeFileEndpoint,
     postAnalyzeURLEndpoint,
     postAnalyzeFileWithOutputFormatsEndpoint,
     postAnalyzeURLWithOutputFormatsEndpoint,
     getWordInLexiconEndpoint,
-    getWordsInLexiconEndpoint
+    getWordsInLexiconEndpoint,
+    getStandardizeWordsEndpoint,
+    postDehyphenateEndpoint
   )
 
   val http: List[ZServerEndpoint[Requirements, Any & ZioStreams]] = List(
@@ -214,6 +263,8 @@ case class AnalysisApp(executionContext: ExecutionContext)
     postAnalyzeFileWithOutputFormatsHttp,
     postAnalyzeURLWithOutputFormatsHttp,
     getWordInLexiconHttp,
-    getWordsInLexiconHttp
+    getWordsInLexiconHttp,
+    getStandardizeWordsHttp,
+    postDehyphenateHttp
   )
 }
