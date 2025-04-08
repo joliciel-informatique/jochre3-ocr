@@ -48,7 +48,15 @@ package object analysis {
 
   case class WordFrequency(word: String, frequency: Int)
   case class WordsInLexiconResponse(
-    frequencies: Seq[WordFrequency]
+      frequencies: Seq[WordFrequency]
+  )
+
+  case class StandardizedWordsResponse(
+      words: Seq[String]
+  )
+
+  case class TextFileForm(
+      file: Part[File]
   )
 
   object AnalysisHelper {
