@@ -53,6 +53,8 @@ case class TextFileLexicon(
   }
 
   override def isImpossible(word: String): Boolean = false
+
+  override def standardize(word: String): String = word
 }
 
 object TextFileLexicon {

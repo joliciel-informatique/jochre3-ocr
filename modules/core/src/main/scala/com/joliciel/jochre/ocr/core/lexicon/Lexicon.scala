@@ -22,6 +22,10 @@ trait Lexicon {
   /** Does this lexicon have true corpus-based frequency measurements.
     */
   private def hasFrequency: Boolean = false
+
+  /** Rewrite the word in standardized spelling, when such a thing makes sense for this lexicon and language.
+    */
+  def standardize(word: String): String
 }
 
 object Lexicon {
@@ -31,5 +35,7 @@ object Lexicon {
     override def getFrequency(word: String, preSimplified: Boolean): Int = 1
 
     override def isImpossible(word: String): Boolean = false
+
+    override def standardize(word: String): String = word
   }
 }

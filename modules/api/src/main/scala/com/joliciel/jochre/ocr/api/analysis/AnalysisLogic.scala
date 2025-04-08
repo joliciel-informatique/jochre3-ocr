@@ -22,6 +22,8 @@ import java.nio.file.Path
 import java.util.zip.{ZipEntry, ZipOutputStream}
 import javax.imageio.ImageIO
 import scala.util.Try
+import scala.io.Source
+import com.joliciel.jochre.ocr.core.text.Dehyphenator
 
 trait AnalysisLogic extends HttpErrorMapper with ImageUtils with FileUtils {
   private val log = LoggerFactory.getLogger(getClass)
@@ -264,4 +266,39 @@ trait AnalysisLogic extends HttpErrorMapper with ImageUtils with FileUtils {
       .mapError(mapToHttpError)
   }
 
+  def getStandardizeWordsLogic(words: List[String]): ZIO[Requirements, HttpError, StandardizedWordsResponse] = {
+    (for {
+      lexicon <- ZIO.service[Lexicon]
+      standardized <- ZIO.foreach(words) { word => ZIO.attempt(lexicon.standardize(word)) }
+    } yield {
+      StandardizedWordsResponse(standardized)
+    })
+      .tapErrorCause(error => ZIO.logErrorCause(s"Unable to standardize words", error))
+      .mapError(mapToHttpError)
+  }
+
+  def postDehyphenateLogic(fileForm: TextFileForm): ZIO[Requirements, HttpError, ZStream[Any, Throwable, Byte]] = {
+    val fileGetter: () => Try[File] = () => getFileFromPart(fileForm.file)
+    val fileName = fileForm.file.fileName.getOrElse("Unknown")
+    (
+      for {
+        dehyphenator <- ZIO.service[Dehyphenator]
+        textFile <- ZIO.fromTry(fileGetter())
+        text <- ZIO.attempt {
+          val source = Source.fromFile(textFile)
+          val lines =
+            try source.getLines().mkString("\n")
+            finally source.close()
+          lines
+        }
+        dehyphenated <- ZIO.attempt { dehyphenator.dehyphenate(text) }
+      } yield {
+        log.info(f"Dehyphenated $fileName")
+        ZStream(dehyphenated)
+          .via(ZPipeline.utf8Encode)
+      }
+    )
+      .tapErrorCause(error => ZIO.logErrorCause(s"Unable to dehyphenate", error))
+      .mapError(mapToHttpError)
+  }
 }

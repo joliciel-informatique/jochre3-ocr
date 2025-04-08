@@ -17,4 +17,7 @@ trait AnalysisApiProtocol {
 
   given JsonDecoder[WordsInLexiconResponse] = DeriveJsonDecoder.gen[WordsInLexiconResponse]
   given JsonEncoder[WordsInLexiconResponse] = DeriveJsonEncoder.gen[WordsInLexiconResponse]
+
+  given JsonDecoder[StandardizedWordsResponse] = DeriveJsonDecoder.gen[StandardizedWordsResponse]
+  given JsonEncoder[StandardizedWordsResponse] = DeriveJsonEncoder.gen[StandardizedWordsResponse]
 }
